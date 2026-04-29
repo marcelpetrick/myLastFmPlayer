@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "my-lastfm-player"
-version = "0.1.0"
 description = "Linux desktop app for fetching Last.fm loved tracks and preparing local playback."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,6 +11,7 @@ license = "GPL-3.0-or-later"
 authors = [
     { name = "Marcel Petrick", email = "mail@marcelpetrick.it" }
 ]
+dynamic = ["version"]
 dependencies = [
     "PyQt6>=6.7",
 ]
@@ -29,6 +29,9 @@ my-lastfm-player = "my_lastfm_player.main:main"
 
 [tool.setuptools.packages.find]
 include = ["my_lastfm_player*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "my_lastfm_player.version.__version__" }
 
 [tool.pytest.ini_options]
 addopts = [

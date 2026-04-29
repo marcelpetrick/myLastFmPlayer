@@ -24,13 +24,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from my_lastfm_player import __version__
+
 
 class MainWindow(QMainWindow):
     """Initial MVP shell for the Last.fm player desktop UI."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("myLastFmPlayer")
+        self.setWindowTitle(f"myLastFmPlayer v{__version__}")
         self.resize(1120, 720)
 
         self._build_actions()

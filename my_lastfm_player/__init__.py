@@ -1,4 +1,5 @@
 """myLastFmPlayer desktop application."""
 
-__version__ = "0.1.0"
+from my_lastfm_player.version import __version__
 
+__all__ = ["__version__"]

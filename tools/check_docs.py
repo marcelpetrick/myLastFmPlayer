@@ -13,6 +13,9 @@ REQUIRED_FILES = [
 REQUIRED_README_SNIPPETS = [
     "Author: Marcel Petrick <mail@marcelpetrick.it>",
     "License: GPLv3 or later.",
+    "Current version: `00.00.01`",
+    "MAJOR.MINOR.PATCH",
+    "every future commit should increase the `PATCH` number",
     "python3 -m venv .venv",
     "python -m pip install -e .",
 ]

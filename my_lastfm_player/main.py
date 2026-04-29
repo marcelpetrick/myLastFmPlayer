@@ -4,10 +4,13 @@ import sys
 
 from PyQt6.QtWidgets import QApplication
 
+from my_lastfm_player import __version__
 from my_lastfm_player.ui.main_window import MainWindow
 
 
 def main() -> int:
+    print(f"myLastFmPlayer {__version__}")
+
     app = QApplication(sys.argv)
     app.setApplicationName("myLastFmPlayer")
     app.setOrganizationName("Marcel Petrick")
@@ -16,4 +19,3 @@ def main() -> int:
     window.show()
 
     return app.exec()
-
