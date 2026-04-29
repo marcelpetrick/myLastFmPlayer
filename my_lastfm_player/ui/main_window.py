@@ -176,6 +176,7 @@ class MainWindow(QMainWindow):
     def set_tracks(self, tracks: list[Track]) -> None:
         self.track_model.set_tracks(tracks)
         self.track_table.resizeRowsToContents()
+        print(f"[myLastFmPlayer] Table now contains {len(tracks)} tracks", flush=True)
         self.show_status(f"Loaded {len(tracks)} tracks")
 
     def username(self) -> str:
@@ -212,6 +213,7 @@ class MainWindow(QMainWindow):
 
     def show_status(self, message: str) -> None:
         LOGGER.info("UI status: %s", message)
+        print(f"[myLastFmPlayer] UI status: {message}", flush=True)
         self.statusBar().showMessage(message)
 
     def _show_not_implemented(self) -> None:

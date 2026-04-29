@@ -48,6 +48,7 @@ class ApplicationController(QObject):
 
     def start(self) -> None:
         LOGGER.info("Starting application controller")
+        print("[myLastFmPlayer] Starting application controller", flush=True)
         self.window.fetch_requested.connect(self.fetch_loved_tracks)
         self.check_dependencies()
 
@@ -71,6 +72,7 @@ class ApplicationController(QObject):
             return
 
         LOGGER.info("Fetch requested for Last.fm user %s", username)
+        print(f"[myLastFmPlayer] UI fetch requested for Last.fm user {username}", flush=True)
         self.window.set_fetch_enabled(False)
         self.window.set_progress(0, "Starting fetch")
         worker = self.fetch_worker_factory(username, self.scraper, self.repository)
@@ -117,6 +119,10 @@ class ApplicationController(QObject):
         self.window.set_tracks(tracks)
         self.window.append_feedback(f"Fetched and stored {len(tracks)} tracks for {username}.")
         LOGGER.info("Loaded %s fetched tracks into UI for %s", len(tracks), username)
+        print(
+            f"[myLastFmPlayer] UI loaded {len(tracks)} fetched tracks for {username}",
+            flush=True,
+        )
 
     def _handle_tracks_resolved(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
@@ -129,6 +135,7 @@ class ApplicationController(QObject):
 
     def _handle_worker_error(self, message: str) -> None:
         LOGGER.error("Worker error: %s", message)
+        print(f"[myLastFmPlayer] Worker error shown in UI: {message}", flush=True)
         self.window.append_feedback(message)
         self.window.set_progress(0, "Failed")
 

@@ -17,7 +17,7 @@ LIVE_LASTFM_USERNAME = "first"
 def test_live_lastfm_first_loved_tracks_end_to_end(capsys: pytest.CaptureFixture[str]) -> None:
     scraper = LastFmLovedTracksScraper()
 
-    tracks = scraper.fetch_loved_tracks(LIVE_LASTFM_USERNAME, max_pages=1)
+    tracks = scraper.fetch_loved_tracks(LIVE_LASTFM_USERNAME)
 
     with capsys.disabled():
         print(f"\nLive Last.fm loved tracks for user {LIVE_LASTFM_USERNAME}:")

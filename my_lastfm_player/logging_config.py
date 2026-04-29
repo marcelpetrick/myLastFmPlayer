@@ -10,6 +10,6 @@ def configure_logging(level: int = logging.INFO) -> None:
     logging.basicConfig(
         level=level,
         format=LOG_FORMAT,
-        stream=sys.stderr,
+        stream=sys.stdout,
         force=True,
     )

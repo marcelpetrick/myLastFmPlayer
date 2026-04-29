@@ -17,8 +17,9 @@ from my_lastfm_player.version import __version__
 
 LASTFM_BASE_URL = "https://www.last.fm"
 REQUEST_TIMEOUT_SECONDS = 20
-LASTFM_RETRY_ATTEMPTS = 3
-LASTFM_RETRY_DELAY_SECONDS = 1.0
+LASTFM_RETRY_ATTEMPTS = 8
+LASTFM_RETRY_DELAY_SECONDS = 2.0
+LASTFM_PAGE_DELAY_SECONDS = 1.5
 LASTFM_HEADERS = {
     "User-Agent": (
         f"myLastFmPlayer/{__version__} "
@@ -86,7 +87,7 @@ class LastFmLovedTracksFetcher:
 
     def loved_tracks_url(self, username: str) -> str:
         url = f"{self.base_url}/user/{quote(username, safe='')}/loved"
-        LOGGER.info("Recognized Last.fm user %s; loved-track URL is %s", username, url)
+        _log_info("Recognized Last.fm user %s; loved-track URL is %s", username, url)
         return url
 
     def fetch_page(self, url: str) -> FetchedHtmlPage:
@@ -94,7 +95,7 @@ class LastFmLovedTracksFetcher:
         last_error: LastFmError | None = None
 
         for attempt in range(1, attempts + 1):
-            LOGGER.info(
+            _log_info(
                 "Fetching Last.fm HTML document: %s (attempt %s/%s)",
                 url,
                 attempt,
@@ -105,7 +106,7 @@ class LastFmLovedTracksFetcher:
                 self._raise_for_unsuccessful_response(response, url)
             except (LastFmError, requests.RequestException) as error:
                 last_error = _to_lastfm_error(url, error)
-                LOGGER.warning(
+                _log_warning(
                     "Last.fm HTML fetch attempt %s/%s failed for %s: %s",
                     attempt,
                     attempts,
@@ -118,7 +119,7 @@ class LastFmLovedTracksFetcher:
                 raise last_error from error
 
             html = response.text
-            LOGGER.info("Fetched Last.fm HTML document from %s (%s bytes)", response.url, len(html))
+            _log_info("Fetched Last.fm HTML document from %s (%s bytes)", response.url, len(html))
             return FetchedHtmlPage(url=response.url, html=html)
 
         raise last_error or LastFmError(f"Could not fetch Last.fm loved tracks from {url}")
@@ -140,7 +141,7 @@ class LastFmLovedTracksFetcher:
 
 class LastFmLovedTracksParser:
     def parse(self, html: str, page_url: str) -> LovedTracksPage:
-        LOGGER.info("Parsing Last.fm loved-track HTML with BeautifulSoup: %s", page_url)
+        _log_info("Parsing Last.fm loved-track HTML with BeautifulSoup: %s", page_url)
         soup = BeautifulSoup(html, "html.parser")
         tracks = [_parse_track_row(row, page_url) for row in _find_track_rows(soup)]
         parsed_tracks = [track for track in tracks if track is not None]
@@ -149,7 +150,7 @@ class LastFmLovedTracksParser:
             next_url=_find_next_page_url(soup, page_url),
             total_tracks=_find_total_tracks(soup),
         )
-        LOGGER.info(
+        _log_info(
             "Parsed Last.fm loved-track page %s: tracks=%s total=%s next=%s",
             page_url,
             len(page.tracks),
@@ -166,9 +167,11 @@ class LastFmLovedTracksScraper:
         base_url: str = LASTFM_BASE_URL,
         fetcher: LastFmLovedTracksFetcher | None = None,
         parser: LastFmLovedTracksParser | None = None,
+        page_delay_seconds: float = LASTFM_PAGE_DELAY_SECONDS,
     ) -> None:
         self.fetcher = fetcher or LastFmLovedTracksFetcher(session=session, base_url=base_url)
         self.parser = parser or LastFmLovedTracksParser()
+        self.page_delay_seconds = page_delay_seconds
 
     def fetch_loved_tracks(
         self,
@@ -185,7 +188,7 @@ class LastFmLovedTracksScraper:
         next_url: str | None = self.loved_tracks_url(username)
         page_count = 0
         total_count: int | None = None
-        LOGGER.info(
+        _log_info(
             "Starting Last.fm loved-track fetch for user %s; pagination limit=%s",
             username,
             max_pages or "none",
@@ -193,7 +196,7 @@ class LastFmLovedTracksScraper:
 
         while next_url is not None:
             if max_pages is not None and page_count >= max_pages:
-                LOGGER.info(
+                _log_info(
                     "Stopping Last.fm loved-track fetch for user %s after %s page(s) due to limit",
                     username,
                     max_pages,
@@ -201,7 +204,7 @@ class LastFmLovedTracksScraper:
                 break
             page_count += 1
 
-            LOGGER.info(
+            _log_info(
                 "Fetching Last.fm loved-track page %s for user %s: %s",
                 page_count,
                 username,
@@ -218,7 +221,7 @@ class LastFmLovedTracksScraper:
                 total_count = page.total_tracks
             tracks.extend(page.tracks)
             next_url = page.next_url
-            LOGGER.info(
+            _log_info(
                 "Fetched %s tracks from page %s for user %s; cumulative=%s total=%s",
                 len(page.tracks),
                 page_count,
@@ -234,8 +237,15 @@ class LastFmLovedTracksScraper:
                     message=_progress_message(len(tracks), total_count),
                 ),
             )
+            if next_url is not None and self.page_delay_seconds > 0:
+                _log_info(
+                    "Waiting %.1f seconds before next Last.fm page for %s",
+                    self.page_delay_seconds,
+                    username,
+                )
+                time.sleep(self.page_delay_seconds)
 
-        LOGGER.info(
+        _log_info(
             "Finished Last.fm loved-track fetch for user %s with %s tracks across %s page(s)",
             username,
             len(tracks),
@@ -256,7 +266,7 @@ class LastFmLovedTracksScraper:
             progress_callback=progress_callback,
         )
         repository.save_tracks(username, tracks)
-        LOGGER.info("Stored %s Last.fm loved tracks for user %s", len(tracks), username)
+        _log_info("Stored %s Last.fm loved tracks for user %s", len(tracks), username)
         return tracks
 
     def loved_tracks_url(self, username: str) -> str:
@@ -350,8 +360,19 @@ def _progress_message(fetched_count: int, total_count: int | None) -> str:
 
 
 def _emit_progress(progress_callback: ProgressCallback | None, progress: FetchProgress) -> None:
+    _log_info("Fetch progress: %s", progress.message)
     if progress_callback is not None:
         progress_callback(progress)
+
+
+def _log_info(message: str, *args: object) -> None:
+    LOGGER.info(message, *args)
+    print("[myLastFmPlayer]", message % args if args else message, flush=True)
+
+
+def _log_warning(message: str, *args: object) -> None:
+    LOGGER.warning(message, *args)
+    print("[myLastFmPlayer] WARNING", message % args if args else message, flush=True)
 
 
 def _to_lastfm_error(url: str, error: LastFmError | requests.RequestException) -> LastFmError:

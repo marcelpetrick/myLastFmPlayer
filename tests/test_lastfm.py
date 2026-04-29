@@ -141,7 +141,9 @@ def test_scraper_fetches_paginated_loved_tracks() -> None:
         }
     )
 
-    tracks = LastFmLovedTracksScraper(session=session).fetch_loved_tracks("example")
+    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
+        "example"
+    )
 
     assert [track.title for track in tracks] == [
         "Down on the Farm",
@@ -195,7 +197,7 @@ def test_scraper_reports_fetch_progress() -> None:
     )
     progress_events: list[FetchProgress] = []
 
-    LastFmLovedTracksScraper(session=session).fetch_loved_tracks(
+    LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
         "example",
         progress_callback=progress_events.append,
     )
@@ -215,7 +217,10 @@ def test_scraper_respects_max_pages() -> None:
         }
     )
 
-    tracks = LastFmLovedTracksScraper(session=session).fetch_loved_tracks("example", max_pages=1)
+    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
+        "example",
+        max_pages=1,
+    )
 
     assert [track.title for track in tracks] == ["Down on the Farm", "Say It Right"]
     assert session.requested_urls == [first_url]
@@ -244,7 +249,9 @@ def test_scraper_wraps_request_failures() -> None:
     session = FakeSession({first_url: FakeResponse("", first_url, status_code=500)})
 
     with pytest.raises(LastFmError, match="Could not fetch"):
-        LastFmLovedTracksScraper(session=session).fetch_loved_tracks("example")
+        LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
+            "example"
+        )
 
 
 def test_fetch_and_store_loved_tracks_persists_results(tmp_path: Path) -> None:
@@ -256,10 +263,9 @@ def test_fetch_and_store_loved_tracks_persists_results(tmp_path: Path) -> None:
     )
     repository = JsonTrackRepository(data_dir=tmp_path)
 
-    tracks = LastFmLovedTracksScraper(session=session).fetch_and_store_loved_tracks(
-        "example",
-        repository,
-    )
+    scraper = LastFmLovedTracksScraper(session=session, page_delay_seconds=0)
+
+    tracks = scraper.fetch_and_store_loved_tracks("example", repository)
 
     assert tracks == repository.load_tracks("example")
     assert repository.load_tracks("example")[0].status == TrackStatus.FETCHED

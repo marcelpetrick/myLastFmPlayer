@@ -32,6 +32,10 @@ class FetchLovedTracksWorker(QObject):
     def run(self) -> None:
         try:
             LOGGER.info("Worker started fetching loved tracks for %s", self.username)
+            print(
+                f"[myLastFmPlayer] Worker started fetching loved tracks for {self.username}",
+                flush=True,
+            )
             self.progress.emit(0, f"Looking up Last.fm user {self.username}")
             tracks = self.scraper.fetch_and_store_loved_tracks(
                 self.username,
@@ -42,9 +46,17 @@ class FetchLovedTracksWorker(QObject):
             self.tracks_loaded.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
             LOGGER.exception("Loved-track fetch failed for %s", self.username)
+            print(
+                f"[myLastFmPlayer] Loved-track fetch failed for {self.username}: {error}",
+                flush=True,
+            )
             self.error.emit(str(error))
         finally:
             LOGGER.info("Worker finished fetching loved tracks for %s", self.username)
+            print(
+                f"[myLastFmPlayer] Worker finished fetching loved tracks for {self.username}",
+                flush=True,
+            )
             self.finished.emit()
 
     def _report_fetch_progress(self, progress: FetchProgress) -> None:
@@ -52,6 +64,11 @@ class FetchLovedTracksWorker(QObject):
             percent = min(99, int(progress.fetched_count / progress.total_count * 100))
         else:
             percent = 0
+        print(
+            f"[myLastFmPlayer] Worker progress for {self.username}: "
+            f"{percent}% {progress.message}",
+            flush=True,
+        )
         self.progress.emit(percent, progress.message)
 
 
