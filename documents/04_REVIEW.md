@@ -1,6 +1,6 @@
 # Development Plan Review
 
-This review checks the current implementation against `documents/02_DEVELOPMENT_PLAN.md` after the MVP workflow chaining work in version `00.00.17`.
+This review checks the current implementation against `documents/02_DEVELOPMENT_PLAN.md` after the priority playback-preparation work in version `00.00.19`.
 
 ## Step 0: Basic PyQt App Setup
 
@@ -48,7 +48,7 @@ Mostly done.
 
 Missing or weak:
 
-- The UI does not show per-track `Searching` updates while lookup is running. It updates after the worker returns.
+- The UI now shows per-track lookup progress in the status bar. The table itself still updates after the lookup worker returns.
 - There is no dedicated UI control for lookup, although the MVP workflow now starts lookup automatically after fetch.
 
 ## Step 8: Download Queue
@@ -58,7 +58,7 @@ Mostly done.
 Missing or weak:
 
 - True pause/resume downloads are not exposed in the UI.
-- Selected-track priority is implemented in the manager but not exposed in the UI.
+- Selected-track priority is exposed through Play: pressing Play on an unresolved or not-yet-downloaded row starts a one-track priority lookup/download.
 - Progress is queue-level only, not actual `yt-dlp` per-track byte or percent progress.
 - Active downloads are not cancellable.
 

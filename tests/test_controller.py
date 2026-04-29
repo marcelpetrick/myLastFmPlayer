@@ -131,6 +131,59 @@ def test_controller_reenables_workflow_after_last_worker(qapp) -> None:
     assert window.download_toggle_button.isEnabled()
 
 
+def test_controller_play_on_unresolved_track_starts_priority_lookup(qapp) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    track = Track(artist="Artist", title="Title", status=TrackStatus.FETCHED)
+    window.set_tracks([track])
+    window.track_table.selectRow(0)
+    controller = ApplicationController(window)
+    lookup_calls: list[tuple[str | None, str | None, int | None]] = []
+
+    def fake_lookup(
+        username: str | None = None,
+        priority_cache_key: str | None = None,
+        max_tracks: int | None = None,
+    ) -> None:
+        lookup_calls.append((username, priority_cache_key, max_tracks))
+
+    controller.resolve_youtube_urls = fake_lookup  # type: ignore[method-assign]
+
+    controller.play_selected_track()
+
+    assert lookup_calls == [("user", track.cache_key, 1)]
+    assert "Preparing Artist - Title for playback." in window.feedback_log.toPlainText()
+
+
+def test_controller_play_on_resolved_track_starts_priority_download(qapp) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/example",
+        status=TrackStatus.QUEUED,
+    )
+    window.set_tracks([track])
+    window.track_table.selectRow(0)
+    controller = ApplicationController(window)
+    download_calls: list[tuple[str | None, str | None, int | None]] = []
+
+    def fake_download(
+        username: str | None = None,
+        priority_cache_key: str | None = None,
+        max_downloads: int | None = None,
+    ) -> None:
+        download_calls.append((username, priority_cache_key, max_downloads))
+
+    controller.download_tracks = fake_download  # type: ignore[method-assign]
+
+    controller.play_selected_track()
+
+    assert download_calls == [("user", track.cache_key, 1)]
+    assert "Starting priority download for selected track." in window.feedback_log.toPlainText()
+
+
 class FakePlaybackService:
     def __init__(self) -> None:
         self.current_track: Track | None = None

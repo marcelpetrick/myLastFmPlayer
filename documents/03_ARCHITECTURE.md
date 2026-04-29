@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the workflow implemented in the application as of version `00.00.18`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
+This document describes the workflow implemented in the application as of version `00.00.19`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
 
 ## Current Scope
 
@@ -15,6 +15,7 @@ Implemented:
 - Download queue service and worker entry point.
 - Local playback service for selected downloaded tracks.
 - Automatic fetch-to-lookup-to-download workflow.
+- Priority lookup/download when Play is pressed on a track that is not downloaded yet.
 - Startup checks for `yt-dlp` and `ffmpeg`.
 - Status-bar progress and stdout logging.
 
@@ -247,6 +248,8 @@ Current lookup rules:
 - First result only.
 - Found track becomes `Queued`.
 - No result becomes `Not found`.
+- Progress is emitted per track, for example `Searching 1/31`.
+- A selected track can be prioritized and resolved as a one-track job.
 
 ## Download Queue Workflow
 
@@ -281,7 +284,7 @@ Current download rules:
 - Tracks already in the shared cache are marked `Downloaded` and skipped.
 - Each failing download is retried up to `3` times.
 - Retry backoff is random between `1` and `5` seconds.
-- A selected-track priority hook exists in the manager, but the UI does not expose it yet.
+- Pressing Play on a not-yet-downloaded track starts a one-track priority download once a YouTube URL is available.
 
 ## Playback Workflow
 

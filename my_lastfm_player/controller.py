@@ -27,11 +27,11 @@ FetchWorkerFactory = Callable[
     FetchLovedTracksWorker,
 ]
 LookupWorkerFactory = Callable[
-    [str, YouTubeResolver, JsonTrackRepository],
+    [str, YouTubeResolver, JsonTrackRepository, str | None, int | None],
     LookupTracksWorker,
 ]
 DownloadWorkerFactory = Callable[
-    [str, DownloadManager, JsonTrackRepository, int],
+    [str, DownloadManager, JsonTrackRepository, int, str | None, int | None],
     DownloadTracksWorker,
 ]
 WorkflowWorker = FetchLovedTracksWorker | LookupTracksWorker | DownloadTracksWorker
@@ -65,6 +65,7 @@ class ApplicationController(QObject):
         self._active_threads: list[QThread] = []
         self._active_workers: list[WorkflowWorker] = []
         self._running_worker_count = 0
+        self._pending_play_cache_key: str | None = None
 
     def start(self) -> None:
         LOGGER.info("Starting application controller")
@@ -102,7 +103,12 @@ class ApplicationController(QObject):
         worker = self.fetch_worker_factory(username, self.scraper, self.repository)
         self._run_worker(worker)
 
-    def resolve_youtube_urls(self, username: str | None = None) -> None:
+    def resolve_youtube_urls(
+        self,
+        username: str | None = None,
+        priority_cache_key: str | None = None,
+        max_tracks: int | None = None,
+    ) -> None:
         username = username or self.window.username()
         if not username:
             LOGGER.warning("Lookup requested without a Last.fm username")
@@ -112,10 +118,21 @@ class ApplicationController(QObject):
         LOGGER.info("YouTube lookup requested for Last.fm user %s", username)
         print(f"[myLastFmPlayer] Starting YouTube lookup for {username}", flush=True)
         self.window.set_progress(0, "Starting YouTube lookup")
-        worker = self.lookup_worker_factory(username, self.youtube_resolver, self.repository)
+        worker = self.lookup_worker_factory(
+            username,
+            self.youtube_resolver,
+            self.repository,
+            priority_cache_key,
+            max_tracks,
+        )
         self._run_worker(worker)
 
-    def download_tracks(self, username: str | None = None) -> None:
+    def download_tracks(
+        self,
+        username: str | None = None,
+        priority_cache_key: str | None = None,
+        max_downloads: int | None = None,
+    ) -> None:
         username = username or self.window.username()
         if not username:
             LOGGER.warning("Download requested without a Last.fm username")
@@ -139,6 +156,8 @@ class ApplicationController(QObject):
             self.download_manager,
             self.repository,
             concurrency,
+            priority_cache_key,
+            max_downloads,
         )
         self._run_worker(worker)
 
@@ -149,17 +168,7 @@ class ApplicationController(QObject):
             self.window.append_feedback("Select a downloaded track before playing.")
             return
 
-        previous_track = self.playback_service.current_track
-        try:
-            playing_track = self.playback_service.play(selected_track)
-        except PlaybackError as error:
-            self.window.append_feedback(str(error))
-            return
-
-        self._restore_previous_playing_track(previous_track, selected_track)
-        self.window.update_track(selected_row, playing_track)
-        self.window.append_feedback(f"Playing {playing_track.artist} - {playing_track.title}.")
-        self._save_visible_tracks()
+        self._play_track(selected_row, selected_track)
 
     def pause_playback(self) -> None:
         try:
@@ -243,7 +252,12 @@ class ApplicationController(QObject):
         self.window.set_tracks(tracks)
         self.window.append_feedback(f"Resolved YouTube URLs for {len(tracks)} tracks.")
         LOGGER.info("Loaded %s resolved tracks into UI for %s", len(tracks), username)
-        if self._has_download_candidates(tracks):
+        if self._pending_play_cache_key and self._track_has_youtube_url(
+            tracks,
+            self._pending_play_cache_key,
+        ):
+            self._start_priority_download(username, self._pending_play_cache_key)
+        elif self._has_download_candidates(tracks):
             self._start_automatic_download(username)
         else:
             self.window.append_feedback("No queued tracks are ready for download.")
@@ -256,6 +270,8 @@ class ApplicationController(QObject):
         self.window.set_tracks(tracks)
         self.window.append_feedback(f"Downloaded {len(tracks)} tracks for {username}.")
         LOGGER.info("Loaded %s downloaded tracks into UI for %s", len(tracks), username)
+        if self._pending_play_cache_key:
+            self._play_prepared_track(self._pending_play_cache_key)
 
     def _handle_worker_error(self, message: str) -> None:
         LOGGER.error("Worker error: %s", message)
@@ -283,6 +299,46 @@ class ApplicationController(QObject):
         if username:
             self.repository.save_tracks(username, self.window.tracks())
 
+    def _play_track(self, row: int, track: Track) -> None:
+        previous_track = self.playback_service.current_track
+        try:
+            playing_track = self.playback_service.play(track)
+        except PlaybackError as error:
+            if self._can_prepare_for_playback(track):
+                self._prepare_selected_track_for_playback(track)
+            else:
+                self.window.append_feedback(str(error))
+            return
+
+        self._restore_previous_playing_track(previous_track, track)
+        self.window.update_track(row, playing_track)
+        self.window.append_feedback(f"Playing {playing_track.artist} - {playing_track.title}.")
+        self._save_visible_tracks()
+
+    def _can_prepare_for_playback(self, track: Track) -> bool:
+        return track.status not in {TrackStatus.DOWNLOADED, TrackStatus.PLAYING} or (
+            track.status is TrackStatus.DOWNLOADED and not track.local_path
+        )
+
+    def _prepare_selected_track_for_playback(self, track: Track) -> None:
+        username = self.window.username()
+        if not username:
+            self.window.append_feedback("Enter a Last.fm username before preparing playback.")
+            return
+        self._pending_play_cache_key = track.cache_key
+        self._save_visible_tracks()
+        self.window.append_feedback(
+            f"Preparing {track.artist} - {track.title} for playback."
+        )
+        if track.youtube_url:
+            self._start_priority_download(username, track.cache_key)
+            return
+        self.resolve_youtube_urls(
+            username,
+            priority_cache_key=track.cache_key,
+            max_tracks=1,
+        )
+
     def _start_automatic_lookup(self, username: str, track_count: int) -> None:
         message = f"Starting automatic YouTube lookup for {track_count} fetched tracks."
         LOGGER.info("%s User=%s", message, username)
@@ -297,12 +353,39 @@ class ApplicationController(QObject):
         self.window.append_feedback(message)
         self.download_tracks(username)
 
+    def _start_priority_download(self, username: str, cache_key: str) -> None:
+        message = "Starting priority download for selected track."
+        LOGGER.info("%s User=%s cache_key=%s", message, username, cache_key)
+        print(
+            f"[myLastFmPlayer] {message} user={username} cache_key={cache_key}",
+            flush=True,
+        )
+        self.window.append_feedback(message)
+        self.download_tracks(
+            username,
+            priority_cache_key=cache_key,
+            max_downloads=1,
+        )
+
     def _has_download_candidates(self, tracks: list[Track]) -> bool:
         return any(
             bool(track.youtube_url)
             and track.status not in {TrackStatus.DOWNLOADED, TrackStatus.NOT_FOUND}
             for track in tracks
         )
+
+    def _track_has_youtube_url(self, tracks: list[Track], cache_key: str) -> bool:
+        return any(track.cache_key == cache_key and bool(track.youtube_url) for track in tracks)
+
+    def _play_prepared_track(self, cache_key: str) -> None:
+        for row, track in enumerate(self.window.tracks()):
+            if track.cache_key != cache_key:
+                continue
+            if track.status is not TrackStatus.DOWNLOADED:
+                return
+            self._pending_play_cache_key = None
+            self._play_track(row, track)
+            return
 
     def _complete_worker_run(self) -> None:
         self._running_worker_count = max(0, self._running_worker_count - 1)

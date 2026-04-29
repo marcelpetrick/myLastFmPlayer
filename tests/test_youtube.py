@@ -139,6 +139,29 @@ def test_resolve_tracks_skips_tracks_that_already_have_youtube_urls() -> None:
     assert runner.commands == []
 
 
+def test_resolve_tracks_prioritizes_and_limits_selected_track() -> None:
+    runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=new"}))
+    resolver = YouTubeResolver(command_runner=runner)
+    first = Track(artist="First", title="Track")
+    second = Track(artist="Second", title="Track")
+    progress: list[tuple[int, str]] = []
+
+    tracks = resolver.resolve_tracks(
+        [first, second],
+        progress_callback=lambda value, message: progress.append((value, message)),
+        priority_cache_key=second.cache_key,
+        max_tracks=1,
+    )
+
+    assert tracks[0] == first
+    assert tracks[1].youtube_url == "https://youtube.example/watch?v=new"
+    assert runner.commands[0][-1] == "ytsearch1:Second Track"
+    assert progress == [
+        (0, "Searching 1/1: Second - Track"),
+        (99, "Resolved 1/1: Second - Track"),
+    ]
+
+
 def test_resolve_and_store_tracks_persists_results(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     repository.save_tracks("example", [Track(artist="Artist", title="Title")])
@@ -148,3 +171,25 @@ def test_resolve_and_store_tracks_persists_results(tmp_path: Path) -> None:
 
     assert tracks == repository.load_tracks("example")
     assert repository.load_tracks("example")[0].youtube_url == "https://youtube.example/watch?v=abc"
+
+
+def test_resolve_and_store_tracks_keeps_existing_download_state(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks(
+        "example",
+        [
+            Track(
+                artist="Artist",
+                title="Title",
+                local_path="/music/Artist - Title.mp3",
+                status=TrackStatus.DOWNLOADED,
+            )
+        ],
+    )
+    runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=abc"}))
+
+    tracks = YouTubeResolver(command_runner=runner).resolve_and_store_tracks("example", repository)
+
+    assert tracks[0].status == TrackStatus.DOWNLOADED
+    assert tracks[0].local_path == "/music/Artist - Title.mp3"
+    assert tracks[0].youtube_url == "https://youtube.example/watch?v=abc"

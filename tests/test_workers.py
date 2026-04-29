@@ -44,10 +44,15 @@ class FakeResolver:
         self,
         username: str,
         repository: JsonTrackRepository,
+        progress_callback=None,
+        priority_cache_key: str | None = None,
+        max_tracks: int | None = None,
     ) -> list[Track]:
         self.called_with = (username, repository)
         if self.error is not None:
             raise self.error
+        if progress_callback is not None:
+            progress_callback(50, "Resolved 1/1: Artist - Title")
         repository.save_tracks(username, self.tracks)
         return self.tracks
 
@@ -116,6 +121,7 @@ def test_lookup_worker_emits_progress_tracks_and_finished(tmp_path: Path) -> Non
     assert resolver.called_with == ("example", repository)
     assert progress_events == [
         (0, "Resolving YouTube URLs for example"),
+        (50, "Resolved 1/1: Artist - Title"),
         (100, "Resolved 1 tracks"),
     ]
     assert resolved_events == [("example", tracks)]
@@ -153,6 +159,8 @@ class FakeDownloadManager:
         repository: JsonTrackRepository,
         concurrency: int,
         progress_callback=None,
+        priority_cache_key: str | None = None,
+        max_downloads: int | None = None,
     ) -> list[Track]:
         self.called_with = (username, repository, concurrency)
         if self.error is not None:

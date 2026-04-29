@@ -84,18 +84,28 @@ class LookupTracksWorker(QObject):
         username: str,
         resolver: YouTubeResolver,
         repository: JsonTrackRepository,
+        priority_cache_key: str | None = None,
+        max_tracks: int | None = None,
     ) -> None:
         super().__init__()
         self.username = username
         self.resolver = resolver
         self.repository = repository
+        self.priority_cache_key = priority_cache_key
+        self.max_tracks = max_tracks
 
     @pyqtSlot()
     def run(self) -> None:
         try:
             LOGGER.info("Worker started resolving YouTube URLs for %s", self.username)
             self.progress.emit(0, f"Resolving YouTube URLs for {self.username}")
-            tracks = self.resolver.resolve_and_store_tracks(self.username, self.repository)
+            tracks = self.resolver.resolve_and_store_tracks(
+                self.username,
+                self.repository,
+                progress_callback=self.progress.emit,
+                priority_cache_key=self.priority_cache_key,
+                max_tracks=self.max_tracks,
+            )
             self.progress.emit(100, f"Resolved {len(tracks)} tracks")
             self.tracks_resolved.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
@@ -118,12 +128,16 @@ class DownloadTracksWorker(QObject):
         download_manager: DownloadManager,
         repository: JsonTrackRepository,
         concurrency: int = DEFAULT_CONCURRENCY,
+        priority_cache_key: str | None = None,
+        max_downloads: int | None = None,
     ) -> None:
         super().__init__()
         self.username = username
         self.download_manager = download_manager
         self.repository = repository
         self.concurrency = concurrency
+        self.priority_cache_key = priority_cache_key
+        self.max_downloads = max_downloads
 
     @pyqtSlot()
     def run(self) -> None:
@@ -138,6 +152,8 @@ class DownloadTracksWorker(QObject):
                 self.repository,
                 concurrency=self.concurrency,
                 progress_callback=self.progress.emit,
+                priority_cache_key=self.priority_cache_key,
+                max_downloads=self.max_downloads,
             )
             self.tracks_downloaded.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.

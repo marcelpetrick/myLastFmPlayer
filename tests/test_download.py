@@ -137,3 +137,25 @@ def test_download_manager_prioritizes_selected_track(tmp_path: Path) -> None:
 
     assert runner.commands[0][-1] == "https://youtu.be/second"
     assert [track.artist for track in repository.load_tracks("user")] == ["First", "Second"]
+
+
+def test_download_manager_can_limit_priority_download_to_one_track(tmp_path: Path) -> None:
+    runner = FakeRunner()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    first = Track(artist="First", title="Track", youtube_url="https://youtu.be/first")
+    second = Track(artist="Second", title="Track", youtube_url="https://youtu.be/second")
+    repository.save_tracks("user", [first, second])
+
+    DownloadManager(command_runner=runner).download_and_store_tracks(
+        "user",
+        repository,
+        concurrency=2,
+        priority_cache_key=second.cache_key,
+        max_downloads=1,
+    )
+
+    assert len(runner.commands) == 1
+    assert runner.commands[0][-1] == "https://youtu.be/second"
+    tracks = repository.load_tracks("user")
+    assert tracks[0].status == TrackStatus.FETCHED
+    assert tracks[1].status == TrackStatus.DOWNLOADED

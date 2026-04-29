@@ -63,6 +63,7 @@ class DownloadManager:
         concurrency: int = DEFAULT_CONCURRENCY,
         progress_callback: ProgressCallback | None = None,
         priority_cache_key: str | None = None,
+        max_downloads: int | None = None,
     ) -> list[Track]:
         tracks = repository.mark_cached_downloads(repository.load_tracks(username))
         downloaded_tracks = self.download_tracks(
@@ -71,6 +72,7 @@ class DownloadManager:
             concurrency=concurrency,
             progress_callback=progress_callback,
             priority_cache_key=priority_cache_key,
+            max_downloads=max_downloads,
         )
         repository.save_tracks(username, downloaded_tracks)
         repository.save_download_cache(downloaded_tracks)
@@ -83,6 +85,7 @@ class DownloadManager:
         concurrency: int = DEFAULT_CONCURRENCY,
         progress_callback: ProgressCallback | None = None,
         priority_cache_key: str | None = None,
+        max_downloads: int | None = None,
     ) -> list[Track]:
         if concurrency < 1:
             raise ValueError("concurrency must be at least 1")
@@ -95,6 +98,8 @@ class DownloadManager:
             if _should_download(track)
         ]
         candidates = _prioritize_candidates(candidates, priority_cache_key)
+        if max_downloads is not None:
+            candidates = candidates[:max_downloads]
         _report(progress_callback, 0, f"Queued {len(candidates)} downloads")
         if not candidates:
             return results

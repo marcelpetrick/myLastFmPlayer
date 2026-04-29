@@ -6,7 +6,7 @@ Author: Marcel Petrick <mail@marcelpetrick.it>
 
 License: GPLv3 or later. See `LICENSE`.
 
-Current version: `00.00.18`
+Current version: `00.00.19`
 
 ## Versioning
 
@@ -147,4 +147,4 @@ That test fetches all loved-track pages from Last.fm for `first` and prints the 
 
 ## Current State
 
-Steps 0 through 10 of the development plan are implemented for the local MVP path: fetching a username now continues automatically into YouTube lookup and the download queue, and downloaded tracks can be played locally. Remaining hardening topics are tracked in `documents/IMPROVEMENTS.md`.
+Steps 0 through 10 of the development plan are implemented for the local MVP path: fetching a username now continues automatically into YouTube lookup and the download queue, and downloaded tracks can be played locally. Pressing Play on a not-yet-downloaded track starts a priority lookup/download for that selection. Remaining hardening topics are tracked in `documents/IMPROVEMENTS.md`.
