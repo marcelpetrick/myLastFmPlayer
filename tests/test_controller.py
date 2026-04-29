@@ -39,3 +39,22 @@ def test_controller_rejects_empty_username(qapp) -> None:
     controller.fetch_loved_tracks()
 
     assert "Enter a Last.fm username" in window.feedback_log.toPlainText()
+
+
+def test_controller_rejects_empty_username_for_lookup(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+
+    controller.resolve_youtube_urls()
+
+    assert "Enter a Last.fm username before resolving tracks." in window.feedback_log.toPlainText()
+
+
+def test_controller_handles_resolved_tracks(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+
+    controller._handle_tracks_resolved("example", [])
+
+    assert window.track_model.rowCount() == 0
+    assert "Resolved YouTube URLs for 0 tracks." in window.feedback_log.toPlainText()

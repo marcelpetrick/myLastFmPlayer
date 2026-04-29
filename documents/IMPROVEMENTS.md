@@ -4,7 +4,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Packaging and Versioning
 
-- Python package metadata normalizes `00.00.06` to `0.0.6` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
+- Python package metadata normalizes `00.00.07` to `0.0.7` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
 - The documented rule says every future commit should increase the patch number. This is easy to forget manually; a small pre-commit or release helper could enforce it.
 
 ## Pipeline
@@ -15,7 +15,13 @@ This document collects follow-up improvements noticed during implementation. The
 ## Architecture
 
 - The controller now owns the fetch workflow, but worker lifecycle management is still minimal. Later steps should add cancellation and clearer shutdown behavior before long downloads are introduced.
-- Placeholder workers exist for the future lookup/download phases. Step 7 and Step 8 should replace those placeholders with real implementations or remove them if a different worker split is better.
+- The lookup worker exists, but it is not exposed through a dedicated UI control yet. Step 8 or the controller integration pass should decide whether lookup starts automatically after fetching or through an explicit command.
+- A placeholder worker still exists for the future download phase. Step 8 should replace it with a real queue manager or remove it if a different worker split is better.
+
+## YouTube Lookup
+
+- `yt-dlp` returns package-normalized errors and search result shapes that may vary by version. The resolver handles common shapes, but live integration testing should be added once network-dependent checks are acceptable.
+- YouTube lookup is currently sequential and simple, which matches the MVP rule. Later queue integration should avoid blocking all downloads behind slow or failing lookups.
 - Storage returns domain objects directly. That is fine for the JSON MVP, but the storage abstraction should remain narrow so a future SQLite migration does not leak database concerns upward.
 
 ## Scraping

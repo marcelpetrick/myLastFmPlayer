@@ -4,6 +4,7 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from my_lastfm_player.lastfm import LastFmLovedTracksScraper
 from my_lastfm_player.storage import JsonTrackRepository
+from my_lastfm_player.youtube import YouTubeResolver
 
 
 class FetchLovedTracksWorker(QObject):
@@ -36,15 +37,34 @@ class FetchLovedTracksWorker(QObject):
             self.finished.emit()
 
 
-class LookupPlaceholderWorker(QObject):
+class LookupTracksWorker(QObject):
+    tracks_resolved = pyqtSignal(str, object)
     progress = pyqtSignal(int, str)
     error = pyqtSignal(str)
     finished = pyqtSignal()
 
+    def __init__(
+        self,
+        username: str,
+        resolver: YouTubeResolver,
+        repository: JsonTrackRepository,
+    ) -> None:
+        super().__init__()
+        self.username = username
+        self.resolver = resolver
+        self.repository = repository
+
     @pyqtSlot()
     def run(self) -> None:
-        self.progress.emit(0, "YouTube lookup worker is not implemented yet")
-        self.finished.emit()
+        try:
+            self.progress.emit(0, f"Resolving YouTube URLs for {self.username}")
+            tracks = self.resolver.resolve_and_store_tracks(self.username, self.repository)
+            self.progress.emit(100, f"Resolved {len(tracks)} tracks")
+            self.tracks_resolved.emit(self.username, tracks)
+        except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
+            self.error.emit(str(error))
+        finally:
+            self.finished.emit()
 
 
 class DownloadPlaceholderWorker(QObject):
