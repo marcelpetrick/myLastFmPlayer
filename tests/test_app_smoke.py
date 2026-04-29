@@ -8,7 +8,7 @@ from my_lastfm_player.ui.main_window import MainWindow
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "00.00.03"
+    assert __version__ == "00.00.04"
 
 
 def test_main_window_builds_mvp_shell() -> None:
@@ -17,7 +17,7 @@ def test_main_window_builds_mvp_shell() -> None:
     window = MainWindow()
 
     assert app.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v00.00.03"
+    assert window.windowTitle() == "myLastFmPlayer v00.00.04"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_table.columnCount() == 3
     assert window.track_table.rowCount() == 2
@@ -49,4 +49,4 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 00.00.03\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 00.00.04\n"

@@ -8,12 +8,13 @@ REQUIRED_FILES = [
     Path("documents/00_REQUIREMENTS.md"),
     Path("documents/01_IMPLEMENTATION_PLAN.md"),
     Path("documents/02_DEVELOPMENT_PLAN.md"),
+    Path("documents/IMPROVEMENTS.md"),
 ]
 
 REQUIRED_README_SNIPPETS = [
     "Author: Marcel Petrick <mail@marcelpetrick.it>",
     "License: GPLv3 or later.",
-    "Current version: `00.00.03`",
+    "Current version: `00.00.04`",
     "MAJOR.MINOR.PATCH",
     "every future commit should increase the `PATCH` number",
     "python3 -m venv .venv",

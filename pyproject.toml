@@ -13,7 +13,9 @@ authors = [
 ]
 dynamic = ["version"]
 dependencies = [
+    "beautifulsoup4>=4.12",
     "PyQt6>=6.7",
+    "requests>=2.32",
 ]
 
 [project.optional-dependencies]
