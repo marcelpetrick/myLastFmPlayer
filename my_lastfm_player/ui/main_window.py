@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
 
     def _build_actions(self) -> None:
         self.refresh_action = QAction("Fetch loved tracks", self)
-        self.refresh_action.triggered.connect(self._show_not_implemented)
+        self.refresh_action.triggered.connect(self.fetch_requested.emit)
 
         self.quit_action = QAction("Quit", self)
         self.quit_action.triggered.connect(self.close)
