@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the workflow implemented in the application as of version `00.00.17`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
+This document describes the workflow implemented in the application as of version `00.00.18`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
 
 ## Current Scope
 
