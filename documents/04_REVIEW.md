@@ -1,6 +1,6 @@
 # Development Plan Review
 
-This review checks the current implementation against `documents/02_DEVELOPMENT_PLAN.md` after the priority playback-preparation work in version `00.00.19`.
+This review checks the current implementation against `documents/02_DEVELOPMENT_PLAN.md` after the user workflow documentation update in version `00.00.20`.
 
 ## Step 0: Basic PyQt App Setup
 

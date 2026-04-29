@@ -6,7 +6,7 @@ Author: Marcel Petrick <mail@marcelpetrick.it>
 
 License: GPLv3 or later. See `LICENSE`.
 
-Current version: `00.00.19`
+Current version: `00.00.20`
 
 ## Versioning
 
@@ -72,6 +72,81 @@ Alternatively:
 
 ```sh
 python -m my_lastfm_player
+```
+
+## How to Use the Player
+
+Start the application, enter a Last.fm username, and press Fetch. The app loads that user's public loved-track list from Last.fm, stores it locally, resolves the tracks through `yt-dlp`, and starts downloading playable MP3 files into the local downloads directory.
+
+The normal workflow is:
+
+1. Enter a Last.fm username.
+2. Press Fetch.
+3. Wait while the loved-track list is fetched and shown in the table.
+4. The app automatically starts YouTube lookup for the fetched tracks.
+5. The app automatically starts the download queue for resolved tracks.
+6. Select a downloaded track and press Play.
+
+```mermaid
+flowchart TD
+    A["Enter Last.fm username"] --> B["Press Fetch"]
+    B --> C["Fetch public loved-track list from Last.fm"]
+    C --> D["Show tracks in the table"]
+    D --> E["Resolve tracks through yt-dlp search"]
+    E --> F["Queue resolved tracks for download"]
+    F --> G["Download MP3 files"]
+    G --> H["Select downloaded track"]
+    H --> I["Press Play"]
+    I --> J["Play local MP3"]
+```
+
+If you press Play on a track that is not downloaded yet, the app prepares that selection first. It prioritizes the selected track, resolves its YouTube URL if needed, downloads only that track first, and then starts playback when the local file is ready.
+
+```mermaid
+flowchart TD
+    A["Select track"] --> B["Press Play"]
+    B --> C{"Already downloaded?"}
+    C -->|yes| D["Play local MP3"]
+    C -->|no| E{"YouTube URL known?"}
+    E -->|no| F["Priority lookup for selected track"]
+    E -->|yes| G["Priority download for selected track"]
+    F --> G
+    G --> H["Store downloaded MP3 path"]
+    H --> D
+```
+
+Progress and errors are shown in the status bar at the bottom of the window and in the feedback area. The terminal also prints detailed logging when the app is started from `localPipeline.sh` or from a shell.
+
+## Stored Files
+
+By default, downloaded MP3 files are stored here:
+
+```text
+~/.local/share/myLastFmPlayer/downloads/
+```
+
+Per-user track lists are stored as JSON files here:
+
+```text
+~/.local/share/myLastFmPlayer/tracks/
+```
+
+The shared download cache is stored here:
+
+```text
+~/.local/share/myLastFmPlayer/download-cache.json
+```
+
+If `XDG_DATA_HOME` is set, the base directory changes to:
+
+```text
+$XDG_DATA_HOME/myLastFmPlayer/
+```
+
+For example, with `XDG_DATA_HOME=/tmp/app-data`, downloads are stored in:
+
+```text
+/tmp/app-data/myLastFmPlayer/downloads/
 ```
 
 ## Local Pipeline
