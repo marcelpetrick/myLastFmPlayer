@@ -6,7 +6,7 @@ Author: Marcel Petrick <mail@marcelpetrick.it>
 
 License: GPLv3 or later. See `LICENSE`.
 
-Current version: `00.00.10`
+Current version: `00.00.11`
 
 ## Versioning
 
@@ -76,13 +76,19 @@ python -m my_lastfm_player
 
 ## Local Pipeline
 
-Install development dependencies and run the full local build, lint, documentation, test, coverage, package, and install verification sequence:
+Install development dependencies and run the full local build, lint, documentation, test, coverage, package, install verification sequence, and then start the installed application:
 
 ```sh
 ./localPipeline.sh
 ```
 
-The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, runs pytest with coverage, builds the package, installs the built wheel, and verifies the package can be imported.
+The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, runs pytest with coverage, builds the package, installs the built wheel, verifies the package can be imported, and then starts `my-lastfm-player` like a user would.
+
+To run every check without launching the GUI at the end:
+
+```sh
+./localPipeline.sh --noRun
+```
 
 After the pipeline completes, open the HTML coverage report at:
 
@@ -93,7 +99,7 @@ htmlcov/index.html
 The normal pipeline does not require internet access. To include the live Last.fm end-to-end test for the hardwired user `first`, run:
 
 ```sh
-MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 ./localPipeline.sh
+MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 ./localPipeline.sh --noRun
 ```
 
 That test fetches the first loved-track page from Last.fm and prints the tracks during the test run.
