@@ -45,6 +45,7 @@ class ApplicationController(QObject):
         self.fetch_worker_factory = fetch_worker_factory
         self.lookup_worker_factory = lookup_worker_factory
         self._active_threads: list[QThread] = []
+        self._active_workers: list[FetchLovedTracksWorker | LookupTracksWorker] = []
 
     def start(self) -> None:
         LOGGER.info("Starting application controller")
@@ -92,9 +93,17 @@ class ApplicationController(QObject):
 
     def _run_worker(self, worker: FetchLovedTracksWorker | LookupTracksWorker) -> None:
         thread = QThread(self)
+        worker_name = worker.__class__.__name__
+        print(f"[myLastFmPlayer] Preparing {worker_name} on background thread", flush=True)
         worker.moveToThread(thread)
 
         thread.started.connect(worker.run)
+        thread.started.connect(
+            lambda worker_name=worker_name: print(
+                f"[myLastFmPlayer] Thread started for {worker_name}",
+                flush=True,
+            )
+        )
         worker.progress.connect(self.window.set_progress)
         worker.error.connect(self._handle_worker_error)
         if isinstance(worker, FetchLovedTracksWorker):
@@ -106,9 +115,17 @@ class ApplicationController(QObject):
         worker.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
         thread.finished.connect(lambda: self._forget_thread(thread))
+        thread.finished.connect(lambda worker=worker: self._forget_worker(worker))
 
         self._active_threads.append(thread)
-        LOGGER.debug("Starting worker thread for %s", worker.__class__.__name__)
+        self._active_workers.append(worker)
+        LOGGER.info("Starting worker thread for %s", worker_name)
+        print(
+            f"[myLastFmPlayer] Starting thread for {worker_name}; "
+            f"active_threads={len(self._active_threads)} "
+            f"active_workers={len(self._active_workers)}",
+            flush=True,
+        )
         thread.start()
 
     def _handle_tracks_loaded(self, username: str, tracks: object) -> None:
@@ -142,3 +159,15 @@ class ApplicationController(QObject):
     def _forget_thread(self, thread: QThread) -> None:
         if thread in self._active_threads:
             self._active_threads.remove(thread)
+        print(
+            f"[myLastFmPlayer] Thread finished; active_threads={len(self._active_threads)}",
+            flush=True,
+        )
+
+    def _forget_worker(self, worker: FetchLovedTracksWorker | LookupTracksWorker) -> None:
+        if worker in self._active_workers:
+            self._active_workers.remove(worker)
+        print(
+            f"[myLastFmPlayer] Worker released; active_workers={len(self._active_workers)}",
+            flush=True,
+        )
