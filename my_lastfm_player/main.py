@@ -5,6 +5,7 @@ import sys
 from PyQt6.QtWidgets import QApplication
 
 from my_lastfm_player import __version__
+from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.ui.main_window import MainWindow
 
 
@@ -16,6 +17,8 @@ def main() -> int:
     app.setOrganizationName("Marcel Petrick")
 
     window = MainWindow()
+    controller = ApplicationController(window)
+    controller.start()
     window.show()
 
     return app.exec()

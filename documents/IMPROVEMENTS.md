@@ -4,7 +4,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Packaging and Versioning
 
-- Python package metadata normalizes `00.00.05` to `0.0.5` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
+- Python package metadata normalizes `00.00.06` to `0.0.6` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
 - The documented rule says every future commit should increase the patch number. This is easy to forget manually; a small pre-commit or release helper could enforce it.
 
 ## Pipeline
@@ -14,7 +14,8 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Architecture
 
-- The UI now uses a table model and sort proxy, but Step 6 still needs a controller boundary so worker updates do not directly mutate UI widgets.
+- The controller now owns the fetch workflow, but worker lifecycle management is still minimal. Later steps should add cancellation and clearer shutdown behavior before long downloads are introduced.
+- Placeholder workers exist for the future lookup/download phases. Step 7 and Step 8 should replace those placeholders with real implementations or remove them if a different worker split is better.
 - Storage returns domain objects directly. That is fine for the JSON MVP, but the storage abstraction should remain narrow so a future SQLite migration does not leak database concerns upward.
 
 ## Scraping

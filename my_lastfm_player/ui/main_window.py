@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import QSortFilterProxyModel, Qt
+from PyQt6.QtCore import QSortFilterProxyModel, Qt, pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -30,6 +30,8 @@ from my_lastfm_player.ui.track_table_model import TrackTableModel, example_track
 
 class MainWindow(QMainWindow):
     """Initial MVP shell for the Last.fm player desktop UI."""
+
+    fetch_requested = pyqtSignal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -79,10 +81,10 @@ class MainWindow(QMainWindow):
         username_label = QLabel("Last.fm username")
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Enter username")
-        self.username_input.returnPressed.connect(self._show_not_implemented)
+        self.username_input.returnPressed.connect(self.fetch_requested.emit)
 
         self.fetch_button = QPushButton("Fetch")
-        self.fetch_button.clicked.connect(self._show_not_implemented)
+        self.fetch_button.clicked.connect(self.fetch_requested.emit)
 
         self.dependency_label = QLabel("Dependencies: yt-dlp and ffmpeg not checked yet")
         self.dependency_label.setAlignment(
@@ -171,6 +173,20 @@ class MainWindow(QMainWindow):
         self.track_model.set_tracks(tracks)
         self.track_table.resizeRowsToContents()
         self.statusBar().showMessage(f"Loaded {len(tracks)} tracks")
+
+    def username(self) -> str:
+        return self.username_input.text().strip()
+
+    def set_fetch_enabled(self, enabled: bool) -> None:
+        self.fetch_button.setEnabled(enabled)
+        self.username_input.setEnabled(enabled)
+
+    def set_dependency_status(self, is_ok: bool, message: str) -> None:
+        self.dependency_label.setText(message)
+        property_value = "ok" if is_ok else "missing"
+        self.dependency_label.setProperty("status", property_value)
+        self.dependency_label.style().unpolish(self.dependency_label)
+        self.dependency_label.style().polish(self.dependency_label)
 
     def selected_track(self) -> Track | None:
         selected_rows = self.track_table.selectionModel().selectedRows()
