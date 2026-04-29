@@ -1,26 +1,23 @@
 from __future__ import annotations
 
-from PyQt6.QtWidgets import QApplication
-
 from my_lastfm_player import __version__
 from my_lastfm_player import main as main_module
+from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.ui.main_window import MainWindow
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "00.00.04"
+    assert __version__ == "00.00.05"
 
 
-def test_main_window_builds_mvp_shell() -> None:
-    app = QApplication.instance() or QApplication([])
-
+def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
-    assert app.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v00.00.04"
+    assert qapp.applicationName() in {"", "myLastFmPlayer"}
+    assert window.windowTitle() == "myLastFmPlayer v00.00.05"
     assert window.username_input.placeholderText() == "Enter username"
-    assert window.track_table.columnCount() == 3
-    assert window.track_table.rowCount() == 2
+    assert window.track_model.columnCount() == 3
+    assert window.track_model.rowCount() == 2
     assert window.concurrency_input.value() == 2
     assert window.progress_bar.format() == "Idle"
 
@@ -49,4 +46,31 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 00.00.04\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 00.00.05\n"
+
+
+def test_main_window_binds_track_data_and_selection(qapp) -> None:
+    window = MainWindow()
+    tracks = [
+        Track(artist="Zed", title="Last", status=TrackStatus.FETCHED),
+        Track(artist="Alpha", title="First", status=TrackStatus.DOWNLOADED),
+    ]
+
+    window.set_tracks(tracks)
+    window.track_table.selectRow(1)
+
+    assert window.track_model.rowCount() == 2
+    assert window.track_model.data(window.track_model.index(0, 0)) == "Zed"
+    assert window.track_model.data(window.track_model.index(1, 2)) == "Downloaded"
+    assert window.selected_track() == tracks[1]
+
+
+def test_main_window_updates_progress_and_feedback(qapp) -> None:
+    window = MainWindow()
+
+    window.set_progress(140, "Downloading")
+    window.append_feedback("Network error")
+
+    assert window.progress_bar.value() == 100
+    assert window.progress_bar.format() == "Downloading"
+    assert "Network error" in window.feedback_log.toPlainText()

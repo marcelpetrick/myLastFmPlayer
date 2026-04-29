@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSortFilterProxyModel, Qt
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -17,14 +17,15 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSpinBox,
-    QTableWidget,
-    QTableWidgetItem,
+    QTableView,
     QToolBar,
     QVBoxLayout,
     QWidget,
 )
 
 from my_lastfm_player import __version__
+from my_lastfm_player.models import Track
+from my_lastfm_player.ui.track_table_model import TrackTableModel, example_tracks
 
 
 class MainWindow(QMainWindow):
@@ -38,7 +39,7 @@ class MainWindow(QMainWindow):
         self._build_actions()
         self._build_toolbar()
         self._build_central_widget()
-        self._seed_placeholder_rows()
+        self.set_tracks(example_tracks())
         self.statusBar().showMessage("Ready")
 
     def _build_actions(self) -> None:
@@ -95,9 +96,14 @@ class MainWindow(QMainWindow):
 
         return frame
 
-    def _build_table(self) -> QTableWidget:
-        self.track_table = QTableWidget(0, 3)
-        self.track_table.setHorizontalHeaderLabels(["Artist", "Title", "Status"])
+    def _build_table(self) -> QTableView:
+        self.track_model = TrackTableModel()
+        self.track_sort_model = QSortFilterProxyModel(self)
+        self.track_sort_model.setSourceModel(self.track_model)
+        self.track_sort_model.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
+        self.track_table = QTableView()
+        self.track_table.setModel(self.track_sort_model)
         self.track_table.setAlternatingRowColors(True)
         self.track_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.track_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -161,21 +167,28 @@ class MainWindow(QMainWindow):
 
         return panel
 
-    def _seed_placeholder_rows(self) -> None:
-        rows = [
-            ("Example Artist", "Example Track", "Fetched"),
-            ("Another Artist", "Waiting for implementation", "Queued"),
-        ]
-        self.track_table.setSortingEnabled(False)
-        for artist, title, status in rows:
-            row = self.track_table.rowCount()
-            self.track_table.insertRow(row)
-            self.track_table.setItem(row, 0, QTableWidgetItem(artist))
-            self.track_table.setItem(row, 1, QTableWidgetItem(title))
-            self.track_table.setItem(row, 2, QTableWidgetItem(status))
-        self.track_table.setSortingEnabled(True)
+    def set_tracks(self, tracks: list[Track]) -> None:
+        self.track_model.set_tracks(tracks)
+        self.track_table.resizeRowsToContents()
+        self.statusBar().showMessage(f"Loaded {len(tracks)} tracks")
+
+    def selected_track(self) -> Track | None:
+        selected_rows = self.track_table.selectionModel().selectedRows()
+        if not selected_rows:
+            return None
+
+        source_index = self.track_sort_model.mapToSource(selected_rows[0])
+        return self.track_model.track_at(source_index.row())
+
+    def set_progress(self, value: int, label: str) -> None:
+        bounded_value = max(0, min(100, value))
+        self.progress_bar.setValue(bounded_value)
+        self.progress_bar.setFormat(label)
+
+    def append_feedback(self, message: str) -> None:
+        self.feedback_log.appendPlainText(message)
+        self.statusBar().showMessage(message, 5000)
 
     def _show_not_implemented(self) -> None:
         message = "This control is part of the MVP shell and will be wired in later steps."
-        self.feedback_log.appendPlainText(message)
-        self.statusBar().showMessage(message, 5000)
+        self.append_feedback(message)

@@ -4,7 +4,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Packaging and Versioning
 
-- Python package metadata normalizes `00.00.04` to `0.0.4` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
+- Python package metadata normalizes `00.00.05` to `0.0.5` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
 - The documented rule says every future commit should increase the patch number. This is easy to forget manually; a small pre-commit or release helper could enforce it.
 
 ## Pipeline
@@ -14,7 +14,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Architecture
 
-- The UI currently uses `QTableWidget`, which is acceptable for the shell but awkward for large track lists. Step 5 should replace this with a proper table model before the app handles thousands of rows.
+- The UI now uses a table model and sort proxy, but Step 6 still needs a controller boundary so worker updates do not directly mutate UI widgets.
 - Storage returns domain objects directly. That is fine for the JSON MVP, but the storage abstraction should remain narrow so a future SQLite migration does not leak database concerns upward.
 
 ## Scraping
