@@ -56,6 +56,16 @@ Alternatively:
 python -m my_lastfm_player
 ```
 
+## Local Pipeline
+
+Install development dependencies and run the full local build, lint, documentation, test, coverage, package, and install verification sequence:
+
+```bash
+./localPipeline.sh
+```
+
+The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, runs pytest with coverage, builds the package, installs the built wheel, and verifies the package can be imported.
+
 ## Current State
 
-Step 0 of the development plan is implemented: a basic PyQt application shell with the main controls and table needed for the MVP. Feature implementations for scraping, storage, downloads, and playback are planned in `documents/02_DEVELOPMENT_PLAN.md`.
+Steps 0 and 1 of the development plan are implemented: a basic PyQt application shell plus the local testing, coverage, linting, documentation, build, and package verification workflow. Feature implementations for scraping, storage, downloads, and playback are planned in `documents/02_DEVELOPMENT_PLAN.md`.

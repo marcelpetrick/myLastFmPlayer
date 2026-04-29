@@ -82,7 +82,9 @@ class MainWindow(QMainWindow):
         self.fetch_button.clicked.connect(self._show_not_implemented)
 
         self.dependency_label = QLabel("Dependencies: yt-dlp and ffmpeg not checked yet")
-        self.dependency_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.dependency_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
 
         layout.addWidget(username_label, 0, 0)
         layout.addWidget(self.username_input, 0, 1)
@@ -99,9 +101,10 @@ class MainWindow(QMainWindow):
         self.track_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.track_table.setSortingEnabled(True)
         self.track_table.verticalHeader().setVisible(False)
-        self.track_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.track_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.track_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header = self.track_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         return self.track_table
 
     def _build_controls_panel(self) -> QWidget:

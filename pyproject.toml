@@ -16,8 +16,45 @@ dependencies = [
     "PyQt6>=6.7",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.8",
+]
+
 [project.scripts]
 my-lastfm-player = "my_lastfm_player.main:main"
 
 [tool.setuptools.packages.find]
 include = ["my_lastfm_player*"]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--strict-config",
+    "--strict-markers",
+    "--cov=my_lastfm_player",
+    "--cov-report=term-missing",
+    "--cov-fail-under=75",
+]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["my_lastfm_player"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
