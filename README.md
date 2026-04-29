@@ -6,7 +6,7 @@ Author: Marcel Petrick <mail@marcelpetrick.it>
 
 License: GPLv3 or later. See `LICENSE`.
 
-Current version: `00.00.09`
+Current version: `00.00.10`
 
 ## Versioning
 
@@ -89,6 +89,14 @@ After the pipeline completes, open the HTML coverage report at:
 ```sh
 htmlcov/index.html
 ```
+
+The normal pipeline does not require internet access. To include the live Last.fm end-to-end test for the hardwired user `first`, run:
+
+```sh
+MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 ./localPipeline.sh
+```
+
+That test fetches the first loved-track page from Last.fm and prints the tracks during the test run.
 
 ## Current State
 

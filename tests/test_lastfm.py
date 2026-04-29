@@ -46,6 +46,18 @@ class FakeSession:
         return response
 
 
+class SequencedSession:
+    def __init__(self, responses: list[FakeResponse]) -> None:
+        self.responses = responses
+        self.requested_urls: list[str] = []
+
+    def get(self, url: str, *, timeout: int) -> FakeResponse:
+        self.requested_urls.append(url)
+        if not self.responses:
+            raise requests.ConnectionError(f"No fake response for {url}")
+        return self.responses.pop(0)
+
+
 def read_fixture(name: str) -> str:
     return (FIXTURES_DIR / name).read_text(encoding="utf-8")
 
@@ -148,6 +160,28 @@ def test_fetcher_fetches_html_documents() -> None:
 
     assert fetched_page == FetchedHtmlPage(url=first_url, html=html)
     assert session.requested_urls == [first_url]
+
+
+def test_fetcher_retries_lastfm_temporary_unavailable_status() -> None:
+    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
+    html = read_fixture("lastfm_loved_page_1.html")
+    unavailable_html = "<html><title>Last.fm - Temporarily Unavailable</title></html>"
+    session = SequencedSession(
+        [
+            FakeResponse(unavailable_html, first_url, status_code=600),
+            FakeResponse(html, first_url),
+        ]
+    )
+    fetcher = LastFmLovedTracksFetcher(
+        session=session,
+        retry_attempts=2,
+        retry_delay_seconds=0,
+    )
+
+    fetched_page = fetcher.fetch_page(first_url)
+
+    assert fetched_page == FetchedHtmlPage(url=first_url, html=html)
+    assert session.requested_urls == [first_url, first_url]
 
 
 def test_scraper_reports_fetch_progress() -> None:
