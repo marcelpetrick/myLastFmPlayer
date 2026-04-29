@@ -7,6 +7,7 @@ import requests
 
 from my_lastfm_player.lastfm import (
     LASTFM_BASE_URL,
+    FetchProgress,
     LastFmError,
     LastFmLovedTracksScraper,
     LovedTracksPage,
@@ -66,6 +67,7 @@ def test_parse_loved_tracks_page_extracts_tracks_and_next_url() -> None:
             ),
         ],
         next_url="https://www.last.fm/user/example/loved?page=2",
+        total_tracks=3,
     )
 
 
@@ -118,6 +120,29 @@ def test_scraper_fetches_paginated_loved_tracks() -> None:
         "Smile Like You Mean It",
     ]
     assert session.requested_urls == [first_url, second_url]
+
+
+def test_scraper_reports_fetch_progress() -> None:
+    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
+    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
+    session = FakeSession(
+        {
+            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
+            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+        }
+    )
+    progress_events: list[FetchProgress] = []
+
+    LastFmLovedTracksScraper(session=session).fetch_loved_tracks(
+        "example",
+        progress_callback=progress_events.append,
+    )
+
+    assert progress_events == [
+        FetchProgress(0, "Found Last.fm user example"),
+        FetchProgress(2, "Fetched 2/3 tracks", total_count=3),
+        FetchProgress(3, "Fetched 3/3 tracks", total_count=3),
+    ]
 
 
 def test_scraper_respects_max_pages() -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from PyQt6.QtCore import QSortFilterProxyModel, Qt, pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
@@ -26,6 +28,8 @@ from PyQt6.QtWidgets import (
 from my_lastfm_player import __version__
 from my_lastfm_player.models import Track
 from my_lastfm_player.ui.track_table_model import TrackTableModel, example_tracks
+
+LOGGER = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
@@ -172,7 +176,7 @@ class MainWindow(QMainWindow):
     def set_tracks(self, tracks: list[Track]) -> None:
         self.track_model.set_tracks(tracks)
         self.track_table.resizeRowsToContents()
-        self.statusBar().showMessage(f"Loaded {len(tracks)} tracks")
+        self.show_status(f"Loaded {len(tracks)} tracks")
 
     def username(self) -> str:
         return self.username_input.text().strip()
@@ -200,10 +204,15 @@ class MainWindow(QMainWindow):
         bounded_value = max(0, min(100, value))
         self.progress_bar.setValue(bounded_value)
         self.progress_bar.setFormat(label)
+        self.show_status(label)
 
     def append_feedback(self, message: str) -> None:
         self.feedback_log.appendPlainText(message)
-        self.statusBar().showMessage(message, 5000)
+        self.show_status(message)
+
+    def show_status(self, message: str) -> None:
+        LOGGER.info("UI status: %s", message)
+        self.statusBar().showMessage(message)
 
     def _show_not_implemented(self) -> None:
         message = "This control is part of the MVP shell and will be wired in later steps."

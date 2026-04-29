@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from my_lastfm_player.lastfm import FetchProgress
 from my_lastfm_player.models import Track
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.workers import (
@@ -21,10 +22,13 @@ class FakeScraper:
         self,
         username: str,
         repository: JsonTrackRepository,
+        progress_callback=None,
     ) -> list[Track]:
         self.called_with = (username, repository)
         if self.error is not None:
             raise self.error
+        if progress_callback is not None:
+            progress_callback(FetchProgress(1, "Fetched 1/1 tracks", total_count=1))
         repository.save_tracks(username, self.tracks)
         return self.tracks
 
@@ -63,7 +67,11 @@ def test_fetch_worker_emits_progress_tracks_and_finished(tmp_path: Path) -> None
     worker.run()
 
     assert scraper.called_with == ("example", repository)
-    assert progress_events == [(0, "Fetching loved tracks for example"), (100, "Fetched 1 tracks")]
+    assert progress_events == [
+        (0, "Looking up Last.fm user example"),
+        (99, "Fetched 1/1 tracks"),
+        (100, "Fetched 1 tracks"),
+    ]
     assert loaded_events == [("example", tracks)]
     assert finished_events == [True]
     assert repository.load_tracks("example") == tracks

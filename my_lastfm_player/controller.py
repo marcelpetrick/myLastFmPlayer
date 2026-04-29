@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from PyQt6.QtCore import QObject, QThread
@@ -10,6 +11,8 @@ from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import FetchLovedTracksWorker, LookupTracksWorker
 from my_lastfm_player.youtube import YouTubeResolver
+
+LOGGER = logging.getLogger(__name__)
 
 DependencyChecker = Callable[[], DependencyCheckResult]
 FetchWorkerFactory = Callable[
@@ -44,11 +47,17 @@ class ApplicationController(QObject):
         self._active_threads: list[QThread] = []
 
     def start(self) -> None:
+        LOGGER.info("Starting application controller")
         self.window.fetch_requested.connect(self.fetch_loved_tracks)
         self.check_dependencies()
 
     def check_dependencies(self) -> DependencyCheckResult:
         result = self.dependency_checker()
+        LOGGER.info(
+            "Dependency check result: installed=%s missing=%s",
+            result.installed,
+            result.missing,
+        )
         self.window.set_dependency_status(result.is_ok, result.user_message())
         if not result.is_ok:
             self.window.append_feedback(result.user_message())
@@ -57,9 +66,11 @@ class ApplicationController(QObject):
     def fetch_loved_tracks(self) -> None:
         username = self.window.username()
         if not username:
+            LOGGER.warning("Fetch requested without a Last.fm username")
             self.window.append_feedback("Enter a Last.fm username before fetching tracks.")
             return
 
+        LOGGER.info("Fetch requested for Last.fm user %s", username)
         self.window.set_fetch_enabled(False)
         self.window.set_progress(0, "Starting fetch")
         worker = self.fetch_worker_factory(username, self.scraper, self.repository)
@@ -68,9 +79,11 @@ class ApplicationController(QObject):
     def resolve_youtube_urls(self) -> None:
         username = self.window.username()
         if not username:
+            LOGGER.warning("Lookup requested without a Last.fm username")
             self.window.append_feedback("Enter a Last.fm username before resolving tracks.")
             return
 
+        LOGGER.info("YouTube lookup requested for Last.fm user %s", username)
         self.window.set_progress(0, "Starting YouTube lookup")
         worker = self.lookup_worker_factory(username, self.youtube_resolver, self.repository)
         self._run_worker(worker)
@@ -93,6 +106,7 @@ class ApplicationController(QObject):
         thread.finished.connect(lambda: self._forget_thread(thread))
 
         self._active_threads.append(thread)
+        LOGGER.debug("Starting worker thread for %s", worker.__class__.__name__)
         thread.start()
 
     def _handle_tracks_loaded(self, username: str, tracks: object) -> None:
@@ -102,6 +116,7 @@ class ApplicationController(QObject):
 
         self.window.set_tracks(tracks)
         self.window.append_feedback(f"Fetched and stored {len(tracks)} tracks for {username}.")
+        LOGGER.info("Loaded %s fetched tracks into UI for %s", len(tracks), username)
 
     def _handle_tracks_resolved(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
@@ -110,8 +125,10 @@ class ApplicationController(QObject):
 
         self.window.set_tracks(tracks)
         self.window.append_feedback(f"Resolved YouTube URLs for {len(tracks)} tracks.")
+        LOGGER.info("Loaded %s resolved tracks into UI for %s", len(tracks), username)
 
     def _handle_worker_error(self, message: str) -> None:
+        LOGGER.error("Worker error: %s", message)
         self.window.append_feedback(message)
         self.window.set_progress(0, "Failed")
 
