@@ -38,6 +38,12 @@ class LovedTracksPage:
 
 
 @dataclass(frozen=True, slots=True)
+class FetchedHtmlPage:
+    url: str
+    html: str
+
+
+@dataclass(frozen=True, slots=True)
 class FetchProgress:
     fetched_count: int
     message: str
@@ -47,7 +53,7 @@ class FetchProgress:
 ProgressCallback = Callable[[FetchProgress], None]
 
 
-class LastFmLovedTracksScraper:
+class LastFmLovedTracksFetcher:
     def __init__(
         self,
         session: HttpSession | None = None,
@@ -55,6 +61,58 @@ class LastFmLovedTracksScraper:
     ) -> None:
         self.session = session or requests.Session()
         self.base_url = base_url.rstrip("/")
+
+    def loved_tracks_url(self, username: str) -> str:
+        url = f"{self.base_url}/user/{quote(username, safe='')}/loved"
+        LOGGER.info("Recognized Last.fm user %s; loved-track URL is %s", username, url)
+        return url
+
+    def fetch_page(self, url: str) -> FetchedHtmlPage:
+        LOGGER.info("Fetching Last.fm HTML document: %s", url)
+        try:
+            response = self.session.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
+            response.raise_for_status()
+        except requests.RequestException as error:
+            message = f"Could not fetch Last.fm loved tracks from {url}: {error}"
+            LOGGER.exception("Last.fm HTML fetch failed for %s", url)
+            raise LastFmError(message) from error
+
+        html = response.text
+        LOGGER.info("Fetched Last.fm HTML document from %s (%s bytes)", response.url, len(html))
+        return FetchedHtmlPage(url=response.url, html=html)
+
+
+class LastFmLovedTracksParser:
+    def parse(self, html: str, page_url: str) -> LovedTracksPage:
+        LOGGER.info("Parsing Last.fm loved-track HTML with BeautifulSoup: %s", page_url)
+        soup = BeautifulSoup(html, "html.parser")
+        tracks = [_parse_track_row(row, page_url) for row in _find_track_rows(soup)]
+        parsed_tracks = [track for track in tracks if track is not None]
+        page = LovedTracksPage(
+            tracks=parsed_tracks,
+            next_url=_find_next_page_url(soup, page_url),
+            total_tracks=_find_total_tracks(soup),
+        )
+        LOGGER.info(
+            "Parsed Last.fm loved-track page %s: tracks=%s total=%s next=%s",
+            page_url,
+            len(page.tracks),
+            page.total_tracks,
+            page.next_url,
+        )
+        return page
+
+
+class LastFmLovedTracksScraper:
+    def __init__(
+        self,
+        session: HttpSession | None = None,
+        base_url: str = LASTFM_BASE_URL,
+        fetcher: LastFmLovedTracksFetcher | None = None,
+        parser: LastFmLovedTracksParser | None = None,
+    ) -> None:
+        self.fetcher = fetcher or LastFmLovedTracksFetcher(session=session, base_url=base_url)
+        self.parser = parser or LastFmLovedTracksParser()
 
     def fetch_loved_tracks(
         self,
@@ -71,10 +129,19 @@ class LastFmLovedTracksScraper:
         next_url: str | None = self.loved_tracks_url(username)
         page_count = 0
         total_count: int | None = None
-        LOGGER.info("Starting Last.fm loved-track fetch for user %s", username)
+        LOGGER.info(
+            "Starting Last.fm loved-track fetch for user %s; pagination limit=%s",
+            username,
+            max_pages or "none",
+        )
 
         while next_url is not None:
             if max_pages is not None and page_count >= max_pages:
+                LOGGER.info(
+                    "Stopping Last.fm loved-track fetch for user %s after %s page(s) due to limit",
+                    username,
+                    max_pages,
+                )
                 break
             page_count += 1
 
@@ -84,13 +151,13 @@ class LastFmLovedTracksScraper:
                 username,
                 next_url,
             )
-            response = self._get(next_url)
+            fetched_page = self.fetcher.fetch_page(next_url)
             if page_count == 1:
                 _emit_progress(
                     progress_callback,
                     FetchProgress(0, f"Found Last.fm user {username}"),
                 )
-            page = parse_loved_tracks_page(response.text, response.url)
+            page = self.parser.parse(fetched_page.html, fetched_page.url)
             if page.total_tracks is not None:
                 total_count = page.total_tracks
             tracks.extend(page.tracks)
@@ -113,9 +180,10 @@ class LastFmLovedTracksScraper:
             )
 
         LOGGER.info(
-            "Finished Last.fm loved-track fetch for user %s with %s tracks",
+            "Finished Last.fm loved-track fetch for user %s with %s tracks across %s page(s)",
             username,
             len(tracks),
+            page_count,
         )
         return tracks
 
@@ -136,27 +204,11 @@ class LastFmLovedTracksScraper:
         return tracks
 
     def loved_tracks_url(self, username: str) -> str:
-        return f"{self.base_url}/user/{quote(username, safe='')}/loved"
-
-    def _get(self, url: str) -> requests.Response:
-        try:
-            response = self.session.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
-            response.raise_for_status()
-            return response
-        except requests.RequestException as error:
-            message = f"Could not fetch Last.fm loved tracks from {url}: {error}"
-            raise LastFmError(message) from error
+        return self.fetcher.loved_tracks_url(username)
 
 
 def parse_loved_tracks_page(html: str, page_url: str) -> LovedTracksPage:
-    soup = BeautifulSoup(html, "html.parser")
-    tracks = [_parse_track_row(row, page_url) for row in _find_track_rows(soup)]
-    parsed_tracks = [track for track in tracks if track is not None]
-    return LovedTracksPage(
-        tracks=parsed_tracks,
-        next_url=_find_next_page_url(soup, page_url),
-        total_tracks=_find_total_tracks(soup),
-    )
+    return LastFmLovedTracksParser().parse(html, page_url)
 
 
 def _find_track_rows(soup: BeautifulSoup) -> list[Tag]:

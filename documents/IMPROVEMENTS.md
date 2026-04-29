@@ -4,7 +4,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Packaging and Versioning
 
-- Python package metadata normalizes `00.00.08` to `0.0.8` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
+- Python package metadata normalizes two-digit versions such as `00.00.09` to `0.0.9` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
 - The documented rule says every future commit should increase the patch number. This is easy to forget manually; a small pre-commit or release helper could enforce it.
 
 ## Pipeline

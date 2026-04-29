@@ -7,8 +7,11 @@ import requests
 
 from my_lastfm_player.lastfm import (
     LASTFM_BASE_URL,
+    FetchedHtmlPage,
     FetchProgress,
     LastFmError,
+    LastFmLovedTracksFetcher,
+    LastFmLovedTracksParser,
     LastFmLovedTracksScraper,
     LovedTracksPage,
     parse_loved_tracks_page,
@@ -71,6 +74,20 @@ def test_parse_loved_tracks_page_extracts_tracks_and_next_url() -> None:
     )
 
 
+def test_loved_tracks_parser_extracts_fixture_html_with_beautifulsoup() -> None:
+    parser = LastFmLovedTracksParser()
+
+    page = parser.parse(
+        read_fixture("lastfm_loved_page_1.html"),
+        "https://www.last.fm/user/example/loved",
+    )
+
+    assert [track.artist for track in page.tracks] == ["Guns N' Roses", "Nelly Furtado"]
+    assert [track.title for track in page.tracks] == ["Down on the Farm", "Say It Right"]
+    assert page.total_tracks == 3
+    assert page.next_url == "https://www.last.fm/user/example/loved?page=2"
+
+
 def test_parse_loved_tracks_page_handles_missing_next_page() -> None:
     page = parse_loved_tracks_page(
         read_fixture("lastfm_loved_page_2.html"),
@@ -120,6 +137,17 @@ def test_scraper_fetches_paginated_loved_tracks() -> None:
         "Smile Like You Mean It",
     ]
     assert session.requested_urls == [first_url, second_url]
+
+
+def test_fetcher_fetches_html_documents() -> None:
+    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
+    html = read_fixture("lastfm_loved_page_1.html")
+    session = FakeSession({first_url: FakeResponse(html, first_url)})
+
+    fetched_page = LastFmLovedTracksFetcher(session=session).fetch_page(first_url)
+
+    assert fetched_page == FetchedHtmlPage(url=first_url, html=html)
+    assert session.requested_urls == [first_url]
 
 
 def test_scraper_reports_fetch_progress() -> None:
