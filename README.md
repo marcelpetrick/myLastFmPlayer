@@ -1,6 +1,6 @@
 # myLastFmPlayer
 
-`myLastFmPlayer` is a Linux desktop application for collecting a user's loved tracks from Last.fm, preparing them for lookup/download, and eventually playing downloaded audio locally. The MVP is implemented in Python with PyQt.
+`myLastFmPlayer` is a (Linux) desktop application for collecting a user's loved tracks from Last.fm, preparing them for lookup/download, and eventually playing downloaded audio locally. The MVP is implemented in Python with PyQt.
 
 Author: Marcel Petrick <mail@marcelpetrick.it>
 
@@ -19,7 +19,7 @@ Later MVP steps will also require:
 
 On Manjaro:
 
-```bash
+```sh
 sudo pacman -S yt-dlp ffmpeg
 ```
 
@@ -27,32 +27,32 @@ sudo pacman -S yt-dlp ffmpeg
 
 Create the virtual environment:
 
-```bash
+```sh
 python3 -m venv .venv
 ```
 
 Activate it:
 
-```bash
+```sh
 source .venv/bin/activate
 ```
 
 Install the app in editable mode:
 
-```bash
+```sh
 python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
 Run the app:
 
-```bash
+```sh
 my-lastfm-player
 ```
 
 Alternatively:
 
-```bash
+```sh
 python -m my_lastfm_player
 ```
 
@@ -60,7 +60,7 @@ python -m my_lastfm_player
 
 Install development dependencies and run the full local build, lint, documentation, test, coverage, package, and install verification sequence:
 
-```bash
+```sh
 ./localPipeline.sh
 ```
 
