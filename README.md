@@ -6,7 +6,7 @@ Author: Marcel Petrick <mail@marcelpetrick.it>
 
 License: GPLv3 or later. See `LICENSE`.
 
-Current version: `00.00.01`
+Current version: `00.00.02`
 
 ## Versioning
 
@@ -16,7 +16,7 @@ This project uses a two-digit SemVer-style version number:
 MAJOR.MINOR.PATCH
 ```
 
-Each numeric part is written with two digits. The first version is `00.00.01`.
+Each numeric part is written with two digits. The first version was `00.00.01`.
 
 - `MAJOR`: incompatible or breaking changes.
 - `MINOR`: backwards-compatible feature additions.
