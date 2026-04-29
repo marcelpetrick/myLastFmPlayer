@@ -6,7 +6,7 @@ Author: Marcel Petrick <mail@marcelpetrick.it>
 
 License: GPLv3 or later. See `LICENSE`.
 
-Current version: `00.00.11`
+Current version: `00.00.12`
 
 ## Versioning
 
@@ -83,6 +83,47 @@ Install development dependencies and run the full local build, lint, documentati
 ```
 
 The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, runs pytest with coverage, builds the package, installs the built wheel, verifies the package can be imported, and then starts `my-lastfm-player` like a user would.
+
+### Build Workflow
+
+`localPipeline.sh` is the canonical local build workflow. It fails immediately when a required command fails, so later phases only run after earlier validation has passed.
+
+```mermaid
+flowchart TD
+    A["Start ./localPipeline.sh"] --> B{"--noRun provided?"}
+    B -->|yes| C["Set RUN_APP=false"]
+    B -->|no| D["Keep RUN_APP=true"]
+    C --> E{"Is .venv/bin/python executable?"}
+    D --> E
+    E -->|no| F["Create .venv with python3 -m venv"]
+    E -->|yes| G["Use existing .venv"]
+    F --> H["Install project in editable mode with dev dependencies"]
+    G --> H
+    H --> I["Ruff lint check"]
+    I --> J["Documentation check"]
+    J --> K["Pytest with coverage and HTML report"]
+    K --> L["Remove old build artifacts"]
+    L --> M["Build source/wheel distributions"]
+    M --> N["Find built wheel in dist/"]
+    N --> O["Force reinstall built wheel without dependencies"]
+    O --> P["Import package and print version"]
+    P --> Q["Print coverage report path and success message"]
+    Q --> R{"RUN_APP=true?"}
+    R -->|yes| S["Start installed my-lastfm-player command"]
+    R -->|no| T["Skip GUI startup"]
+    S --> U["Pipeline finished after app closes"]
+    T --> U
+```
+
+The workflow phases are:
+
+1. Argument handling: accepts only `--noRun`; any other argument stops the pipeline with usage help.
+2. Environment preparation: creates `.venv` only when `.venv/bin/python` is missing, otherwise reuses the existing virtual environment.
+3. Dependency installation: runs `python -m pip install -e ".[dev]"` so the app and development tools come from the same environment.
+4. Quality gates: runs Ruff, required documentation checks, and pytest with configured coverage reporting.
+5. Package build: removes stale `build/`, `dist/`, and egg-info output before running `python -m build`.
+6. Install verification: installs the freshly built wheel and imports `my_lastfm_player` to confirm the packaged application exposes its version.
+7. Runtime smoke check: starts `my-lastfm-player` unless `--noRun` was provided.
 
 To run every check without launching the GUI at the end:
 
