@@ -66,6 +66,12 @@ Install development dependencies and run the full local build, lint, documentati
 
 The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, runs pytest with coverage, builds the package, installs the built wheel, and verifies the package can be imported.
 
+After the pipeline completes, open the HTML coverage report at:
+
+```sh
+htmlcov/index.html
+```
+
 ## Current State
 
 Steps 0 and 1 of the development plan are implemented: a basic PyQt application shell plus the local testing, coverage, linting, documentation, build, and package verification workflow. Feature implementations for scraping, storage, downloads, and playback are planned in `documents/02_DEVELOPMENT_PLAN.md`.

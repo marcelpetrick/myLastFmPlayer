@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "my-lastfm-player"
 version = "0.1.0"
 description = "Linux desktop app for fetching Last.fm loved tracks and preparing local playback."
-readme = "readme.md"
+readme = "README.md"
 requires-python = ">=3.11"
 license = "GPL-3.0-or-later"
 authors = [
@@ -36,6 +36,7 @@ addopts = [
     "--strict-markers",
     "--cov=my_lastfm_player",
     "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
     "--cov-fail-under=75",
 ]
 testpaths = ["tests"]

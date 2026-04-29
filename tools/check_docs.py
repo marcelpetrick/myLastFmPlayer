@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 REQUIRED_FILES = [
-    Path("readme.md"),
+    Path("README.md"),
     Path("LICENSE"),
     Path("documents/00_REQUIREMENTS.md"),
     Path("documents/01_IMPLEMENTATION_PLAN.md"),
@@ -53,13 +53,13 @@ def check_markdown(repo_root: Path) -> list[str]:
 
 
 def check_readme(repo_root: Path) -> list[str]:
-    readme_path = repo_root / "readme.md"
+    readme_path = repo_root / "README.md"
     if not readme_path.is_file():
         return []
 
     readme = readme_path.read_text(encoding="utf-8")
     return [
-        f"readme.md: missing required text: {snippet}"
+        f"README.md: missing required text: {snippet}"
         for snippet in REQUIRED_README_SNIPPETS
         if snippet not in readme
     ]

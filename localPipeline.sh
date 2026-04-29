@@ -18,4 +18,5 @@ fi
 "${PYTHON}" -m pip install --force-reinstall --no-deps dist/my_lastfm_player-0.1.0-py3-none-any.whl
 "${PYTHON}" -c "import my_lastfm_player; print(f'Package import ok: {my_lastfm_player.__version__}')"
 
+echo "Coverage report: ${ROOT_DIR}/htmlcov/index.html"
 echo "localPipeline.sh completed successfully"
