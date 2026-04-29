@@ -4,6 +4,7 @@ import logging
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
+from my_lastfm_player.download import DEFAULT_CONCURRENCY, DownloadManager
 from my_lastfm_player.lastfm import FetchProgress, LastFmLovedTracksScraper
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.youtube import YouTubeResolver
@@ -105,12 +106,48 @@ class LookupTracksWorker(QObject):
             self.finished.emit()
 
 
-class DownloadPlaceholderWorker(QObject):
+class DownloadTracksWorker(QObject):
+    tracks_downloaded = pyqtSignal(str, object)
     progress = pyqtSignal(int, str)
     error = pyqtSignal(str)
     finished = pyqtSignal()
 
+    def __init__(
+        self,
+        username: str,
+        download_manager: DownloadManager,
+        repository: JsonTrackRepository,
+        concurrency: int = DEFAULT_CONCURRENCY,
+    ) -> None:
+        super().__init__()
+        self.username = username
+        self.download_manager = download_manager
+        self.repository = repository
+        self.concurrency = concurrency
+
     @pyqtSlot()
     def run(self) -> None:
-        self.progress.emit(0, "Download worker is not implemented yet")
-        self.finished.emit()
+        try:
+            LOGGER.info("Worker started downloading tracks for %s", self.username)
+            print(
+                f"[myLastFmPlayer] Worker started downloading tracks for {self.username}",
+                flush=True,
+            )
+            tracks = self.download_manager.download_and_store_tracks(
+                self.username,
+                self.repository,
+                concurrency=self.concurrency,
+                progress_callback=self.progress.emit,
+            )
+            self.tracks_downloaded.emit(self.username, tracks)
+        except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
+            LOGGER.exception("Download failed for %s", self.username)
+            print(f"[myLastFmPlayer] Download failed for {self.username}: {error}", flush=True)
+            self.error.emit(str(error))
+        finally:
+            LOGGER.info("Worker finished downloading tracks for %s", self.username)
+            print(
+                f"[myLastFmPlayer] Worker finished downloading tracks for {self.username}",
+                flush=True,
+            )
+            self.finished.emit()

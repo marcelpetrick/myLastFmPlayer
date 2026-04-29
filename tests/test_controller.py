@@ -50,6 +50,18 @@ def test_controller_rejects_empty_username_for_lookup(qapp) -> None:
     assert "Enter a Last.fm username before resolving tracks." in window.feedback_log.toPlainText()
 
 
+def test_controller_rejects_empty_username_for_download(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+
+    controller.download_tracks()
+
+    assert (
+        "Enter a Last.fm username before downloading tracks."
+        in window.feedback_log.toPlainText()
+    )
+
+
 def test_controller_handles_resolved_tracks(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)

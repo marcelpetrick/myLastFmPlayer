@@ -7,14 +7,14 @@ from my_lastfm_player.ui.main_window import MainWindow
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "00.00.14"
+    assert __version__ == "00.00.15"
 
 
 def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v00.00.14"
+    assert window.windowTitle() == "myLastFmPlayer v00.00.15"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -54,7 +54,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 00.00.14\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 00.00.15\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -93,3 +93,13 @@ def test_main_window_fetch_controls_emit_fetch_signal(qapp) -> None:
     window.refresh_action.trigger()
 
     assert emissions == [True, True]
+
+
+def test_main_window_download_control_emits_download_signal(qapp) -> None:
+    window = MainWindow()
+    emissions: list[bool] = []
+    window.download_requested.connect(lambda: emissions.append(True))
+
+    window.download_toggle_button.click()
+
+    assert emissions == [True]

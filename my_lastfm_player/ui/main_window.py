@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
     """Initial MVP shell for the Last.fm player desktop UI."""
 
     fetch_requested = pyqtSignal()
+    download_requested = pyqtSignal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -138,8 +139,8 @@ class MainWindow(QMainWindow):
 
         downloads_group = QGroupBox("Downloads")
         downloads_layout = QFormLayout(downloads_group)
-        self.download_toggle_button = QPushButton("Pause Downloads")
-        self.download_toggle_button.clicked.connect(self._show_not_implemented)
+        self.download_toggle_button = QPushButton("Download Queued")
+        self.download_toggle_button.clicked.connect(self.download_requested.emit)
         self.concurrency_input = QSpinBox()
         self.concurrency_input.setRange(1, 8)
         self.concurrency_input.setValue(2)

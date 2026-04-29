@@ -6,7 +6,7 @@ Author: Marcel Petrick <mail@marcelpetrick.it>
 
 License: GPLv3 or later. See `LICENSE`.
 
-Current version: `00.00.14`
+Current version: `00.00.15`
 
 ## Versioning
 
@@ -143,8 +143,8 @@ The normal pipeline does not require internet access. To include the live Last.f
 MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 ./localPipeline.sh --noRun
 ```
 
-That test fetches the first loved-track page from Last.fm and prints the tracks during the test run.
+That test fetches all loved-track pages from Last.fm for `first` and prints the tracks during the test run.
 
 ## Current State
 
-Steps 0 and 1 of the development plan are implemented: a basic PyQt application shell plus the local testing, coverage, linting, documentation, build, and package verification workflow. Feature implementations for scraping, storage, downloads, and playback are planned in `documents/02_DEVELOPMENT_PLAN.md`.
+Steps 0 through 8 of the development plan are implemented through the explicit download-queue action. Automatic fetch-to-lookup-to-download orchestration and playback are still planned in `documents/02_DEVELOPMENT_PLAN.md`.

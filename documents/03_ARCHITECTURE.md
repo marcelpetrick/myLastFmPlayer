@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the workflow implemented in the application as of version `00.00.14`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
+This document describes the workflow implemented in the application as of version `00.00.15`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
 
 ## Current Scope
 
@@ -12,13 +12,15 @@ Implemented:
 - Per-user JSON storage.
 - Track table model and UI data binding.
 - YouTube lookup service and worker entry point.
+- Download queue service and worker entry point.
 - Startup checks for `yt-dlp` and `ffmpeg`.
-- Status-bar progress and stderr logging.
+- Status-bar progress and stdout logging.
 
 Not yet implemented:
 
 - Automatic YouTube lookup after fetching.
-- MP3 download queue.
+- Automatic download start after lookup.
+- True pause/resume UI for active downloads.
 - Playback.
 - Full controller workflow from fetch to lookup to download to playback.
 
@@ -31,7 +33,7 @@ The app currently uses these data sources:
 | Last.fm public HTML | Fetching loved tracks by username | `LastFmLovedTracksFetcher`, `LastFmLovedTracksParser`, `LastFmLovedTracksScraper` |
 | Local JSON files | Persisting per-user track metadata | `JsonTrackRepository` |
 | Shared local JSON cache | Remembering downloaded tracks by exact artist/title | `JsonTrackRepository` |
-| `yt-dlp` command | YouTube first-result lookup | `YouTubeResolver` |
+| `yt-dlp` command | YouTube first-result lookup and MP3 download | `YouTubeResolver`, `DownloadManager` |
 | `shutil.which` | Startup dependency checks for `yt-dlp` and `ffmpeg` | `check_external_dependencies` |
 
 For a username such as `first`, the Last.fm fetch URL is:
@@ -53,11 +55,15 @@ flowchart LR
     User[User] --> UI[MainWindow]
     UI --> Controller[ApplicationController]
     Controller --> FetchWorker[FetchLovedTracksWorker]
+    Controller --> DownloadWorker[DownloadTracksWorker]
     FetchWorker --> Scraper[LastFmLovedTracksScraper]
     Scraper --> Fetcher[LastFmLovedTracksFetcher]
     Scraper --> Parser[LastFmLovedTracksParser]
     Fetcher --> LastFm[Last.fm public HTML]
     FetchWorker --> Storage[JsonTrackRepository]
+    DownloadWorker --> DownloadManager[DownloadManager]
+    DownloadManager --> Ytdlp[yt-dlp]
+    DownloadManager --> Storage
     Storage --> Json[(Local JSON files)]
     FetchWorker --> Controller
     Controller --> UI
@@ -237,15 +243,51 @@ Current lookup rules:
 - Found track becomes `Queued`.
 - No result becomes `Not found`.
 
+## Download Queue Workflow
+
+Downloads are implemented as an explicit user action for queued tracks that already have a YouTube URL.
+
+```mermaid
+sequenceDiagram
+    participant UI as MainWindow
+    participant Controller as ApplicationController
+    participant Worker as DownloadTracksWorker
+    participant Manager as DownloadManager
+    participant Storage as JsonTrackRepository
+    participant Ytdlp as yt-dlp
+
+    UI->>Controller: download_requested signal
+    Controller->>Worker: run in QThread
+    Worker->>Manager: download_and_store_tracks(username, repository, concurrency)
+    Manager->>Storage: load_tracks(username)
+    Manager->>Storage: mark_cached_downloads(tracks)
+    Manager->>Ytdlp: yt-dlp --extract-audio --audio-format mp3 <youtube_url>
+    Ytdlp-->>Manager: downloaded MP3 or error
+    Manager->>Storage: save_tracks(username, updated_tracks)
+    Manager->>Storage: save_download_cache(updated_tracks)
+    Worker->>Controller: tracks_downloaded(username, tracks)
+    Controller->>UI: set_tracks(tracks)
+```
+
+Current download rules:
+
+- FIFO queue order by default.
+- Default concurrency is `2`, controlled by the UI spin box.
+- Tracks already in the shared cache are marked `Downloaded` and skipped.
+- Each failing download is retried up to `3` times.
+- Retry backoff is random between `1` and `5` seconds.
+- A selected-track priority hook exists in the manager, but the UI does not expose it yet.
+
 ## Logging
 
-The app configures logging to stderr at startup.
+The app configures logging to stdout at startup.
 
 ```mermaid
 flowchart LR
     Main[main.py] --> Logging[configure_logging]
-    Controller[ApplicationController] --> Logs[stderr logs]
+    Controller[ApplicationController] --> Logs[stdout logs]
     Worker[Workers] --> Logs
+    Download[DownloadManager] --> Logs
     Fetcher[LastFmLovedTracksFetcher] --> Logs
     Parser[LastFmLovedTracksParser] --> Logs
     Scraper[LastFmLovedTracksScraper] --> Logs
