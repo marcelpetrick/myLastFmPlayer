@@ -8,6 +8,8 @@ from PyQt6.QtCore import QObject, QThread
 from my_lastfm_player.dependencies import DependencyCheckResult, check_external_dependencies
 from my_lastfm_player.download import DownloadManager
 from my_lastfm_player.lastfm import LastFmLovedTracksScraper
+from my_lastfm_player.models import Track, TrackStatus
+from my_lastfm_player.playback import PlaybackError, PlaybackService
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import (
@@ -43,6 +45,7 @@ class ApplicationController(QObject):
         scraper: LastFmLovedTracksScraper | None = None,
         youtube_resolver: YouTubeResolver | None = None,
         download_manager: DownloadManager | None = None,
+        playback_service: PlaybackService | None = None,
         dependency_checker: DependencyChecker = check_external_dependencies,
         fetch_worker_factory: FetchWorkerFactory = FetchLovedTracksWorker,
         lookup_worker_factory: LookupWorkerFactory = LookupTracksWorker,
@@ -54,6 +57,7 @@ class ApplicationController(QObject):
         self.scraper = scraper or LastFmLovedTracksScraper()
         self.youtube_resolver = youtube_resolver or YouTubeResolver()
         self.download_manager = download_manager or DownloadManager()
+        self.playback_service = playback_service or PlaybackService()
         self.dependency_checker = dependency_checker
         self.fetch_worker_factory = fetch_worker_factory
         self.lookup_worker_factory = lookup_worker_factory
@@ -66,6 +70,9 @@ class ApplicationController(QObject):
         print("[myLastFmPlayer] Starting application controller", flush=True)
         self.window.fetch_requested.connect(self.fetch_loved_tracks)
         self.window.download_requested.connect(self.download_tracks)
+        self.window.play_requested.connect(self.play_selected_track)
+        self.window.pause_requested.connect(self.pause_playback)
+        self.window.stop_requested.connect(self.stop_playback)
         self.check_dependencies()
 
     def check_dependencies(self) -> DependencyCheckResult:
@@ -127,6 +134,43 @@ class ApplicationController(QObject):
             concurrency,
         )
         self._run_worker(worker)
+
+    def play_selected_track(self) -> None:
+        selected_row = self.window.selected_track_row()
+        selected_track = self.window.selected_track()
+        if selected_row is None or selected_track is None:
+            self.window.append_feedback("Select a downloaded track before playing.")
+            return
+
+        previous_track = self.playback_service.current_track
+        try:
+            playing_track = self.playback_service.play(selected_track)
+        except PlaybackError as error:
+            self.window.append_feedback(str(error))
+            return
+
+        self._restore_previous_playing_track(previous_track, selected_track)
+        self.window.update_track(selected_row, playing_track)
+        self.window.append_feedback(f"Playing {playing_track.artist} - {playing_track.title}.")
+        self._save_visible_tracks()
+
+    def pause_playback(self) -> None:
+        try:
+            self.playback_service.pause()
+        except PlaybackError as error:
+            self.window.append_feedback(str(error))
+            return
+        self.window.append_feedback("Playback paused.")
+
+    def stop_playback(self) -> None:
+        stopped_track = self.playback_service.stop()
+        if stopped_track is None:
+            self.window.append_feedback("No track is currently playing.")
+            return
+
+        self._update_track_by_cache_key(stopped_track)
+        self.window.append_feedback("Playback stopped.")
+        self._save_visible_tracks()
 
     def _run_worker(self, worker: WorkflowWorker) -> None:
         thread = QThread(self)
@@ -203,6 +247,26 @@ class ApplicationController(QObject):
         print(f"[myLastFmPlayer] Worker error shown in UI: {message}", flush=True)
         self.window.append_feedback(message)
         self.window.set_progress(0, "Failed")
+
+    def _restore_previous_playing_track(
+        self,
+        previous_track: Track | None,
+        selected_track: Track,
+    ) -> None:
+        if previous_track is None or previous_track.cache_key == selected_track.cache_key:
+            return
+        self._update_track_by_cache_key(previous_track.with_status(TrackStatus.DOWNLOADED))
+
+    def _update_track_by_cache_key(self, track: Track) -> None:
+        for row, visible_track in enumerate(self.window.tracks()):
+            if visible_track.cache_key == track.cache_key:
+                self.window.update_track(row, track)
+                return
+
+    def _save_visible_tracks(self) -> None:
+        username = self.window.username()
+        if username:
+            self.repository.save_tracks(username, self.window.tracks())
 
     def _forget_thread(self, thread: QThread) -> None:
         if thread in self._active_threads:

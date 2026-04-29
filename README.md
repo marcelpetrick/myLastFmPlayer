@@ -6,7 +6,7 @@ Author: Marcel Petrick <mail@marcelpetrick.it>
 
 License: GPLv3 or later. See `LICENSE`.
 
-Current version: `00.00.15`
+Current version: `00.00.16`
 
 ## Versioning
 
@@ -147,4 +147,4 @@ That test fetches all loved-track pages from Last.fm for `first` and prints the 
 
 ## Current State
 
-Steps 0 through 8 of the development plan are implemented through the explicit download-queue action. Automatic fetch-to-lookup-to-download orchestration and playback are still planned in `documents/02_DEVELOPMENT_PLAN.md`.
+Steps 0 through 9 of the development plan are implemented through explicit fetch, download, and playback actions. Automatic fetch-to-lookup-to-download orchestration and final release hardening are still planned in `documents/02_DEVELOPMENT_PLAN.md`.

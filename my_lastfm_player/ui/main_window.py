@@ -37,6 +37,9 @@ class MainWindow(QMainWindow):
 
     fetch_requested = pyqtSignal()
     download_requested = pyqtSignal()
+    play_requested = pyqtSignal()
+    pause_requested = pyqtSignal()
+    stop_requested = pyqtSignal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -133,8 +136,10 @@ class MainWindow(QMainWindow):
         self.play_button = QPushButton("Play")
         self.pause_button = QPushButton("Pause")
         self.stop_button = QPushButton("Stop")
+        self.play_button.clicked.connect(self.play_requested.emit)
+        self.pause_button.clicked.connect(self.pause_requested.emit)
+        self.stop_button.clicked.connect(self.stop_requested.emit)
         for button in (self.play_button, self.pause_button, self.stop_button):
-            button.clicked.connect(self._show_not_implemented)
             playback_layout.addWidget(button)
 
         downloads_group = QGroupBox("Downloads")
@@ -201,6 +206,21 @@ class MainWindow(QMainWindow):
 
         source_index = self.track_sort_model.mapToSource(selected_rows[0])
         return self.track_model.track_at(source_index.row())
+
+    def selected_track_row(self) -> int | None:
+        selected_rows = self.track_table.selectionModel().selectedRows()
+        if not selected_rows:
+            return None
+
+        source_index = self.track_sort_model.mapToSource(selected_rows[0])
+        return source_index.row()
+
+    def update_track(self, row: int, track: Track) -> None:
+        self.track_model.update_track(row, track)
+        self.show_status(f"Updated {track.artist} - {track.title}: {track.status.value}")
+
+    def tracks(self) -> list[Track]:
+        return self.track_model.tracks()
 
     def set_progress(self, value: int, label: str) -> None:
         bounded_value = max(0, min(100, value))

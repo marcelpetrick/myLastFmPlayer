@@ -4,7 +4,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Packaging and Versioning
 
-- Python package metadata normalizes two-digit versions such as `00.00.15` to `0.0.15` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
+- Python package metadata normalizes two-digit versions such as `00.00.16` to `0.0.16` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
 - The documented rule says every future commit should increase the patch number. This is easy to forget manually; a small pre-commit or release helper could enforce it.
 
 ## Pipeline
@@ -38,3 +38,9 @@ This document collects follow-up improvements noticed during implementation. The
 - The download manager captures coarse queue progress only. A later pass should parse `yt-dlp` progress hooks or subprocess output so the UI can show per-track byte/percent progress.
 - The queue has pause/resume primitives in the manager, but the UI currently exposes a start-download action. A follow-up should add a true pause/resume toggle once long-running download cancellation semantics are settled.
 - Download concurrency is handled at the queue level. If `yt-dlp` itself starts parallel fragment downloads, we may need to cap or document that separately.
+
+## Playback
+
+- Playback uses `QMediaPlayer`, which keeps the app inside PyQt but means codec support depends on the user's Qt multimedia backend. A future startup check could verify MP3 playback support and show a clear warning.
+- Playback status currently persists the selected track as `Playing` while active and restores it to `Downloaded` when stopped. If the app exits during playback, startup should normalize any stale `Playing` rows back to `Downloaded`.
+- The controller saves visible table tracks after playback state changes. A future storage abstraction should provide a narrower single-track update API to avoid rewriting large user files for a single status change.

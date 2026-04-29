@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the workflow implemented in the application as of version `00.00.15`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
+This document describes the workflow implemented in the application as of version `00.00.16`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
 
 ## Current Scope
 
@@ -13,6 +13,7 @@ Implemented:
 - Track table model and UI data binding.
 - YouTube lookup service and worker entry point.
 - Download queue service and worker entry point.
+- Local playback service for selected downloaded tracks.
 - Startup checks for `yt-dlp` and `ffmpeg`.
 - Status-bar progress and stdout logging.
 
@@ -21,7 +22,6 @@ Not yet implemented:
 - Automatic YouTube lookup after fetching.
 - Automatic download start after lookup.
 - True pause/resume UI for active downloads.
-- Playback.
 - Full controller workflow from fetch to lookup to download to playback.
 
 ## Data Sources
@@ -56,6 +56,7 @@ flowchart LR
     UI --> Controller[ApplicationController]
     Controller --> FetchWorker[FetchLovedTracksWorker]
     Controller --> DownloadWorker[DownloadTracksWorker]
+    Controller --> Playback[PlaybackService]
     FetchWorker --> Scraper[LastFmLovedTracksScraper]
     Scraper --> Fetcher[LastFmLovedTracksFetcher]
     Scraper --> Parser[LastFmLovedTracksParser]
@@ -278,6 +279,39 @@ Current download rules:
 - Retry backoff is random between `1` and `5` seconds.
 - A selected-track priority hook exists in the manager, but the UI does not expose it yet.
 
+## Playback Workflow
+
+Playback is implemented for one selected downloaded local file at a time.
+
+```mermaid
+sequenceDiagram
+    participant UI as MainWindow
+    participant Controller as ApplicationController
+    participant Playback as PlaybackService
+    participant Backend as QtPlaybackBackend
+    participant Player as QMediaPlayer
+    participant Storage as JsonTrackRepository
+
+    UI->>Controller: play_requested signal
+    Controller->>UI: selected_track()
+    Controller->>Playback: play(track)
+    Playback->>Backend: play(local_path)
+    Backend->>Player: setSource(file) and play()
+    Playback-->>Controller: Track(status=Playing)
+    Controller->>UI: update selected row
+    Controller->>Storage: save visible tracks
+    UI->>Controller: pause_requested or stop_requested
+    Controller->>Playback: pause() or stop()
+```
+
+Current playback rules:
+
+- The selected track must already be `Downloaded` and have an existing local file.
+- Starting another track stops the previous one first.
+- Pause leaves the track status unchanged.
+- Stop returns the current track to `Downloaded`.
+- Playback errors are shown in the feedback log.
+
 ## Logging
 
 The app configures logging to stdout at startup.
@@ -288,6 +322,7 @@ flowchart LR
     Controller[ApplicationController] --> Logs[stdout logs]
     Worker[Workers] --> Logs
     Download[DownloadManager] --> Logs
+    Playback[PlaybackService] --> Logs
     Fetcher[LastFmLovedTracksFetcher] --> Logs
     Parser[LastFmLovedTracksParser] --> Logs
     Scraper[LastFmLovedTracksScraper] --> Logs
