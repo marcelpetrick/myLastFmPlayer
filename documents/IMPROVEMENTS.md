@@ -4,7 +4,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Packaging and Versioning
 
-- Python package metadata normalizes two-digit versions such as `00.00.16` to `0.0.16` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
+- Python package metadata normalizes two-digit versions such as `00.00.17` to `0.0.17` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
 - The documented rule says every future commit should increase the patch number. This is easy to forget manually; a small pre-commit or release helper could enforce it.
 
 ## Pipeline
@@ -15,8 +15,8 @@ This document collects follow-up improvements noticed during implementation. The
 ## Architecture
 
 - The controller now owns the fetch workflow, but worker lifecycle management is still minimal. Later steps should add cancellation and clearer shutdown behavior before long downloads are introduced.
-- The lookup worker exists, but it is not exposed through a dedicated UI control yet. Step 8 or the controller integration pass should decide whether lookup starts automatically after fetching or through an explicit command.
-- The download worker now exists, but controller integration still treats lookup and download as explicit actions. A follow-up workflow pass should decide whether the MVP should run lookup and downloads automatically after fetch or expose separate buttons for each stage.
+- Lookup and download now start automatically after a successful fetch. A future UI pass should decide whether advanced users still need separate manual lookup/download actions for recovery and debugging.
+- Automatic workflow chaining currently lives in the controller. If the workflow grows, a dedicated workflow coordinator object would make sequencing and failure handling easier to test.
 
 ## YouTube Lookup
 

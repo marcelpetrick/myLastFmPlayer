@@ -64,6 +64,7 @@ class ApplicationController(QObject):
         self.download_worker_factory = download_worker_factory
         self._active_threads: list[QThread] = []
         self._active_workers: list[WorkflowWorker] = []
+        self._running_worker_count = 0
 
     def start(self) -> None:
         LOGGER.info("Starting application controller")
@@ -96,25 +97,26 @@ class ApplicationController(QObject):
 
         LOGGER.info("Fetch requested for Last.fm user %s", username)
         print(f"[myLastFmPlayer] UI fetch requested for Last.fm user {username}", flush=True)
-        self.window.set_fetch_enabled(False)
+        self.window.set_workflow_enabled(False)
         self.window.set_progress(0, "Starting fetch")
         worker = self.fetch_worker_factory(username, self.scraper, self.repository)
         self._run_worker(worker)
 
-    def resolve_youtube_urls(self) -> None:
-        username = self.window.username()
+    def resolve_youtube_urls(self, username: str | None = None) -> None:
+        username = username or self.window.username()
         if not username:
             LOGGER.warning("Lookup requested without a Last.fm username")
             self.window.append_feedback("Enter a Last.fm username before resolving tracks.")
             return
 
         LOGGER.info("YouTube lookup requested for Last.fm user %s", username)
+        print(f"[myLastFmPlayer] Starting YouTube lookup for {username}", flush=True)
         self.window.set_progress(0, "Starting YouTube lookup")
         worker = self.lookup_worker_factory(username, self.youtube_resolver, self.repository)
         self._run_worker(worker)
 
-    def download_tracks(self) -> None:
-        username = self.window.username()
+    def download_tracks(self, username: str | None = None) -> None:
+        username = username or self.window.username()
         if not username:
             LOGGER.warning("Download requested without a Last.fm username")
             self.window.append_feedback("Enter a Last.fm username before downloading tracks.")
@@ -125,6 +127,11 @@ class ApplicationController(QObject):
             "Download requested for Last.fm user %s with concurrency %s",
             username,
             concurrency,
+        )
+        print(
+            f"[myLastFmPlayer] Starting downloads for {username} "
+            f"with concurrency {concurrency}",
+            flush=True,
         )
         self.window.set_progress(0, "Starting downloads")
         worker = self.download_worker_factory(
@@ -177,6 +184,8 @@ class ApplicationController(QObject):
         worker_name = worker.__class__.__name__
         print(f"[myLastFmPlayer] Preparing {worker_name} on background thread", flush=True)
         worker.moveToThread(thread)
+        self._running_worker_count += 1
+        self.window.set_workflow_enabled(False)
 
         thread.started.connect(worker.run)
         thread.started.connect(
@@ -193,7 +202,7 @@ class ApplicationController(QObject):
             worker.tracks_resolved.connect(self._handle_tracks_resolved)
         if isinstance(worker, DownloadTracksWorker):
             worker.tracks_downloaded.connect(self._handle_tracks_downloaded)
-        worker.finished.connect(lambda: self.window.set_fetch_enabled(True))
+        worker.finished.connect(self._complete_worker_run)
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
@@ -223,6 +232,8 @@ class ApplicationController(QObject):
             f"[myLastFmPlayer] UI loaded {len(tracks)} fetched tracks for {username}",
             flush=True,
         )
+        if tracks:
+            self._start_automatic_lookup(username, len(tracks))
 
     def _handle_tracks_resolved(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
@@ -232,6 +243,10 @@ class ApplicationController(QObject):
         self.window.set_tracks(tracks)
         self.window.append_feedback(f"Resolved YouTube URLs for {len(tracks)} tracks.")
         LOGGER.info("Loaded %s resolved tracks into UI for %s", len(tracks), username)
+        if self._has_download_candidates(tracks):
+            self._start_automatic_download(username)
+        else:
+            self.window.append_feedback("No queued tracks are ready for download.")
 
     def _handle_tracks_downloaded(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
@@ -267,6 +282,32 @@ class ApplicationController(QObject):
         username = self.window.username()
         if username:
             self.repository.save_tracks(username, self.window.tracks())
+
+    def _start_automatic_lookup(self, username: str, track_count: int) -> None:
+        message = f"Starting automatic YouTube lookup for {track_count} fetched tracks."
+        LOGGER.info("%s User=%s", message, username)
+        print(f"[myLastFmPlayer] {message} user={username}", flush=True)
+        self.window.append_feedback(message)
+        self.resolve_youtube_urls(username)
+
+    def _start_automatic_download(self, username: str) -> None:
+        message = "Starting automatic download queue for resolved tracks."
+        LOGGER.info("%s User=%s", message, username)
+        print(f"[myLastFmPlayer] {message} user={username}", flush=True)
+        self.window.append_feedback(message)
+        self.download_tracks(username)
+
+    def _has_download_candidates(self, tracks: list[Track]) -> bool:
+        return any(
+            bool(track.youtube_url)
+            and track.status not in {TrackStatus.DOWNLOADED, TrackStatus.NOT_FOUND}
+            for track in tracks
+        )
+
+    def _complete_worker_run(self) -> None:
+        self._running_worker_count = max(0, self._running_worker_count - 1)
+        if self._running_worker_count == 0:
+            self.window.set_workflow_enabled(True)
 
     def _forget_thread(self, thread: QThread) -> None:
         if thread in self._active_threads:

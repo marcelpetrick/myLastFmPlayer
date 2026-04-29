@@ -191,6 +191,12 @@ class MainWindow(QMainWindow):
     def set_fetch_enabled(self, enabled: bool) -> None:
         self.fetch_button.setEnabled(enabled)
         self.username_input.setEnabled(enabled)
+        self.refresh_action.setEnabled(enabled)
+
+    def set_workflow_enabled(self, enabled: bool) -> None:
+        self.set_fetch_enabled(enabled)
+        self.download_toggle_button.setEnabled(enabled)
+        self.concurrency_input.setEnabled(enabled)
 
     def set_dependency_status(self, is_ok: bool, message: str) -> None:
         self.dependency_label.setText(message)

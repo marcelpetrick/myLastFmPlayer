@@ -7,14 +7,14 @@ from my_lastfm_player.ui.main_window import MainWindow
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "00.00.16"
+    assert __version__ == "00.00.17"
 
 
 def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v00.00.16"
+    assert window.windowTitle() == "myLastFmPlayer v00.00.17"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -54,7 +54,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 00.00.16\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 00.00.17\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -103,6 +103,26 @@ def test_main_window_download_control_emits_download_signal(qapp) -> None:
     window.download_toggle_button.click()
 
     assert emissions == [True]
+
+
+def test_main_window_workflow_enabled_toggles_fetch_and_download_controls(qapp) -> None:
+    window = MainWindow()
+
+    window.set_workflow_enabled(False)
+
+    assert not window.fetch_button.isEnabled()
+    assert not window.username_input.isEnabled()
+    assert not window.refresh_action.isEnabled()
+    assert not window.download_toggle_button.isEnabled()
+    assert not window.concurrency_input.isEnabled()
+
+    window.set_workflow_enabled(True)
+
+    assert window.fetch_button.isEnabled()
+    assert window.username_input.isEnabled()
+    assert window.refresh_action.isEnabled()
+    assert window.download_toggle_button.isEnabled()
+    assert window.concurrency_input.isEnabled()
 
 
 def test_main_window_playback_controls_emit_signals(qapp) -> None:

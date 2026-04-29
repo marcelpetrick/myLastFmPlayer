@@ -71,6 +71,64 @@ def test_controller_handles_resolved_tracks(qapp) -> None:
 
     assert window.track_model.rowCount() == 0
     assert "Resolved YouTube URLs for 0 tracks." in window.feedback_log.toPlainText()
+    assert "No queued tracks are ready for download." in window.feedback_log.toPlainText()
+
+
+def test_controller_starts_lookup_after_successful_fetch(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    calls: list[tuple[str, int]] = []
+
+    def fake_start_lookup(username: str, track_count: int) -> None:
+        calls.append((username, track_count))
+
+    controller._start_automatic_lookup = fake_start_lookup  # type: ignore[method-assign]
+
+    controller._handle_tracks_loaded("example", [Track(artist="Artist", title="Title")])
+
+    assert calls == [("example", 1)]
+    assert window.track_model.rowCount() == 1
+
+
+def test_controller_starts_download_after_successful_lookup(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    calls: list[str] = []
+
+    def fake_start_download(username: str) -> None:
+        calls.append(username)
+
+    controller._start_automatic_download = fake_start_download  # type: ignore[method-assign]
+
+    controller._handle_tracks_resolved(
+        "example",
+        [
+            Track(
+                artist="Artist",
+                title="Title",
+                youtube_url="https://youtu.be/example",
+                status=TrackStatus.QUEUED,
+            )
+        ],
+    )
+
+    assert calls == ["example"]
+
+
+def test_controller_reenables_workflow_after_last_worker(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    controller._running_worker_count = 2
+    window.set_workflow_enabled(False)
+
+    controller._complete_worker_run()
+
+    assert not window.fetch_button.isEnabled()
+
+    controller._complete_worker_run()
+
+    assert window.fetch_button.isEnabled()
+    assert window.download_toggle_button.isEnabled()
 
 
 class FakePlaybackService:

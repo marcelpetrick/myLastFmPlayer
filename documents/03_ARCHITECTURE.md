@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the workflow implemented in the application as of version `00.00.16`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
+This document describes the workflow implemented in the application as of version `00.00.17`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
 
 ## Current Scope
 
@@ -14,15 +14,14 @@ Implemented:
 - YouTube lookup service and worker entry point.
 - Download queue service and worker entry point.
 - Local playback service for selected downloaded tracks.
+- Automatic fetch-to-lookup-to-download workflow.
 - Startup checks for `yt-dlp` and `ffmpeg`.
 - Status-bar progress and stdout logging.
 
 Not yet implemented:
 
-- Automatic YouTube lookup after fetching.
-- Automatic download start after lookup.
 - True pause/resume UI for active downloads.
-- Full controller workflow from fetch to lookup to download to playback.
+- Automatic playback after download. Playback remains an explicit selected-track action.
 
 ## Data Sources
 
@@ -55,6 +54,7 @@ flowchart LR
     User[User] --> UI[MainWindow]
     UI --> Controller[ApplicationController]
     Controller --> FetchWorker[FetchLovedTracksWorker]
+    Controller --> LookupWorker[LookupTracksWorker]
     Controller --> DownloadWorker[DownloadTracksWorker]
     Controller --> Playback[PlaybackService]
     FetchWorker --> Scraper[LastFmLovedTracksScraper]
@@ -62,6 +62,9 @@ flowchart LR
     Scraper --> Parser[LastFmLovedTracksParser]
     Fetcher --> LastFm[Last.fm public HTML]
     FetchWorker --> Storage[JsonTrackRepository]
+    LookupWorker --> Resolver[YouTubeResolver]
+    Resolver --> Ytdlp[yt-dlp]
+    LookupWorker --> Storage
     DownloadWorker --> DownloadManager[DownloadManager]
     DownloadManager --> Ytdlp[yt-dlp]
     DownloadManager --> Storage
@@ -120,7 +123,8 @@ sequenceDiagram
     Controller->>UI: set_tracks(tracks)
     UI->>Table: Replace table data
     Controller->>UI: Status "Fetched and stored X tracks for first."
-    Controller->>UI: Re-enable username/fetch controls
+    Controller->>Controller: Start automatic YouTube lookup
+    Controller->>UI: Re-enable workflow controls after chained workers finish
 ```
 
 ## Last.fm Parsing
@@ -216,7 +220,7 @@ The JSON contains an array of track records.
 
 ## YouTube Lookup Workflow
 
-The YouTube resolver is implemented, but it is not yet automatically started after fetching.
+The YouTube resolver starts automatically after a successful fetch with at least one track.
 
 ```mermaid
 sequenceDiagram
@@ -246,7 +250,7 @@ Current lookup rules:
 
 ## Download Queue Workflow
 
-Downloads are implemented as an explicit user action for queued tracks that already have a YouTube URL.
+Downloads start automatically after lookup when queued tracks have a YouTube URL. The explicit download button can still start the queue for already-resolved stored tracks.
 
 ```mermaid
 sequenceDiagram
@@ -257,7 +261,7 @@ sequenceDiagram
     participant Storage as JsonTrackRepository
     participant Ytdlp as yt-dlp
 
-    UI->>Controller: download_requested signal
+    UI->>Controller: download_requested signal or automatic lookup completion
     Controller->>Worker: run in QThread
     Worker->>Manager: download_and_store_tracks(username, repository, concurrency)
     Manager->>Storage: load_tracks(username)
