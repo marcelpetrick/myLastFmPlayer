@@ -123,6 +123,25 @@ flowchart TD
 
 Progress and errors are shown in the status bar at the bottom of the window and in the feedback area. The terminal also prints detailed logging when the app is started from `localPipeline.sh` or from a shell.
 
+```text
+========== Local Pipeline Summary ==========
+Virtualenv       : PASS .venv is available
+Dependencies     : PASS Editable install with dev dependencies completed
+Ruff             : PASS Lint check completed
+Docs             : PASS Required documentation checks completed
+Sphinx           : PASS HTML documentation built with warnings as errors
+Tests+Coverage   : PASS pytest completed and generated htmlcov
+Open Docs        : PASS Sphinx index.html was handed to firefox
+Open Coverage    : PASS htmlcov/index.html was handed to firefox
+Clean Build      : PASS Stale package artifacts removed
+Package Build    : PASS Source and wheel distributions built
+Wheel            : PASS Found built wheel in dist/
+Wheel Install    : PASS Built wheel installed into .venv
+Import Check     : PASS Installed package imports successfully
+Launch App       : PASS my-lastfm-player was started and exited
+============================================
+```
+
 ## Stored Files
 
 By default, downloaded MP3 files are stored here:
