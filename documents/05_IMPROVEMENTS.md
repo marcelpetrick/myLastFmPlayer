@@ -2,6 +2,20 @@
 
 This document collects follow-up improvements noticed during implementation. These are not blockers for the current development-plan step, but they should be revisited before the MVP is considered finished.
 
+## Workflow
+* 0. when fetching the tracks from the user, do pagination - and update the table each time ne results are added. not just once when eversything is done. the status bar shall also report what is going on.
+* 1. the version number shall be reported in the appliation title - as suffix.
+* 2. downloads/prefetching: do this step by step and update the state inside the chart one by one, each time a track is available.
+
+## Documentation
+* 3. Doxygen or Sphinx docu shal be configured. What is more fitting for a Python project? make a choice. then configure it. add this to the local pipeline too
+* 4. fix the documentation of all classes. make it fitting for asenior developer. document the signatures of public methods, etc. the sphinx/doxgen run shall be error free. 
+
+## UI design
+* switch to use qml isntead of a widget based app? benefits
+* themes, color schemes? dakr light mode at least
+* i18n for the project?
+
 ## Packaging and Versioning
 
 - Python package metadata normalizes two-digit versions such as `00.00.20` to `0.0.20` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
