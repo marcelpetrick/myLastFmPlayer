@@ -3,7 +3,7 @@
 This document collects follow-up improvements noticed during implementation. These are not blockers for the current development-plan step, but they should be revisited before the MVP is considered finished.
 
 ## Workflow
-* 0. when fetching the tracks from the user, do pagination - and update the table each time ne results are added. not just once when eversything is done. the status bar shall also report what is going on.
+* fixed: 0. fetching loved tracks updates the table after each paginated Last.fm page and reports progress in the status bar.
 * 1. the version number shall be reported in the appliation title - as suffix.
 * 2. downloads/prefetching: do this step by step and update the state inside the chart one by one, each time a track is available.
 

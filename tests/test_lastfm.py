@@ -209,6 +209,28 @@ def test_scraper_reports_fetch_progress() -> None:
     ]
 
 
+def test_scraper_reports_cumulative_tracks_after_each_page() -> None:
+    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
+    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
+    session = FakeSession(
+        {
+            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
+            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+        }
+    )
+    track_events: list[list[Track]] = []
+
+    LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
+        "example",
+        tracks_callback=track_events.append,
+    )
+
+    assert [[track.title for track in tracks] for tracks in track_events] == [
+        ["Down on the Farm", "Say It Right"],
+        ["Down on the Farm", "Say It Right", "Smile Like You Mean It"],
+    ]
+
+
 def test_scraper_respects_max_pages() -> None:
     first_url = f"{LASTFM_BASE_URL}/user/example/loved"
     session = FakeSession(

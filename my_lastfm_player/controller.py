@@ -57,7 +57,7 @@ class ApplicationController(QObject):
         self.scraper = scraper or LastFmLovedTracksScraper()
         self.youtube_resolver = youtube_resolver or YouTubeResolver()
         self.download_manager = download_manager or DownloadManager()
-        self.playback_service = playback_service or PlaybackService()
+        self._playback_service = playback_service
         self.dependency_checker = dependency_checker
         self.fetch_worker_factory = fetch_worker_factory
         self.lookup_worker_factory = lookup_worker_factory
@@ -66,6 +66,12 @@ class ApplicationController(QObject):
         self._active_workers: list[WorkflowWorker] = []
         self._running_worker_count = 0
         self._pending_play_cache_key: str | None = None
+
+    @property
+    def playback_service(self) -> PlaybackService:
+        if self._playback_service is None:
+            self._playback_service = PlaybackService()
+        return self._playback_service
 
     def start(self) -> None:
         LOGGER.info("Starting application controller")
@@ -206,6 +212,7 @@ class ApplicationController(QObject):
         worker.progress.connect(self.window.set_progress)
         worker.error.connect(self._handle_worker_error)
         if isinstance(worker, FetchLovedTracksWorker):
+            worker.tracks_updated.connect(self._handle_tracks_updated)
             worker.tracks_loaded.connect(self._handle_tracks_loaded)
         if isinstance(worker, LookupTracksWorker):
             worker.tracks_resolved.connect(self._handle_tracks_resolved)
@@ -243,6 +250,15 @@ class ApplicationController(QObject):
         )
         if tracks:
             self._start_automatic_lookup(username, len(tracks))
+
+    def _handle_tracks_updated(self, username: str, tracks: object) -> None:
+        if not isinstance(tracks, list):
+            self.window.append_feedback(f"Fetch for {username} returned invalid partial data.")
+            return
+
+        self.window.set_tracks(tracks)
+        self.window.show_status(f"Fetched {len(tracks)} tracks for {username}")
+        LOGGER.info("Loaded %s partial fetched tracks into UI for %s", len(tracks), username)
 
     def _handle_tracks_resolved(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
@@ -300,14 +316,15 @@ class ApplicationController(QObject):
             self.repository.save_tracks(username, self.window.tracks())
 
     def _play_track(self, row: int, track: Track) -> None:
+        if self._can_prepare_for_playback(track):
+            self._prepare_selected_track_for_playback(track)
+            return
+
         previous_track = self.playback_service.current_track
         try:
             playing_track = self.playback_service.play(track)
         except PlaybackError as error:
-            if self._can_prepare_for_playback(track):
-                self._prepare_selected_track_for_playback(track)
-            else:
-                self.window.append_feedback(str(error))
+            self.window.append_feedback(str(error))
             return
 
         self._restore_previous_playing_track(previous_track, track)

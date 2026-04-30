@@ -14,6 +14,7 @@ LOGGER = logging.getLogger(__name__)
 
 class FetchLovedTracksWorker(QObject):
     tracks_loaded = pyqtSignal(str, object)
+    tracks_updated = pyqtSignal(str, object)
     progress = pyqtSignal(int, str)
     error = pyqtSignal(str)
     finished = pyqtSignal()
@@ -42,6 +43,7 @@ class FetchLovedTracksWorker(QObject):
                 self.username,
                 self.repository,
                 progress_callback=self._report_fetch_progress,
+                tracks_callback=self._report_partial_tracks,
             )
             self.progress.emit(100, f"Fetched {len(tracks)} tracks")
             self.tracks_loaded.emit(self.username, tracks)
@@ -71,6 +73,14 @@ class FetchLovedTracksWorker(QObject):
             flush=True,
         )
         self.progress.emit(percent, progress.message)
+
+    def _report_partial_tracks(self, tracks: list[object]) -> None:
+        print(
+            f"[myLastFmPlayer] Worker partial fetch for {self.username}: "
+            f"{len(tracks)} tracks",
+            flush=True,
+        )
+        self.tracks_updated.emit(self.username, tracks)
 
 
 class LookupTracksWorker(QObject):

@@ -24,12 +24,15 @@ class FakeScraper:
         username: str,
         repository: JsonTrackRepository,
         progress_callback=None,
+        tracks_callback=None,
     ) -> list[Track]:
         self.called_with = (username, repository)
         if self.error is not None:
             raise self.error
         if progress_callback is not None:
             progress_callback(FetchProgress(1, "Fetched 1/1 tracks", total_count=1))
+        if tracks_callback is not None:
+            tracks_callback(self.tracks)
         repository.save_tracks(username, self.tracks)
         return self.tracks
 
@@ -64,9 +67,13 @@ def test_fetch_worker_emits_progress_tracks_and_finished(tmp_path: Path) -> None
     worker = FetchLovedTracksWorker("example", scraper, repository)  # type: ignore[arg-type]
     progress_events: list[tuple[int, str]] = []
     loaded_events: list[tuple[str, list[Track]]] = []
+    updated_events: list[tuple[str, list[Track]]] = []
     finished_events: list[bool] = []
 
     worker.progress.connect(lambda value, label: progress_events.append((value, label)))
+    worker.tracks_updated.connect(
+        lambda username, loaded: updated_events.append((username, loaded))
+    )
     worker.tracks_loaded.connect(lambda username, loaded: loaded_events.append((username, loaded)))
     worker.finished.connect(lambda: finished_events.append(True))
 
@@ -78,6 +85,7 @@ def test_fetch_worker_emits_progress_tracks_and_finished(tmp_path: Path) -> None
         (99, "Fetched 1/1 tracks"),
         (100, "Fetched 1 tracks"),
     ]
+    assert updated_events == [("example", tracks)]
     assert loaded_events == [("example", tracks)]
     assert finished_events == [True]
     assert repository.load_tracks("example") == tracks

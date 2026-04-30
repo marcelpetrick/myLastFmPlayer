@@ -3,6 +3,7 @@ from __future__ import annotations
 from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.dependencies import DependencyCheckResult
 from my_lastfm_player.models import Track, TrackStatus
+from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 
 
@@ -90,6 +91,19 @@ def test_controller_starts_lookup_after_successful_fetch(qapp) -> None:
     assert window.track_model.rowCount() == 1
 
 
+def test_controller_updates_table_during_paginated_fetch(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+
+    controller._handle_tracks_updated(
+        "example",
+        [Track(artist="Artist", title="Title")],
+    )
+
+    assert window.track_model.rowCount() == 1
+    assert "Fetched 1 tracks for example" in window.statusBar().currentMessage()
+
+
 def test_controller_starts_download_after_successful_lookup(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)
@@ -131,13 +145,13 @@ def test_controller_reenables_workflow_after_last_worker(qapp) -> None:
     assert window.download_toggle_button.isEnabled()
 
 
-def test_controller_play_on_unresolved_track_starts_priority_lookup(qapp) -> None:
+def test_controller_play_on_unresolved_track_starts_priority_lookup(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("user")
     track = Track(artist="Artist", title="Title", status=TrackStatus.FETCHED)
     window.set_tracks([track])
     window.track_table.selectRow(0)
-    controller = ApplicationController(window)
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
     lookup_calls: list[tuple[str | None, str | None, int | None]] = []
 
     def fake_lookup(
@@ -155,7 +169,7 @@ def test_controller_play_on_unresolved_track_starts_priority_lookup(qapp) -> Non
     assert "Preparing Artist - Title for playback." in window.feedback_log.toPlainText()
 
 
-def test_controller_play_on_resolved_track_starts_priority_download(qapp) -> None:
+def test_controller_play_on_resolved_track_starts_priority_download(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("user")
     track = Track(
@@ -166,7 +180,7 @@ def test_controller_play_on_resolved_track_starts_priority_download(qapp) -> Non
     )
     window.set_tracks([track])
     window.track_table.selectRow(0)
-    controller = ApplicationController(window)
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
     download_calls: list[tuple[str | None, str | None, int | None]] = []
 
     def fake_download(
@@ -221,7 +235,11 @@ def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
     window.set_tracks([track])
     window.track_table.selectRow(0)
     playback = FakePlaybackService()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        playback_service=playback,  # type: ignore[arg-type]
+    )
 
     controller.play_selected_track()
 

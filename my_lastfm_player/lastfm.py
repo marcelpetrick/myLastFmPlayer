@@ -68,6 +68,7 @@ class FetchProgress:
 
 
 ProgressCallback = Callable[[FetchProgress], None]
+TracksCallback = Callable[[list[Track]], None]
 
 
 class LastFmLovedTracksFetcher:
@@ -178,6 +179,7 @@ class LastFmLovedTracksScraper:
         username: str,
         max_pages: int | None = None,
         progress_callback: ProgressCallback | None = None,
+        tracks_callback: TracksCallback | None = None,
     ) -> list[Track]:
         if not username:
             raise ValueError("Last.fm username must not be empty")
@@ -237,6 +239,7 @@ class LastFmLovedTracksScraper:
                     message=_progress_message(len(tracks), total_count),
                 ),
             )
+            _emit_tracks(tracks_callback, tracks)
             if next_url is not None and self.page_delay_seconds > 0:
                 _log_info(
                     "Waiting %.1f seconds before next Last.fm page for %s",
@@ -259,11 +262,13 @@ class LastFmLovedTracksScraper:
         repository: JsonTrackRepository,
         max_pages: int | None = None,
         progress_callback: ProgressCallback | None = None,
+        tracks_callback: TracksCallback | None = None,
     ) -> list[Track]:
         tracks = self.fetch_loved_tracks(
             username,
             max_pages=max_pages,
             progress_callback=progress_callback,
+            tracks_callback=tracks_callback,
         )
         repository.save_tracks(username, tracks)
         _log_info("Stored %s Last.fm loved tracks for user %s", len(tracks), username)
@@ -363,6 +368,11 @@ def _emit_progress(progress_callback: ProgressCallback | None, progress: FetchPr
     _log_info("Fetch progress: %s", progress.message)
     if progress_callback is not None:
         progress_callback(progress)
+
+
+def _emit_tracks(tracks_callback: TracksCallback | None, tracks: list[Track]) -> None:
+    if tracks_callback is not None:
+        tracks_callback(list(tracks))
 
 
 def _log_info(message: str, *args: object) -> None:
