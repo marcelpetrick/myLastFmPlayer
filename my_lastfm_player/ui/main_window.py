@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle(f"myLastFmPlayer v{__version__}")
+        self.set_application_title(__version__)
         self.resize(1120, 720)
 
         self._build_actions()
@@ -51,6 +51,9 @@ class MainWindow(QMainWindow):
         self._build_central_widget()
         self.set_tracks(example_tracks())
         self.statusBar().showMessage("Ready")
+
+    def set_application_title(self, version: str) -> None:
+        self.setWindowTitle(application_title(version))
 
     def _build_actions(self) -> None:
         self.refresh_action = QAction("Fetch loved tracks", self)
@@ -246,3 +249,7 @@ class MainWindow(QMainWindow):
     def _show_not_implemented(self) -> None:
         message = "This control is part of the MVP shell and will be wired in later steps."
         self.append_feedback(message)
+
+
+def application_title(version: str) -> str:
+    return f"myLastFmPlayer v{version}"

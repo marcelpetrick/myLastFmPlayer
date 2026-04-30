@@ -3,23 +3,27 @@ from __future__ import annotations
 from my_lastfm_player import __version__
 from my_lastfm_player import main as main_module
 from my_lastfm_player.models import Track, TrackStatus
-from my_lastfm_player.ui.main_window import MainWindow
+from my_lastfm_player.ui.main_window import MainWindow, application_title
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "00.00.23"
+    assert __version__ == "00.00.24"
 
 
 def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v00.00.23"
+    assert window.windowTitle() == "myLastFmPlayer v00.00.24"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
     assert window.concurrency_input.value() == 2
     assert window.progress_bar.format() == "Idle"
+
+
+def test_application_title_includes_version_suffix() -> None:
+    assert application_title("01.02.03") == "myLastFmPlayer v01.02.03"
 
 
 def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
@@ -54,7 +58,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 00.00.23\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 00.00.24\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:

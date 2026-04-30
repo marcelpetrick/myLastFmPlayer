@@ -4,7 +4,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Workflow
 * fixed: 0. fetching loved tracks updates the table after each paginated Last.fm page and reports progress in the status bar.
-* 1. the version number shall be reported in the appliation title - as suffix.
+* fixed: 1. the application window title reports the current version as a suffix.
 * 2. downloads/prefetching: do this step by step and update the state inside the chart one by one, each time a track is available.
 
 ## Documentation
