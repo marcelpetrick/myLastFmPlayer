@@ -104,6 +104,20 @@ def test_controller_updates_table_during_paginated_fetch(qapp) -> None:
     assert "Fetched 1 tracks for example" in window.statusBar().currentMessage()
 
 
+def test_controller_updates_single_track_during_lookup_or_download(qapp) -> None:
+    window = MainWindow()
+    track = Track(artist="Artist", title="Title")
+    window.set_tracks([track])
+    controller = ApplicationController(window)
+
+    controller._handle_track_updated(
+        "example",
+        track.with_status(TrackStatus.SEARCHING),
+    )
+
+    assert window.track_model.track_at(0).status == TrackStatus.SEARCHING
+
+
 def test_controller_starts_download_after_successful_lookup(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)

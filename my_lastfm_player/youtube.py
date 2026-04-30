@@ -13,6 +13,7 @@ YTDLP_SEARCH_PREFIX = "ytsearch1:"
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 ProgressCallback = Callable[[int, str], None]
+TrackUpdateCallback = Callable[[Track], None]
 
 
 class YouTubeLookupError(RuntimeError):
@@ -41,6 +42,7 @@ class YouTubeResolver:
         self,
         tracks: list[Track],
         progress_callback: ProgressCallback | None = None,
+        track_update_callback: TrackUpdateCallback | None = None,
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
     ) -> list[Track]:
@@ -72,7 +74,10 @@ class YouTubeResolver:
                 _percent(resolved_count - 1, total_to_resolve),
                 f"Searching {resolved_count}/{total_to_resolve}: {track.artist} - {track.title}",
             )
-            resolved_track = self.resolve_track(replace(track, status=TrackStatus.SEARCHING))
+            searching_track = replace(track, status=TrackStatus.SEARCHING)
+            _report_track_update(track_update_callback, searching_track)
+            resolved_track = self.resolve_track(searching_track)
+            _report_track_update(track_update_callback, resolved_track)
             resolved_tracks.append(resolved_track)
             _report(
                 progress_callback,
@@ -86,6 +91,7 @@ class YouTubeResolver:
         username: str,
         repository: JsonTrackRepository,
         progress_callback: ProgressCallback | None = None,
+        track_update_callback: TrackUpdateCallback | None = None,
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
     ) -> list[Track]:
@@ -93,6 +99,7 @@ class YouTubeResolver:
         resolved_tracks = self.resolve_tracks(
             tracks,
             progress_callback=progress_callback,
+            track_update_callback=track_update_callback,
             priority_cache_key=priority_cache_key,
             max_tracks=max_tracks,
         )
@@ -203,6 +210,14 @@ def _report(
     print(f"[myLastFmPlayer] YouTube lookup progress {value}%: {message}", flush=True)
     if progress_callback is not None:
         progress_callback(value, message)
+
+
+def _report_track_update(
+    track_update_callback: TrackUpdateCallback | None,
+    track: Track,
+) -> None:
+    if track_update_callback is not None:
+        track_update_callback(track)
 
 
 def _merge_existing_download_state(

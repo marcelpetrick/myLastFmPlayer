@@ -36,11 +36,13 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
         status=TrackStatus.QUEUED,
     )
     progress: list[tuple[int, str]] = []
+    track_updates: list[Track] = []
 
     tracks = manager.download_tracks(
         [track],
         tmp_path,
         progress_callback=lambda value, message: progress.append((value, message)),
+        track_update_callback=track_updates.append,
     )
 
     assert tracks == [
@@ -65,6 +67,10 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
         ]
     ]
     assert progress == [(0, "Queued 1 downloads"), (100, "Downloaded 1/1 tracks")]
+    assert [track.status for track in track_updates] == [
+        TrackStatus.DOWNLOADING,
+        TrackStatus.DOWNLOADED,
+    ]
 
 
 def test_download_manager_retries_and_marks_failed(tmp_path: Path) -> None:

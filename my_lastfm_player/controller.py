@@ -215,8 +215,10 @@ class ApplicationController(QObject):
             worker.tracks_updated.connect(self._handle_tracks_updated)
             worker.tracks_loaded.connect(self._handle_tracks_loaded)
         if isinstance(worker, LookupTracksWorker):
+            worker.track_updated.connect(self._handle_track_updated)
             worker.tracks_resolved.connect(self._handle_tracks_resolved)
         if isinstance(worker, DownloadTracksWorker):
+            worker.track_updated.connect(self._handle_track_updated)
             worker.tracks_downloaded.connect(self._handle_tracks_downloaded)
         worker.finished.connect(self._complete_worker_run)
         worker.finished.connect(thread.quit)
@@ -259,6 +261,15 @@ class ApplicationController(QObject):
         self.window.set_tracks(tracks)
         self.window.show_status(f"Fetched {len(tracks)} tracks for {username}")
         LOGGER.info("Loaded %s partial fetched tracks into UI for %s", len(tracks), username)
+
+    def _handle_track_updated(self, username: str, track: object) -> None:
+        if not isinstance(track, Track):
+            self.window.append_feedback(
+                f"Workflow for {username} returned an invalid track update."
+            )
+            return
+
+        self._update_track_by_cache_key(track)
 
     def _handle_tracks_resolved(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):

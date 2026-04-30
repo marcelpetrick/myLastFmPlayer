@@ -23,6 +23,7 @@ CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 Sleeper = Callable[[float], None]
 BackoffFactory = Callable[[], float]
 ProgressCallback = Callable[[int, str], None]
+TrackUpdateCallback = Callable[[Track], None]
 
 
 class DownloadError(RuntimeError):
@@ -62,6 +63,7 @@ class DownloadManager:
         repository: JsonTrackRepository,
         concurrency: int = DEFAULT_CONCURRENCY,
         progress_callback: ProgressCallback | None = None,
+        track_update_callback: TrackUpdateCallback | None = None,
         priority_cache_key: str | None = None,
         max_downloads: int | None = None,
     ) -> list[Track]:
@@ -71,6 +73,7 @@ class DownloadManager:
             repository.downloads_dir,
             concurrency=concurrency,
             progress_callback=progress_callback,
+            track_update_callback=track_update_callback,
             priority_cache_key=priority_cache_key,
             max_downloads=max_downloads,
         )
@@ -84,6 +87,7 @@ class DownloadManager:
         downloads_dir: Path,
         concurrency: int = DEFAULT_CONCURRENCY,
         progress_callback: ProgressCallback | None = None,
+        track_update_callback: TrackUpdateCallback | None = None,
         priority_cache_key: str | None = None,
         max_downloads: int | None = None,
     ) -> list[Track]:
@@ -107,13 +111,22 @@ class DownloadManager:
         completed_count = 0
         max_workers = min(concurrency, len(candidates))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for index, track in candidates:
+                downloading_track = replace(track, status=TrackStatus.DOWNLOADING, error=None)
+                results[index] = downloading_track
+                _report_track_update(track_update_callback, downloading_track)
             future_to_index = {
-                executor.submit(self._download_track_with_retries, track, downloads_dir): index
-                for index, track in candidates
+                executor.submit(
+                    self._download_track_with_retries,
+                    results[index],
+                    downloads_dir,
+                ): index
+                for index, _track in candidates
             }
             for future in as_completed(future_to_index):
                 index = future_to_index[future]
                 results[index] = future.result()
+                _report_track_update(track_update_callback, results[index])
                 completed_count += 1
                 percent = int(completed_count / len(candidates) * 100)
                 _report(
@@ -207,3 +220,11 @@ def _report(progress_callback: ProgressCallback | None, value: int, message: str
     print(f"[myLastFmPlayer] Download progress {value}%: {message}", flush=True)
     if progress_callback is not None:
         progress_callback(value, message)
+
+
+def _report_track_update(
+    track_update_callback: TrackUpdateCallback | None,
+    track: Track,
+) -> None:
+    if track_update_callback is not None:
+        track_update_callback(track)

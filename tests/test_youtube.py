@@ -145,10 +145,12 @@ def test_resolve_tracks_prioritizes_and_limits_selected_track() -> None:
     first = Track(artist="First", title="Track")
     second = Track(artist="Second", title="Track")
     progress: list[tuple[int, str]] = []
+    track_updates: list[Track] = []
 
     tracks = resolver.resolve_tracks(
         [first, second],
         progress_callback=lambda value, message: progress.append((value, message)),
+        track_update_callback=track_updates.append,
         priority_cache_key=second.cache_key,
         max_tracks=1,
     )
@@ -159,6 +161,14 @@ def test_resolve_tracks_prioritizes_and_limits_selected_track() -> None:
     assert progress == [
         (0, "Searching 1/1: Second - Track"),
         (99, "Resolved 1/1: Second - Track"),
+    ]
+    assert [track.status for track in track_updates] == [
+        TrackStatus.SEARCHING,
+        TrackStatus.QUEUED,
+    ]
+    assert [track.cache_key for track in track_updates] == [
+        second.cache_key,
+        second.cache_key,
     ]
 
 

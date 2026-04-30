@@ -48,6 +48,7 @@ class FakeResolver:
         username: str,
         repository: JsonTrackRepository,
         progress_callback=None,
+        track_update_callback=None,
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
     ) -> list[Track]:
@@ -56,6 +57,8 @@ class FakeResolver:
             raise self.error
         if progress_callback is not None:
             progress_callback(50, "Resolved 1/1: Artist - Title")
+        if track_update_callback is not None and self.tracks:
+            track_update_callback(self.tracks[0])
         repository.save_tracks(username, self.tracks)
         return self.tracks
 
@@ -116,9 +119,13 @@ def test_lookup_worker_emits_progress_tracks_and_finished(tmp_path: Path) -> Non
     worker = LookupTracksWorker("example", resolver, repository)  # type: ignore[arg-type]
     progress_events: list[tuple[int, str]] = []
     resolved_events: list[tuple[str, list[Track]]] = []
+    updated_events: list[tuple[str, Track]] = []
     finished_events: list[bool] = []
 
     worker.progress.connect(lambda value, label: progress_events.append((value, label)))
+    worker.track_updated.connect(
+        lambda username, track: updated_events.append((username, track))
+    )
     worker.tracks_resolved.connect(
         lambda username, loaded: resolved_events.append((username, loaded))
     )
@@ -132,6 +139,7 @@ def test_lookup_worker_emits_progress_tracks_and_finished(tmp_path: Path) -> Non
         (50, "Resolved 1/1: Artist - Title"),
         (100, "Resolved 1 tracks"),
     ]
+    assert updated_events == [("example", tracks[0])]
     assert resolved_events == [("example", tracks)]
     assert finished_events == [True]
     assert repository.load_tracks("example") == tracks
@@ -167,6 +175,7 @@ class FakeDownloadManager:
         repository: JsonTrackRepository,
         concurrency: int,
         progress_callback=None,
+        track_update_callback=None,
         priority_cache_key: str | None = None,
         max_downloads: int | None = None,
     ) -> list[Track]:
@@ -175,6 +184,8 @@ class FakeDownloadManager:
             raise self.error
         if progress_callback is not None:
             progress_callback(100, "Downloaded 1/1 tracks")
+        if track_update_callback is not None and self.tracks:
+            track_update_callback(self.tracks[0])
         repository.save_tracks(username, self.tracks)
         return self.tracks
 
@@ -191,9 +202,13 @@ def test_download_worker_emits_progress_tracks_and_finish(tmp_path: Path) -> Non
     )
     progress_events: list[tuple[int, str]] = []
     downloaded_events: list[tuple[str, list[Track]]] = []
+    updated_events: list[tuple[str, Track]] = []
     finished_events: list[bool] = []
 
     worker.progress.connect(lambda value, label: progress_events.append((value, label)))
+    worker.track_updated.connect(
+        lambda username, track: updated_events.append((username, track))
+    )
     worker.tracks_downloaded.connect(
         lambda username, loaded: downloaded_events.append((username, loaded))
     )
@@ -203,6 +218,7 @@ def test_download_worker_emits_progress_tracks_and_finish(tmp_path: Path) -> Non
 
     assert manager.called_with == ("example", repository, 2)
     assert progress_events == [(100, "Downloaded 1/1 tracks")]
+    assert updated_events == [("example", tracks[0])]
     assert downloaded_events == [("example", tracks)]
     assert finished_events == [True]
 

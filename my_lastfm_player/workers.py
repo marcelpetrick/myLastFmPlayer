@@ -85,6 +85,7 @@ class FetchLovedTracksWorker(QObject):
 
 class LookupTracksWorker(QObject):
     tracks_resolved = pyqtSignal(str, object)
+    track_updated = pyqtSignal(str, object)
     progress = pyqtSignal(int, str)
     error = pyqtSignal(str)
     finished = pyqtSignal()
@@ -113,6 +114,7 @@ class LookupTracksWorker(QObject):
                 self.username,
                 self.repository,
                 progress_callback=self.progress.emit,
+                track_update_callback=self._report_track_update,
                 priority_cache_key=self.priority_cache_key,
                 max_tracks=self.max_tracks,
             )
@@ -125,9 +127,13 @@ class LookupTracksWorker(QObject):
             LOGGER.info("Worker finished resolving YouTube URLs for %s", self.username)
             self.finished.emit()
 
+    def _report_track_update(self, track: object) -> None:
+        self.track_updated.emit(self.username, track)
+
 
 class DownloadTracksWorker(QObject):
     tracks_downloaded = pyqtSignal(str, object)
+    track_updated = pyqtSignal(str, object)
     progress = pyqtSignal(int, str)
     error = pyqtSignal(str)
     finished = pyqtSignal()
@@ -162,6 +168,7 @@ class DownloadTracksWorker(QObject):
                 self.repository,
                 concurrency=self.concurrency,
                 progress_callback=self.progress.emit,
+                track_update_callback=self._report_track_update,
                 priority_cache_key=self.priority_cache_key,
                 max_downloads=self.max_downloads,
             )
@@ -177,3 +184,6 @@ class DownloadTracksWorker(QObject):
                 flush=True,
             )
             self.finished.emit()
+
+    def _report_track_update(self, track: object) -> None:
+        self.track_updated.emit(self.username, track)
