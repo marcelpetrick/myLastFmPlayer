@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import time
+from threading import Event
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
@@ -17,6 +19,7 @@ class FetchLovedTracksWorker(QObject):
 
     tracks_loaded = pyqtSignal(str, object)
     tracks_updated = pyqtSignal(str, object)
+    fetch_stopped = pyqtSignal(str, object)
     progress = pyqtSignal(int, str)
     error = pyqtSignal(str)
     finished = pyqtSignal()
@@ -31,6 +34,9 @@ class FetchLovedTracksWorker(QObject):
         self.username = username
         self.scraper = scraper
         self.repository = repository
+        self._resume_event = Event()
+        self._resume_event.set()
+        self._stop_requested = False
 
     @pyqtSlot()
     def run(self) -> None:
@@ -48,9 +54,14 @@ class FetchLovedTracksWorker(QObject):
                 self.repository,
                 progress_callback=self._report_fetch_progress,
                 tracks_callback=self._report_partial_tracks,
+                control_callback=self._can_continue_fetching,
             )
-            self.progress.emit(100, f"Fetched {len(tracks)} tracks")
-            self.tracks_loaded.emit(self.username, tracks)
+            if self._stop_requested:
+                self.progress.emit(0, f"Stopped fetch after {len(tracks)} tracks")
+                self.fetch_stopped.emit(self.username, tracks)
+            else:
+                self.progress.emit(100, f"Fetched {len(tracks)} tracks")
+                self.tracks_loaded.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
             LOGGER.exception("Loved-track fetch failed for %s", self.username)
             print(
@@ -85,6 +96,27 @@ class FetchLovedTracksWorker(QObject):
             flush=True,
         )
         self.tracks_updated.emit(self.username, tracks)
+
+    def pause_fetch(self) -> None:
+        """Pause pagination before the next cooperative fetch checkpoint."""
+
+        self._resume_event.clear()
+
+    def resume_fetch(self) -> None:
+        """Resume a paused fetch."""
+
+        self._resume_event.set()
+
+    def stop_fetch(self) -> None:
+        """Request fetch cancellation and resume the worker if it is paused."""
+
+        self._stop_requested = True
+        self._resume_event.set()
+
+    def _can_continue_fetching(self) -> bool:
+        while not self._stop_requested and not self._resume_event.is_set():
+            time.sleep(0.05)
+        return not self._stop_requested
 
 
 class LookupTracksWorker(QObject):

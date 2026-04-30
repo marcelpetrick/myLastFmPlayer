@@ -68,6 +68,8 @@ class ApplicationController(QObject):
         self._active_workers: list[WorkflowWorker] = []
         self._running_worker_count = 0
         self._pending_play_cache_key: str | None = None
+        self._active_fetch_worker: FetchLovedTracksWorker | None = None
+        self._fetch_paused = False
 
     @property
     def playback_service(self) -> PlaybackService:
@@ -83,6 +85,8 @@ class ApplicationController(QObject):
         LOGGER.info("Starting application controller")
         print("[myLastFmPlayer] Starting application controller", flush=True)
         self.window.fetch_requested.connect(self.fetch_loved_tracks)
+        self.window.fetch_pause_requested.connect(self.toggle_fetch_pause)
+        self.window.fetch_stop_requested.connect(self.stop_fetch)
         self.window.download_requested.connect(self.download_tracks)
         self.window.play_requested.connect(self.play_selected_track)
         self.window.pause_requested.connect(self.pause_playback)
@@ -115,9 +119,38 @@ class ApplicationController(QObject):
         LOGGER.info("Fetch requested for Last.fm user %s", username)
         print(f"[myLastFmPlayer] UI fetch requested for Last.fm user {username}", flush=True)
         self.window.set_workflow_enabled(False)
+        self.window.set_fetch_control_state(active=True, paused=False)
+        self._fetch_paused = False
         self.window.set_progress(0, "Starting fetch")
         worker = self.fetch_worker_factory(username, self.scraper, self.repository)
+        self._active_fetch_worker = worker
         self._run_worker(worker)
+
+    def toggle_fetch_pause(self) -> None:
+        """Pause or resume the active Last.fm fetch worker."""
+
+        if self._active_fetch_worker is None:
+            return
+        if self._fetch_paused:
+            self._active_fetch_worker.resume_fetch()
+            self._fetch_paused = False
+            self.window.set_fetch_control_state(active=True, paused=False)
+            self.window.append_feedback("Fetch resumed.")
+            return
+        self._active_fetch_worker.pause_fetch()
+        self._fetch_paused = True
+        self.window.set_fetch_control_state(active=True, paused=True)
+        self.window.append_feedback("Fetch paused.")
+
+    def stop_fetch(self) -> None:
+        """Request cancellation of the active Last.fm fetch worker."""
+
+        if self._active_fetch_worker is None:
+            return
+        self._active_fetch_worker.stop_fetch()
+        self._fetch_paused = False
+        self.window.set_fetch_control_state(active=False, paused=False)
+        self.window.append_feedback("Stopping fetch.")
 
     def resolve_youtube_urls(
         self,
@@ -234,6 +267,7 @@ class ApplicationController(QObject):
         if isinstance(worker, FetchLovedTracksWorker):
             worker.tracks_updated.connect(self._handle_tracks_updated)
             worker.tracks_loaded.connect(self._handle_tracks_loaded)
+            worker.fetch_stopped.connect(self._handle_fetch_stopped)
         if isinstance(worker, LookupTracksWorker):
             worker.track_updated.connect(self._handle_track_updated)
             worker.tracks_resolved.connect(self._handle_tracks_resolved)
@@ -265,6 +299,9 @@ class ApplicationController(QObject):
 
         self.window.set_tracks(tracks)
         self.window.append_feedback(f"Fetched and stored {len(tracks)} tracks for {username}.")
+        self._active_fetch_worker = None
+        self._fetch_paused = False
+        self.window.set_fetch_control_state(active=False, paused=False)
         LOGGER.info("Loaded %s fetched tracks into UI for %s", len(tracks), username)
         print(
             f"[myLastFmPlayer] UI loaded {len(tracks)} fetched tracks for {username}",
@@ -272,6 +309,17 @@ class ApplicationController(QObject):
         )
         if tracks:
             self._start_automatic_lookup(username, len(tracks))
+
+    def _handle_fetch_stopped(self, username: str, tracks: object) -> None:
+        self._active_fetch_worker = None
+        self._fetch_paused = False
+        self.window.set_fetch_control_state(active=False, paused=False)
+        if not isinstance(tracks, list):
+            self.window.append_feedback(f"Stopped fetch for {username} returned invalid data.")
+            return
+
+        self.window.set_tracks(tracks)
+        self.window.append_feedback(f"Stopped fetch for {username} after {len(tracks)} tracks.")
 
     def _handle_tracks_updated(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
@@ -439,6 +487,7 @@ class ApplicationController(QObject):
         self._running_worker_count = max(0, self._running_worker_count - 1)
         if self._running_worker_count == 0:
             self.window.set_workflow_enabled(True)
+            self.window.set_fetch_control_state(active=False, paused=False)
 
     def _forget_thread(self, thread: QThread) -> None:
         if thread in self._active_threads:
@@ -449,6 +498,9 @@ class ApplicationController(QObject):
         )
 
     def _forget_worker(self, worker: WorkflowWorker) -> None:
+        if worker is self._active_fetch_worker:
+            self._active_fetch_worker = None
+            self._fetch_paused = False
         if worker in self._active_workers:
             self._active_workers.remove(worker)
         print(

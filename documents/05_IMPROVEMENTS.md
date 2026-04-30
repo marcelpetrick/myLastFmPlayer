@@ -6,8 +6,9 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 0. fetching loved tracks updates the table after each paginated Last.fm page and reports progress in the status bar.
 * fixed: 1. the application window title reports the current version as a suffix.
 * fixed: 2. lookup and download workflows update the table row by row as each track changes state.
-* 5. make it possible to pause and also to stop the fetching projects. of the tracks. like add a pause and a stop button. with tooltips to the ui. near the fetch button. should be self explainining,. while no fetch is runing, those are disabled. when fetch is active then make the enabled too. when pressing pause, the user can resume. when pressing stop, the whole fetching is topped. tie this to the backend. and prepare unit.testing for that too.
-
+* fixed: 5. Last.fm fetching has pause/resume and stop controls beside the fetch button, with backend cancellation support and unit coverage.
+* 6. why are the html opened with chrome? xdgopen shall fall to firefox then? or is this not used to open?
+* 7. fix the localRun.sh - when no "noRun", then it shall run infinietely.
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.

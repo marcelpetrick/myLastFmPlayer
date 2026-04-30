@@ -25,10 +25,14 @@ class FakeScraper:
         repository: JsonTrackRepository,
         progress_callback=None,
         tracks_callback=None,
+        control_callback=None,
     ) -> list[Track]:
         self.called_with = (username, repository)
         if self.error is not None:
             raise self.error
+        if control_callback is not None and not control_callback():
+            repository.save_tracks(username, [])
+            return []
         if progress_callback is not None:
             progress_callback(FetchProgress(1, "Fetched 1/1 tracks", total_count=1))
         if tracks_callback is not None:
@@ -110,6 +114,27 @@ def test_fetch_worker_emits_error_and_finished(tmp_path: Path) -> None:
 
     assert errors == ["network failed"]
     assert finished_events == [True]
+
+
+def test_fetch_worker_can_stop_before_loading_tracks(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    worker = FetchLovedTracksWorker(
+        "example",
+        FakeScraper(tracks=[Track(artist="Artist", title="Title")]),  # type: ignore[arg-type]
+        repository,
+    )
+    stopped_events: list[tuple[str, list[Track]]] = []
+    loaded_events: list[tuple[str, list[Track]]] = []
+    worker.fetch_stopped.connect(
+        lambda username, loaded: stopped_events.append((username, loaded))
+    )
+    worker.tracks_loaded.connect(lambda username, loaded: loaded_events.append((username, loaded)))
+
+    worker.stop_fetch()
+    worker.run()
+
+    assert stopped_events == [("example", [])]
+    assert loaded_events == []
 
 
 def test_lookup_worker_emits_progress_tracks_and_finished(tmp_path: Path) -> None:

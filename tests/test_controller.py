@@ -89,6 +89,8 @@ def test_controller_starts_lookup_after_successful_fetch(qapp) -> None:
 
     assert calls == [("example", 1)]
     assert window.track_model.rowCount() == 1
+    assert not window.fetch_pause_button.isEnabled()
+    assert not window.fetch_stop_button.isEnabled()
 
 
 def test_controller_updates_table_during_paginated_fetch(qapp) -> None:
@@ -102,6 +104,51 @@ def test_controller_updates_table_during_paginated_fetch(qapp) -> None:
 
     assert window.track_model.rowCount() == 1
     assert "Fetched 1 tracks for example" in window.statusBar().currentMessage()
+
+
+class FakeFetchWorker:
+    def __init__(self) -> None:
+        self.events: list[str] = []
+
+    def pause_fetch(self) -> None:
+        self.events.append("pause")
+
+    def resume_fetch(self) -> None:
+        self.events.append("resume")
+
+    def stop_fetch(self) -> None:
+        self.events.append("stop")
+
+
+def test_controller_pauses_resumes_and_stops_active_fetch(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    worker = FakeFetchWorker()
+    controller._active_fetch_worker = worker  # type: ignore[assignment]
+    window.set_fetch_control_state(active=True, paused=False)
+
+    controller.toggle_fetch_pause()
+    controller.toggle_fetch_pause()
+    controller.stop_fetch()
+
+    assert worker.events == ["pause", "resume", "stop"]
+    assert not window.fetch_pause_button.isEnabled()
+    assert not window.fetch_stop_button.isEnabled()
+
+
+def test_controller_handles_stopped_fetch_without_starting_lookup(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    calls: list[tuple[str, int]] = []
+    controller._start_automatic_lookup = lambda username, count: calls.append(  # type: ignore[method-assign]
+        (username, count)
+    )
+
+    controller._handle_fetch_stopped("example", [Track(artist="Artist", title="Title")])
+
+    assert calls == []
+    assert window.track_model.rowCount() == 1
+    assert "Stopped fetch for example after 1 tracks." in window.feedback_log.toPlainText()
 
 
 def test_controller_updates_single_track_during_lookup_or_download(qapp) -> None:

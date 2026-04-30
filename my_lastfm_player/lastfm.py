@@ -80,6 +80,7 @@ class FetchProgress:
 
 ProgressCallback = Callable[[FetchProgress], None]
 TracksCallback = Callable[[list[Track]], None]
+FetchControlCallback = Callable[[], bool]
 
 
 class LastFmLovedTracksFetcher:
@@ -203,6 +204,7 @@ class LastFmLovedTracksScraper:
         max_pages: int | None = None,
         progress_callback: ProgressCallback | None = None,
         tracks_callback: TracksCallback | None = None,
+        control_callback: FetchControlCallback | None = None,
     ) -> list[Track]:
         """Fetch all loved-track pages for ``username`` and return cumulative tracks."""
 
@@ -222,6 +224,9 @@ class LastFmLovedTracksScraper:
         )
 
         while next_url is not None:
+            if not _continue_fetching(control_callback):
+                _log_info("Stopping Last.fm loved-track fetch for user %s by request", username)
+                break
             if max_pages is not None and page_count >= max_pages:
                 _log_info(
                     "Stopping Last.fm loved-track fetch for user %s after %s page(s) due to limit",
@@ -271,7 +276,12 @@ class LastFmLovedTracksScraper:
                     self.page_delay_seconds,
                     username,
                 )
-                time.sleep(self.page_delay_seconds)
+                if not _controlled_sleep(self.page_delay_seconds, control_callback):
+                    _log_info(
+                        "Stopping Last.fm loved-track fetch for user %s during page delay",
+                        username,
+                    )
+                    break
 
         _log_info(
             "Finished Last.fm loved-track fetch for user %s with %s tracks across %s page(s)",
@@ -288,6 +298,7 @@ class LastFmLovedTracksScraper:
         max_pages: int | None = None,
         progress_callback: ProgressCallback | None = None,
         tracks_callback: TracksCallback | None = None,
+        control_callback: FetchControlCallback | None = None,
     ) -> list[Track]:
         """Fetch loved tracks for ``username`` and save them in ``repository``."""
 
@@ -296,6 +307,7 @@ class LastFmLovedTracksScraper:
             max_pages=max_pages,
             progress_callback=progress_callback,
             tracks_callback=tracks_callback,
+            control_callback=control_callback,
         )
         repository.save_tracks(username, tracks)
         _log_info("Stored %s Last.fm loved tracks for user %s", len(tracks), username)
@@ -404,6 +416,22 @@ def _emit_progress(progress_callback: ProgressCallback | None, progress: FetchPr
 def _emit_tracks(tracks_callback: TracksCallback | None, tracks: list[Track]) -> None:
     if tracks_callback is not None:
         tracks_callback(list(tracks))
+
+
+def _continue_fetching(control_callback: FetchControlCallback | None) -> bool:
+    return True if control_callback is None else control_callback()
+
+
+def _controlled_sleep(
+    delay_seconds: float,
+    control_callback: FetchControlCallback | None,
+) -> bool:
+    deadline = time.monotonic() + delay_seconds
+    while time.monotonic() < deadline:
+        if not _continue_fetching(control_callback):
+            return False
+        time.sleep(min(0.1, max(0.0, deadline - time.monotonic())))
+    return _continue_fetching(control_callback)
 
 
 def _log_info(message: str, *args: object) -> None:

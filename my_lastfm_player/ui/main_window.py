@@ -36,6 +36,8 @@ class MainWindow(QMainWindow):
     """Initial MVP shell for the Last.fm player desktop UI."""
 
     fetch_requested = pyqtSignal()
+    fetch_pause_requested = pyqtSignal()
+    fetch_stop_requested = pyqtSignal()
     download_requested = pyqtSignal()
     play_requested = pyqtSignal()
     pause_requested = pyqtSignal()
@@ -97,7 +99,14 @@ class MainWindow(QMainWindow):
         self.username_input.returnPressed.connect(self.fetch_requested.emit)
 
         self.fetch_button = QPushButton("Fetch")
+        self.fetch_pause_button = QPushButton("Pause")
+        self.fetch_stop_button = QPushButton("Stop")
         self.fetch_button.clicked.connect(self.fetch_requested.emit)
+        self.fetch_pause_button.clicked.connect(self.fetch_pause_requested.emit)
+        self.fetch_stop_button.clicked.connect(self.fetch_stop_requested.emit)
+        self.fetch_pause_button.setToolTip("Pause or resume the active Last.fm fetch")
+        self.fetch_stop_button.setToolTip("Stop the active Last.fm fetch")
+        self.set_fetch_control_state(active=False, paused=False)
 
         self.dependency_label = QLabel("Dependencies: yt-dlp and ffmpeg not checked yet")
         self.dependency_label.setAlignment(
@@ -107,7 +116,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(username_label, 0, 0)
         layout.addWidget(self.username_input, 0, 1)
         layout.addWidget(self.fetch_button, 0, 2)
-        layout.addWidget(self.dependency_label, 1, 0, 1, 3)
+        layout.addWidget(self.fetch_pause_button, 0, 3)
+        layout.addWidget(self.fetch_stop_button, 0, 4)
+        layout.addWidget(self.dependency_label, 1, 0, 1, 5)
 
         return frame
 
@@ -203,6 +214,17 @@ class MainWindow(QMainWindow):
         self.fetch_button.setEnabled(enabled)
         self.username_input.setEnabled(enabled)
         self.refresh_action.setEnabled(enabled)
+
+    def set_fetch_control_state(self, active: bool, paused: bool = False) -> None:
+        """Enable pause/stop fetch controls and show pause or resume state."""
+
+        self.fetch_pause_button.setEnabled(active)
+        self.fetch_stop_button.setEnabled(active)
+        self.fetch_pause_button.setText("Resume" if paused else "Pause")
+        if paused:
+            self.fetch_pause_button.setToolTip("Resume the paused Last.fm fetch")
+        else:
+            self.fetch_pause_button.setToolTip("Pause the active Last.fm fetch")
 
     def set_workflow_enabled(self, enabled: bool) -> None:
         """Enable or disable controls that start long-running workflows."""

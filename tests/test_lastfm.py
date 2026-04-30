@@ -231,6 +231,31 @@ def test_scraper_reports_cumulative_tracks_after_each_page() -> None:
     ]
 
 
+def test_scraper_stops_paginated_fetch_when_control_callback_returns_false() -> None:
+    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
+    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
+    session = FakeSession(
+        {
+            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
+            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+        }
+    )
+    control_calls = 0
+
+    def control_callback() -> bool:
+        nonlocal control_calls
+        control_calls += 1
+        return control_calls == 1
+
+    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
+        "example",
+        control_callback=control_callback,
+    )
+
+    assert [track.title for track in tracks] == ["Down on the Farm", "Say It Right"]
+    assert session.requested_urls == [first_url]
+
+
 def test_scraper_respects_max_pages() -> None:
     first_url = f"{LASTFM_BASE_URL}/user/example/loved"
     session = FakeSession(
