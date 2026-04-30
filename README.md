@@ -2,11 +2,17 @@
 
 `myLastFmPlayer` is a (Linux) desktop application for collecting a user's loved tracks from Last.fm, preparing them for lookup/download, and eventually playing downloaded audio locally. The MVP is implemented in Python with PyQt.
 
-Author: Marcel Petrick <mail@marcelpetrick.it>
+**Author: Marcel Petrick <mail@marcelpetrick.it>**
 
-License: GPLv3 or later. See `LICENSE`.
+**Note: projected is generated with AI.**
 
-Current version: `00.00.22`
+**License: GPLv3. See `LICENSE`.**
+
+Current version: `00.00.22` - work in progress; tons of features are not implemented
+
+## Current state
+
+![](media/currentState.png)
 
 ## Versioning
 
