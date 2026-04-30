@@ -7,7 +7,7 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 1. the application window title reports the current version as a suffix.
 * fixed: 2. lookup and download workflows update the table row by row as each track changes state.
 * fixed: 5. Last.fm fetching has pause/resume and stop controls beside the fetch button, with backend cancellation support and unit coverage.
-* 6. why are the html opened with chrome? xdgopen shall fall to firefox then? or is this not used to open?
+* fixed: 6. local pipeline HTML report opening now prefers `MY_LASTFM_PLAYER_REPORT_BROWSER`, then Firefox, then `xdg-open`, then `open`, and reports which opener accepted each file.
 * 7. fix the localRun.sh - when no "noRun", then it shall run infinietely.
 
 ## Documentation

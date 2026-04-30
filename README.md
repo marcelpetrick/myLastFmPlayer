@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `00.00.28` - work in progress; tons of features are not implemented
+Current version: `00.00.29` - work in progress; tons of features are not implemented
 
 ## Current state
 
@@ -163,7 +163,7 @@ Install development dependencies and run the full local build, lint, documentati
 ./localPipeline.sh
 ```
 
-The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, runs pytest with coverage, opens the HTML coverage report when possible, builds the package, installs the built wheel, verifies the package can be imported, and then starts `my-lastfm-player` like a user would.
+The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, builds Sphinx documentation, runs pytest with coverage, opens the generated HTML reports when possible, builds the package, installs the built wheel, verifies the package can be imported, and then starts `my-lastfm-player` like a user would.
 
 ### Build Workflow
 
@@ -182,18 +182,19 @@ flowchart TD
     G --> H
     H --> I["Ruff lint check"]
     I --> J["Documentation check"]
-    J --> K["Pytest with coverage and HTML report"]
-    K --> L["Open htmlcov/index.html when possible"]
-    L --> M["Remove old build artifacts"]
-    M --> N["Build source/wheel distributions"]
-    N --> O["Find built wheel in dist/"]
-    O --> P["Force reinstall built wheel without dependencies"]
-    P --> Q["Import package and print version"]
-    Q --> R{"RUN_APP=true?"}
-    R -->|yes| S["Start installed my-lastfm-player command"]
-    R -->|no| T["Skip GUI startup"]
-    S --> U["Print stage summary and exit"]
-    T --> U
+    J --> K["Build Sphinx docs with warnings as errors"]
+    K --> L["Pytest with coverage and HTML report"]
+    L --> M["Open Sphinx and coverage HTML when possible"]
+    M --> N["Remove old build artifacts"]
+    N --> O["Build source/wheel distributions"]
+    O --> P["Find built wheel in dist/"]
+    P --> Q["Force reinstall built wheel without dependencies"]
+    Q --> R["Import package and print version"]
+    R --> S{"RUN_APP=true?"}
+    S -->|yes| T["Start installed my-lastfm-player command"]
+    S -->|no| U["Skip GUI startup"]
+    T --> V["Print stage summary and exit"]
+    U --> V
 ```
 
 The workflow phases are:
@@ -201,8 +202,8 @@ The workflow phases are:
 1. Argument handling: accepts only `--noRun`; any other argument stops the pipeline with usage help.
 2. Environment preparation: creates `.venv` only when `.venv/bin/python` is missing, otherwise reuses the existing virtual environment.
 3. Dependency installation: runs `python -m pip install -e ".[dev]"` so the app and development tools come from the same environment.
-4. Quality gates: runs Ruff, required documentation checks, and pytest with configured coverage reporting.
-5. Report opening: prints `htmlcov/index.html` and tries to open it with the desktop opener when `xdg-open` or `open` is available; a failed auto-open is reported as `WARN`, not as a failed build.
+4. Quality gates: runs Ruff, required documentation checks, Sphinx documentation with warnings as errors, and pytest with configured coverage reporting.
+5. Report opening: prints the Sphinx and coverage HTML paths and tries to open them with `MY_LASTFM_PLAYER_REPORT_BROWSER` when set, otherwise `firefox`, otherwise `xdg-open`, otherwise `open`; a failed auto-open is reported as `WARN`, not as a failed build.
 6. Package build: removes stale `build/`, `dist/`, and egg-info output before running `python -m build`.
 7. Install verification: installs the freshly built wheel and imports `my_lastfm_player` to confirm the packaged application exposes its version.
 8. Runtime smoke check: starts `my-lastfm-player` unless `--noRun` was provided.

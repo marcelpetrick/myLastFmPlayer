@@ -24,6 +24,7 @@ IMPORT_OK=0
 OPEN_COVERAGE_OK=0
 OPEN_DOCS_OK=0
 LAUNCH_OK=0
+OPEN_REPORT_COMMAND=""
 
 print_usage() {
     cat <<EOF
@@ -44,6 +45,9 @@ Local project pipeline:
   12. Launch the installed application by default
       Use --noRun to suppress application launch
   13. Print a final stage-by-stage summary
+
+Generated HTML reports are opened with MY_LASTFM_PLAYER_REPORT_BROWSER when set,
+then firefox, then xdg-open, then open.
 EOF
 }
 
@@ -76,16 +80,42 @@ print_summary() {
 }
 
 detect_open_command() {
-    if command -v xdg-open >/dev/null 2>&1; then
-        printf '%s\n' "xdg-open"
-        return 0
+    if [[ -n "${MY_LASTFM_PLAYER_REPORT_BROWSER:-}" ]]; then
+        printf '%s\n' "${MY_LASTFM_PLAYER_REPORT_BROWSER}"
     fi
 
-    if command -v open >/dev/null 2>&1; then
-        printf '%s\n' "open"
-        return 0
+    printf '%s\n' "firefox"
+    printf '%s\n' "xdg-open"
+    printf '%s\n' "open"
+}
+
+open_html_report() {
+    local report_label="$1"
+    local report_path="$2"
+    local open_command=""
+
+    if [[ ! -f "${report_path}" ]]; then
+        warn "${report_label} was not found: ${report_path}"
+        return 1
     fi
 
+    log "${report_label}: ${report_path}"
+    while IFS= read -r open_command; do
+        if [[ -z "${open_command}" ]]; then
+            continue
+        fi
+        if ! command -v "${open_command}" >/dev/null 2>&1; then
+            continue
+        fi
+        log "Opening ${report_label} with '${open_command}'."
+        if "${open_command}" "${report_path}" >/dev/null 2>&1; then
+            OPEN_REPORT_COMMAND="${open_command}"
+            return 0
+        fi
+        warn "Could not open ${report_label} with '${open_command}'. Trying next opener."
+    done < <(detect_open_command)
+
+    warn "No supported opener could open ${report_label}. Open it manually at: ${report_path}"
     return 1
 }
 
@@ -145,48 +175,12 @@ run_tests_with_coverage() {
 
 open_coverage_report() {
     local coverage_index="${ROOT_DIR}/htmlcov/index.html"
-    local open_command=""
-
-    if [[ ! -f "${coverage_index}" ]]; then
-        warn "Coverage report was not found: ${coverage_index}"
-        return 1
-    fi
-
-    log "Coverage report: ${coverage_index}"
-    if open_command="$(detect_open_command)"; then
-        log "Opening coverage report with '${open_command}'."
-        if "${open_command}" "${coverage_index}" >/dev/null 2>&1; then
-            return 0
-        fi
-        warn "Could not open the generated coverage report automatically."
-        return 1
-    fi
-
-    warn "No supported opener was found. Open the coverage report manually at: ${coverage_index}"
-    return 1
+    open_html_report "Coverage report" "${coverage_index}"
 }
 
 open_sphinx_documentation() {
     local docs_index="${ROOT_DIR}/build/sphinx/html/index.html"
-    local open_command=""
-
-    if [[ ! -f "${docs_index}" ]]; then
-        warn "Sphinx documentation index was not found: ${docs_index}"
-        return 1
-    fi
-
-    log "Sphinx documentation: ${docs_index}"
-    if open_command="$(detect_open_command)"; then
-        log "Opening Sphinx documentation with '${open_command}'."
-        if "${open_command}" "${docs_index}" >/dev/null 2>&1; then
-            return 0
-        fi
-        warn "Could not open the generated Sphinx documentation automatically."
-        return 1
-    fi
-
-    warn "No supported opener was found. Open the Sphinx documentation manually at: ${docs_index}"
-    return 1
+    open_html_report "Sphinx documentation" "${docs_index}"
 }
 
 clean_package_artifacts() {
@@ -294,9 +288,10 @@ main() {
     fi
 
     if [[ "${SPHINX_OK}" -eq 1 ]]; then
+        OPEN_REPORT_COMMAND=""
         if open_sphinx_documentation; then
             OPEN_DOCS_OK=1
-            mark_result "Open Docs" "PASS" "Sphinx index.html was handed to the desktop opener"
+            mark_result "Open Docs" "PASS" "Sphinx index.html was handed to ${OPEN_REPORT_COMMAND}"
         else
             mark_result "Open Docs" "WARN" "Sphinx path was printed but auto-open was unavailable or failed"
         fi
@@ -305,9 +300,10 @@ main() {
     fi
 
     if [[ -f "${ROOT_DIR}/htmlcov/index.html" ]]; then
+        OPEN_REPORT_COMMAND=""
         if open_coverage_report; then
             OPEN_COVERAGE_OK=1
-            mark_result "Open Coverage" "PASS" "htmlcov/index.html was handed to the desktop opener"
+            mark_result "Open Coverage" "PASS" "htmlcov/index.html was handed to ${OPEN_REPORT_COMMAND}"
         else
             mark_result "Open Coverage" "WARN" "Coverage path was printed but auto-open was unavailable or failed"
         fi
