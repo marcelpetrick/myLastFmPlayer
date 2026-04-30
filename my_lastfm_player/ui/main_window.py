@@ -53,6 +53,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Ready")
 
     def set_application_title(self, version: str) -> None:
+        """Set the window title using the current application ``version``."""
+
         self.setWindowTitle(application_title(version))
 
     def _build_actions(self) -> None:
@@ -183,25 +185,35 @@ class MainWindow(QMainWindow):
         return panel
 
     def set_tracks(self, tracks: list[Track]) -> None:
+        """Replace the visible table contents with ``tracks``."""
+
         self.track_model.set_tracks(tracks)
         self.track_table.resizeRowsToContents()
         print(f"[myLastFmPlayer] Table now contains {len(tracks)} tracks", flush=True)
         self.show_status(f"Loaded {len(tracks)} tracks")
 
     def username(self) -> str:
+        """Return the trimmed Last.fm username currently entered by the user."""
+
         return self.username_input.text().strip()
 
     def set_fetch_enabled(self, enabled: bool) -> None:
+        """Enable or disable username entry and fetch actions."""
+
         self.fetch_button.setEnabled(enabled)
         self.username_input.setEnabled(enabled)
         self.refresh_action.setEnabled(enabled)
 
     def set_workflow_enabled(self, enabled: bool) -> None:
+        """Enable or disable controls that start long-running workflows."""
+
         self.set_fetch_enabled(enabled)
         self.download_toggle_button.setEnabled(enabled)
         self.concurrency_input.setEnabled(enabled)
 
     def set_dependency_status(self, is_ok: bool, message: str) -> None:
+        """Display dependency check status in the source panel."""
+
         self.dependency_label.setText(message)
         property_value = "ok" if is_ok else "missing"
         self.dependency_label.setProperty("status", property_value)
@@ -209,6 +221,8 @@ class MainWindow(QMainWindow):
         self.dependency_label.style().polish(self.dependency_label)
 
     def selected_track(self) -> Track | None:
+        """Return the selected track, or ``None`` when no row is selected."""
+
         selected_rows = self.track_table.selectionModel().selectedRows()
         if not selected_rows:
             return None
@@ -217,6 +231,8 @@ class MainWindow(QMainWindow):
         return self.track_model.track_at(source_index.row())
 
     def selected_track_row(self) -> int | None:
+        """Return the source-model row for the current selection."""
+
         selected_rows = self.track_table.selectionModel().selectedRows()
         if not selected_rows:
             return None
@@ -225,23 +241,33 @@ class MainWindow(QMainWindow):
         return source_index.row()
 
     def update_track(self, row: int, track: Track) -> None:
+        """Replace one visible row with ``track`` and update the status bar."""
+
         self.track_model.update_track(row, track)
         self.show_status(f"Updated {track.artist} - {track.title}: {track.status.value}")
 
     def tracks(self) -> list[Track]:
+        """Return a copy of the tracks currently visible in the table."""
+
         return self.track_model.tracks()
 
     def set_progress(self, value: int, label: str) -> None:
+        """Update the progress bar and status bar with bounded ``value``."""
+
         bounded_value = max(0, min(100, value))
         self.progress_bar.setValue(bounded_value)
         self.progress_bar.setFormat(label)
         self.show_status(label)
 
     def append_feedback(self, message: str) -> None:
+        """Append ``message`` to the feedback log and status bar."""
+
         self.feedback_log.appendPlainText(message)
         self.show_status(message)
 
     def show_status(self, message: str) -> None:
+        """Show ``message`` in the status bar and terminal log."""
+
         LOGGER.info("UI status: %s", message)
         print(f"[myLastFmPlayer] UI status: {message}", flush=True)
         self.statusBar().showMessage(message)
@@ -252,4 +278,6 @@ class MainWindow(QMainWindow):
 
 
 def application_title(version: str) -> str:
+    """Return the application title with ``version`` as a suffix."""
+
     return f"myLastFmPlayer v{version}"

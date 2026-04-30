@@ -17,36 +17,59 @@ class PlaybackError(RuntimeError):
 
 
 class PlaybackBackend(Protocol):
-    def play(self, path: Path) -> None: ...
+    """Backend protocol used by :class:`PlaybackService`."""
 
-    def pause(self) -> None: ...
+    def play(self, path: Path) -> None:
+        """Start playing the audio file at ``path``."""
 
-    def stop(self) -> None: ...
+        ...
+
+    def pause(self) -> None:
+        """Pause current playback."""
+
+        ...
+
+    def stop(self) -> None:
+        """Stop current playback."""
+
+        ...
 
 
 class QtPlaybackBackend:
+    """PyQt multimedia backend for local audio playback."""
+
     def __init__(self) -> None:
         self.audio_output = QAudioOutput()
         self.player = QMediaPlayer()
         self.player.setAudioOutput(self.audio_output)
 
     def play(self, path: Path) -> None:
+        """Start playing ``path`` through ``QMediaPlayer``."""
+
         self.player.setSource(QUrl.fromLocalFile(str(path)))
         self.player.play()
 
     def pause(self) -> None:
+        """Pause the Qt media player."""
+
         self.player.pause()
 
     def stop(self) -> None:
+        """Stop the Qt media player."""
+
         self.player.stop()
 
 
 class PlaybackService:
+    """Validate tracks and coordinate playback state transitions."""
+
     def __init__(self, backend: PlaybackBackend | None = None) -> None:
         self.backend = backend or QtPlaybackBackend()
         self.current_track: Track | None = None
 
     def play(self, track: Track) -> Track:
+        """Play ``track`` and return the same track marked as playing."""
+
         path = _validated_local_path(track)
         if self.current_track is not None and self.current_track.cache_key != track.cache_key:
             self.backend.stop()
@@ -59,6 +82,8 @@ class PlaybackService:
         return playing_track
 
     def pause(self) -> None:
+        """Pause the current track or raise ``PlaybackError`` when idle."""
+
         if self.current_track is None:
             raise PlaybackError("No track is currently playing")
         LOGGER.info(
@@ -70,6 +95,8 @@ class PlaybackService:
         self.backend.pause()
 
     def stop(self) -> Track | None:
+        """Stop playback and return the track restored to downloaded state."""
+
         if self.current_track is None:
             return None
         LOGGER.info(

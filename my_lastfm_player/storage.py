@@ -20,6 +20,8 @@ class StorageError(RuntimeError):
 
 
 class JsonTrackRepository:
+    """Repository that stores track lists and download cache data as JSON files."""
+
     def __init__(self, data_dir: Path | None = None, downloads_dir: Path | None = None) -> None:
         self.data_dir = data_dir or default_data_dir()
         self.downloads_dir = downloads_dir or self.data_dir / DEFAULT_DOWNLOADS_DIR
@@ -27,6 +29,8 @@ class JsonTrackRepository:
         self.cache_path = self.data_dir / CACHE_FILENAME
 
     def load_tracks(self, username: str) -> list[Track]:
+        """Load all stored tracks for ``username``."""
+
         path = self.user_tracks_path(username)
         if not path.exists():
             return []
@@ -38,18 +42,26 @@ class JsonTrackRepository:
         return [Track.from_dict(item) for item in data]
 
     def save_tracks(self, username: str, tracks: list[Track]) -> None:
+        """Atomically save ``tracks`` for ``username``."""
+
         path = self.user_tracks_path(username)
         _atomic_write_json(path, [track.to_dict() for track in tracks])
 
     def delete_tracks(self, username: str) -> None:
+        """Delete the stored track list for ``username`` if it exists."""
+
         path = self.user_tracks_path(username)
         if path.exists():
             path.unlink()
 
     def user_tracks_path(self, username: str) -> Path:
+        """Return the JSON path for ``username``."""
+
         return self.tracks_dir / f"{sanitize_path_component(username)}.json"
 
     def load_download_cache(self) -> dict[str, Track]:
+        """Load cached downloaded tracks keyed by cache key."""
+
         if not self.cache_path.exists():
             return {}
 
@@ -61,6 +73,8 @@ class JsonTrackRepository:
         return {track.cache_key: track for track in tracks}
 
     def save_download_cache(self, tracks: list[Track]) -> None:
+        """Persist downloaded tracks that have a local file path."""
+
         cached_tracks = [track for track in tracks if track.local_path]
         deduplicated = {track.cache_key: track for track in cached_tracks}
         sorted_tracks = sorted(deduplicated.values(), key=lambda item: item.cache_key)
@@ -70,6 +84,8 @@ class JsonTrackRepository:
         )
 
     def mark_cached_downloads(self, tracks: list[Track]) -> list[Track]:
+        """Return ``tracks`` with cached local download paths restored."""
+
         cache = self.load_download_cache()
         marked_tracks: list[Track] = []
         for track in tracks:
@@ -90,6 +106,8 @@ class JsonTrackRepository:
 
 
 def default_data_dir() -> Path:
+    """Return the XDG-style data directory used by default."""
+
     xdg_data_home = os.environ.get("XDG_DATA_HOME")
     if xdg_data_home:
         return Path(xdg_data_home) / APP_DIR_NAME
@@ -97,6 +115,8 @@ def default_data_dir() -> Path:
 
 
 def sanitize_path_component(value: str) -> str:
+    """Return ``value`` normalized for safe use as one path component."""
+
     safe_value = "".join(
         character if character.isalnum() or character in ".-_" else "_" for character in value
     )

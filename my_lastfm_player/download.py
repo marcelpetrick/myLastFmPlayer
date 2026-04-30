@@ -31,6 +31,8 @@ class DownloadError(RuntimeError):
 
 
 class DownloadManager:
+    """Download resolved tracks with retry, pause/resume, and progress reporting."""
+
     def __init__(
         self,
         command_runner: CommandRunner = subprocess.run,
@@ -50,10 +52,14 @@ class DownloadManager:
         self._resume_event.set()
 
     def pause(self) -> None:
+        """Pause the queue before the next retry or download starts."""
+
         LOGGER.info("Download queue paused")
         self._resume_event.clear()
 
     def resume(self) -> None:
+        """Resume a paused queue."""
+
         LOGGER.info("Download queue resumed")
         self._resume_event.set()
 
@@ -67,6 +73,8 @@ class DownloadManager:
         priority_cache_key: str | None = None,
         max_downloads: int | None = None,
     ) -> list[Track]:
+        """Load tracks, download eligible items, and persist results."""
+
         tracks = repository.mark_cached_downloads(repository.load_tracks(username))
         downloaded_tracks = self.download_tracks(
             tracks,
@@ -91,6 +99,8 @@ class DownloadManager:
         priority_cache_key: str | None = None,
         max_downloads: int | None = None,
     ) -> list[Track]:
+        """Download eligible tracks into ``downloads_dir`` and return updated tracks."""
+
         if concurrency < 1:
             raise ValueError("concurrency must be at least 1")
 

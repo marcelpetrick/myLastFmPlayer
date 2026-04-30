@@ -13,6 +13,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class FetchLovedTracksWorker(QObject):
+    """Qt worker that fetches Last.fm loved tracks on a background thread."""
+
     tracks_loaded = pyqtSignal(str, object)
     tracks_updated = pyqtSignal(str, object)
     progress = pyqtSignal(int, str)
@@ -32,6 +34,8 @@ class FetchLovedTracksWorker(QObject):
 
     @pyqtSlot()
     def run(self) -> None:
+        """Execute the fetch workflow and emit progress, track, and completion signals."""
+
         try:
             LOGGER.info("Worker started fetching loved tracks for %s", self.username)
             print(
@@ -84,6 +88,8 @@ class FetchLovedTracksWorker(QObject):
 
 
 class LookupTracksWorker(QObject):
+    """Qt worker that resolves stored tracks to YouTube URLs."""
+
     tracks_resolved = pyqtSignal(str, object)
     track_updated = pyqtSignal(str, object)
     progress = pyqtSignal(int, str)
@@ -107,6 +113,8 @@ class LookupTracksWorker(QObject):
 
     @pyqtSlot()
     def run(self) -> None:
+        """Execute YouTube lookup and emit per-track and final-result signals."""
+
         try:
             LOGGER.info("Worker started resolving YouTube URLs for %s", self.username)
             self.progress.emit(0, f"Resolving YouTube URLs for {self.username}")
@@ -132,6 +140,8 @@ class LookupTracksWorker(QObject):
 
 
 class DownloadTracksWorker(QObject):
+    """Qt worker that downloads resolved tracks on a background thread."""
+
     tracks_downloaded = pyqtSignal(str, object)
     track_updated = pyqtSignal(str, object)
     progress = pyqtSignal(int, str)
@@ -157,6 +167,8 @@ class DownloadTracksWorker(QObject):
 
     @pyqtSlot()
     def run(self) -> None:
+        """Execute downloads and emit progress, per-track updates, and final results."""
+
         try:
             LOGGER.info("Worker started downloading tracks for %s", self.username)
             print(

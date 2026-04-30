@@ -21,6 +21,8 @@ class YouTubeLookupError(RuntimeError):
 
 
 class YouTubeResolver:
+    """Resolve tracks to YouTube URLs by invoking ``yt-dlp`` search."""
+
     def __init__(
         self,
         command_runner: CommandRunner = subprocess.run,
@@ -30,9 +32,13 @@ class YouTubeResolver:
         self.executable = executable
 
     def build_query(self, track: Track) -> str:
+        """Return the search query used for ``track``."""
+
         return f"{track.artist} {track.title}"
 
     def resolve_track(self, track: Track) -> Track:
+        """Resolve one track and return a copy with its lookup status updated."""
+
         search_result = self.search_first_result(self.build_query(track))
         if search_result is None:
             return replace(track, youtube_url=None, status=TrackStatus.NOT_FOUND)
@@ -46,6 +52,8 @@ class YouTubeResolver:
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
     ) -> list[Track]:
+        """Resolve all eligible tracks and report progress and per-track updates."""
+
         resolved_tracks: list[Track] = []
         unresolved_indexes = [
             index for index, track in enumerate(tracks) if not track.youtube_url
@@ -95,6 +103,8 @@ class YouTubeResolver:
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
     ) -> list[Track]:
+        """Resolve stored tracks for ``username`` and persist the updated list."""
+
         tracks = repository.load_tracks(username)
         resolved_tracks = self.resolve_tracks(
             tracks,
@@ -111,6 +121,8 @@ class YouTubeResolver:
         return resolved_tracks
 
     def search_first_result(self, query: str) -> str | None:
+        """Return the first YouTube URL for ``query`` or ``None`` when no result exists."""
+
         command = [
             self.executable,
             "--dump-single-json",

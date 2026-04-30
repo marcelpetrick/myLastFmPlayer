@@ -44,11 +44,18 @@ class LastFmError(RuntimeError):
 
 
 class HttpSession(Protocol):
-    def get(self, url: str, *, timeout: int) -> requests.Response: ...
+    """Minimal HTTP session protocol used by the Last.fm fetcher."""
+
+    def get(self, url: str, *, timeout: int) -> requests.Response:
+        """Fetch ``url`` and return a ``requests``-compatible response."""
+
+        ...
 
 
 @dataclass(frozen=True, slots=True)
 class LovedTracksPage:
+    """Parsed Last.fm loved-track page plus pagination metadata."""
+
     tracks: list[Track]
     next_url: str | None
     total_tracks: int | None = None
@@ -56,12 +63,16 @@ class LovedTracksPage:
 
 @dataclass(frozen=True, slots=True)
 class FetchedHtmlPage:
+    """Fetched HTML document and the final response URL."""
+
     url: str
     html: str
 
 
 @dataclass(frozen=True, slots=True)
 class FetchProgress:
+    """Progress event emitted while fetching paginated loved tracks."""
+
     fetched_count: int
     message: str
     total_count: int | None = None
@@ -72,6 +83,8 @@ TracksCallback = Callable[[list[Track]], None]
 
 
 class LastFmLovedTracksFetcher:
+    """HTTP fetcher for Last.fm loved-track HTML pages."""
+
     def __init__(
         self,
         session: HttpSession | None = None,
@@ -87,11 +100,15 @@ class LastFmLovedTracksFetcher:
             self.session.headers.update(LASTFM_HEADERS)
 
     def loved_tracks_url(self, username: str) -> str:
+        """Build the loved-track URL for ``username``."""
+
         url = f"{self.base_url}/user/{quote(username, safe='')}/loved"
         _log_info("Recognized Last.fm user %s; loved-track URL is %s", username, url)
         return url
 
     def fetch_page(self, url: str) -> FetchedHtmlPage:
+        """Fetch one Last.fm HTML page with retry handling for transient errors."""
+
         attempts = max(1, self.retry_attempts)
         last_error: LastFmError | None = None
 
@@ -141,7 +158,11 @@ class LastFmLovedTracksFetcher:
 
 
 class LastFmLovedTracksParser:
+    """Parser for Last.fm loved-track HTML documents."""
+
     def parse(self, html: str, page_url: str) -> LovedTracksPage:
+        """Parse ``html`` into tracks, a next-page URL, and an optional total count."""
+
         _log_info("Parsing Last.fm loved-track HTML with BeautifulSoup: %s", page_url)
         soup = BeautifulSoup(html, "html.parser")
         tracks = [_parse_track_row(row, page_url) for row in _find_track_rows(soup)]
@@ -162,6 +183,8 @@ class LastFmLovedTracksParser:
 
 
 class LastFmLovedTracksScraper:
+    """High-level Last.fm scraper that fetches, parses, reports, and stores tracks."""
+
     def __init__(
         self,
         session: HttpSession | None = None,
@@ -181,6 +204,8 @@ class LastFmLovedTracksScraper:
         progress_callback: ProgressCallback | None = None,
         tracks_callback: TracksCallback | None = None,
     ) -> list[Track]:
+        """Fetch all loved-track pages for ``username`` and return cumulative tracks."""
+
         if not username:
             raise ValueError("Last.fm username must not be empty")
         if max_pages is not None and max_pages < 1:
@@ -264,6 +289,8 @@ class LastFmLovedTracksScraper:
         progress_callback: ProgressCallback | None = None,
         tracks_callback: TracksCallback | None = None,
     ) -> list[Track]:
+        """Fetch loved tracks for ``username`` and save them in ``repository``."""
+
         tracks = self.fetch_loved_tracks(
             username,
             max_pages=max_pages,
@@ -275,10 +302,14 @@ class LastFmLovedTracksScraper:
         return tracks
 
     def loved_tracks_url(self, username: str) -> str:
+        """Return the loved-track URL for ``username``."""
+
         return self.fetcher.loved_tracks_url(username)
 
 
 def parse_loved_tracks_page(html: str, page_url: str) -> LovedTracksPage:
+    """Parse one loved-track HTML page without constructing a scraper."""
+
     return LastFmLovedTracksParser().parse(html, page_url)
 
 

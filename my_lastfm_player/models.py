@@ -7,6 +7,8 @@ from typing import Any
 
 
 class TrackStatus(StrEnum):
+    """Track lifecycle states used by fetch, lookup, download, and playback workflows."""
+
     FETCHED = "Fetched"
     QUEUED = "Queued"
     SEARCHING = "Searching"
@@ -25,6 +27,8 @@ CACHE_KEY_SEPARATOR = "\x1f"
 
 @dataclass(frozen=True, slots=True)
 class Track:
+    """Immutable representation of one Last.fm track and its local processing state."""
+
     artist: str
     title: str
     lastfm_url: str | None = None
@@ -44,19 +48,29 @@ class Track:
 
     @property
     def cache_key(self) -> str:
+        """Return the stable key used for persistence and cache lookups."""
+
         return build_track_cache_key(self.artist, self.title)
 
     @property
     def mp3_filename(self) -> str:
+        """Return the sanitized MP3 filename used for downloads."""
+
         return build_mp3_filename(self.artist, self.title)
 
     def with_status(self, status: TrackStatus, error: str | None = None) -> Track:
+        """Return a copy with ``status`` and an optional error message applied."""
+
         return replace(self, status=status, error=error)
 
     def increment_retry(self, error: str | None = None) -> Track:
+        """Return a copy with the retry count increased by one."""
+
         return replace(self, retry_count=self.retry_count + 1, error=error)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize the track to a JSON-compatible dictionary."""
+
         return {
             "artist": self.artist,
             "title": self.title,
@@ -70,6 +84,8 @@ class Track:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Track:
+        """Deserialize a track from persisted JSON data."""
+
         status = _parse_status(data.get("status", TrackStatus.FETCHED.value))
         return cls(
             artist=_require_string(data, "artist"),
@@ -84,10 +100,14 @@ class Track:
 
 
 def build_track_cache_key(artist: str, title: str) -> str:
+    """Build the exact cache key for ``artist`` and ``title``."""
+
     return f"{artist}{CACHE_KEY_SEPARATOR}{title}"
 
 
 def build_mp3_filename(artist: str, title: str) -> str:
+    """Build a safe MP3 filename for ``artist`` and ``title``."""
+
     base_name = sanitize_filename_part(f"{artist} - {title}")
     filename = f"{base_name}.mp3"
     if len(filename) <= MAX_FILENAME_LENGTH:
@@ -98,6 +118,8 @@ def build_mp3_filename(artist: str, title: str) -> str:
 
 
 def sanitize_filename_part(value: str) -> str:
+    """Sanitize one filename component and return a non-empty fallback if needed."""
+
     safe_value = COLLAPSED_WHITESPACE.sub(" ", value)
     safe_value = INVALID_FILENAME_CHARS.sub("_", safe_value)
     safe_value = safe_value.strip(" .")

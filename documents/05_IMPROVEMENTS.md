@@ -6,10 +6,12 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 0. fetching loved tracks updates the table after each paginated Last.fm page and reports progress in the status bar.
 * fixed: 1. the application window title reports the current version as a suffix.
 * fixed: 2. lookup and download workflows update the table row by row as each track changes state.
+* 5. make it possible to pause and also to stop the fetching projects. of the tracks. like add a pause and a stop button. with tooltips to the ui. near the fetch button. should be self explainining,. while no fetch is runing, those are disabled. when fetch is active then make the enabled too. when pressing pause, the user can resume. when pressing stop, the whole fetching is topped. tie this to the backend. and prepare unit.testing for that too.
+
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.
-* 4. fix the documentation of all classes. make it fitting for senior developer. document the signatures of public methods, etc. the sphinx/doxgen run shall be error free.
+* fixed: 4. public classes, functions, and methods have Sphinx-readable API documentation, and the Sphinx run is warning-free.
 
 ## UI design
 * switch to use qml isntead of a widget based app? benefits

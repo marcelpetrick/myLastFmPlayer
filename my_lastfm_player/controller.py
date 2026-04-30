@@ -38,6 +38,8 @@ WorkflowWorker = FetchLovedTracksWorker | LookupTracksWorker | DownloadTracksWor
 
 
 class ApplicationController(QObject):
+    """Coordinate UI events, background workers, persistence, and playback."""
+
     def __init__(
         self,
         window: MainWindow,
@@ -69,11 +71,15 @@ class ApplicationController(QObject):
 
     @property
     def playback_service(self) -> PlaybackService:
+        """Return the playback service, creating the Qt backend only when needed."""
+
         if self._playback_service is None:
             self._playback_service = PlaybackService()
         return self._playback_service
 
     def start(self) -> None:
+        """Connect UI signals and run the startup dependency check."""
+
         LOGGER.info("Starting application controller")
         print("[myLastFmPlayer] Starting application controller", flush=True)
         self.window.fetch_requested.connect(self.fetch_loved_tracks)
@@ -84,6 +90,8 @@ class ApplicationController(QObject):
         self.check_dependencies()
 
     def check_dependencies(self) -> DependencyCheckResult:
+        """Check external tools and update dependency status in the window."""
+
         result = self.dependency_checker()
         LOGGER.info(
             "Dependency check result: installed=%s missing=%s",
@@ -96,6 +104,8 @@ class ApplicationController(QObject):
         return result
 
     def fetch_loved_tracks(self) -> None:
+        """Start fetching loved tracks for the username entered in the UI."""
+
         username = self.window.username()
         if not username:
             LOGGER.warning("Fetch requested without a Last.fm username")
@@ -115,6 +125,8 @@ class ApplicationController(QObject):
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
     ) -> None:
+        """Start resolving YouTube URLs for stored tracks."""
+
         username = username or self.window.username()
         if not username:
             LOGGER.warning("Lookup requested without a Last.fm username")
@@ -139,6 +151,8 @@ class ApplicationController(QObject):
         priority_cache_key: str | None = None,
         max_downloads: int | None = None,
     ) -> None:
+        """Start downloading queued tracks for the active or supplied username."""
+
         username = username or self.window.username()
         if not username:
             LOGGER.warning("Download requested without a Last.fm username")
@@ -168,6 +182,8 @@ class ApplicationController(QObject):
         self._run_worker(worker)
 
     def play_selected_track(self) -> None:
+        """Play the selected track or prepare it for playback when needed."""
+
         selected_row = self.window.selected_track_row()
         selected_track = self.window.selected_track()
         if selected_row is None or selected_track is None:
@@ -177,6 +193,8 @@ class ApplicationController(QObject):
         self._play_track(selected_row, selected_track)
 
     def pause_playback(self) -> None:
+        """Pause active playback and show the result in the feedback log."""
+
         try:
             self.playback_service.pause()
         except PlaybackError as error:
@@ -185,6 +203,8 @@ class ApplicationController(QObject):
         self.window.append_feedback("Playback paused.")
 
     def stop_playback(self) -> None:
+        """Stop active playback and persist the restored downloaded state."""
+
         stopped_track = self.playback_service.stop()
         if stopped_track is None:
             self.window.append_feedback("No track is currently playing.")
