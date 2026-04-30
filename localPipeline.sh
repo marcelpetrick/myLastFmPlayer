@@ -15,12 +15,14 @@ INSTALL_OK=0
 LINT_OK=0
 DOCS_OK=0
 TESTS_OK=0
+SPHINX_OK=0
 CLEAN_OK=0
 BUILD_OK=0
 WHEEL_OK=0
 PACKAGE_INSTALL_OK=0
 IMPORT_OK=0
 OPEN_COVERAGE_OK=0
+OPEN_DOCS_OK=0
 LAUNCH_OK=0
 
 print_usage() {
@@ -32,15 +34,16 @@ Local project pipeline:
   2. Install the project with development dependencies
   3. Run Ruff linting
   4. Check required documentation
-  5. Run pytest with coverage and generate htmlcov/index.html
-  6. Open the generated coverage report when possible
-  7. Remove stale package build artifacts
-  8. Build source and wheel distributions
-  9. Install the freshly built wheel
-  10. Verify that the installed package imports and exposes its version
-  11. Launch the installed application by default
+  5. Build Sphinx documentation with warnings treated as errors
+  6. Run pytest with coverage and generate htmlcov/index.html
+  7. Open generated HTML reports when possible
+  8. Remove stale package build artifacts
+  9. Build source and wheel distributions
+  10. Install the freshly built wheel
+  11. Verify that the installed package imports and exposes its version
+  12. Launch the installed application by default
       Use --noRun to suppress application launch
-  12. Print a final stage-by-stage summary
+  13. Print a final stage-by-stage summary
 EOF
 }
 
@@ -127,10 +130,12 @@ run_lint() {
 
 run_documentation_check() {
     log "Checking required documentation."
-    # TEMPORARY BYPASS: documentation checks are intentionally invalidated.
-    # Re-enable this gate by restoring: "${PYTHON}" tools/check_docs.py
-    warn "Documentation checks are currently bypassed."
-    return 0
+    "${PYTHON}" tools/check_docs.py
+}
+
+build_sphinx_documentation() {
+    log "Building Sphinx documentation."
+    "${PYTHON}" -m sphinx -W --keep-going -b html "${ROOT_DIR}/docs" "${ROOT_DIR}/build/sphinx/html"
 }
 
 run_tests_with_coverage() {
@@ -158,6 +163,29 @@ open_coverage_report() {
     fi
 
     warn "No supported opener was found. Open the coverage report manually at: ${coverage_index}"
+    return 1
+}
+
+open_sphinx_documentation() {
+    local docs_index="${ROOT_DIR}/build/sphinx/html/index.html"
+    local open_command=""
+
+    if [[ ! -f "${docs_index}" ]]; then
+        warn "Sphinx documentation index was not found: ${docs_index}"
+        return 1
+    fi
+
+    log "Sphinx documentation: ${docs_index}"
+    if open_command="$(detect_open_command)"; then
+        log "Opening Sphinx documentation with '${open_command}'."
+        if "${open_command}" "${docs_index}" >/dev/null 2>&1; then
+            return 0
+        fi
+        warn "Could not open the generated Sphinx documentation automatically."
+        return 1
+    fi
+
+    warn "No supported opener was found. Open the Sphinx documentation manually at: ${docs_index}"
     return 1
 }
 
@@ -240,9 +268,16 @@ main() {
 
         if run_documentation_check; then
             DOCS_OK=1
-            mark_result "Docs" "WARN" "Documentation checks are temporarily bypassed"
+            mark_result "Docs" "PASS" "Required documentation checks completed"
         else
             mark_result "Docs" "FAIL" "Documentation checks failed"
+        fi
+
+        if build_sphinx_documentation; then
+            SPHINX_OK=1
+            mark_result "Sphinx" "PASS" "HTML documentation built with warnings as errors"
+        else
+            mark_result "Sphinx" "FAIL" "Sphinx documentation build failed"
         fi
 
         if run_tests_with_coverage; then
@@ -254,7 +289,19 @@ main() {
     else
         mark_result "Ruff" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Docs" "SKIP" "Skipped because dependencies are unavailable"
+        mark_result "Sphinx" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Tests+Coverage" "SKIP" "Skipped because dependencies are unavailable"
+    fi
+
+    if [[ "${SPHINX_OK}" -eq 1 ]]; then
+        if open_sphinx_documentation; then
+            OPEN_DOCS_OK=1
+            mark_result "Open Docs" "PASS" "Sphinx index.html was handed to the desktop opener"
+        else
+            mark_result "Open Docs" "WARN" "Sphinx path was printed but auto-open was unavailable or failed"
+        fi
+    else
+        mark_result "Open Docs" "SKIP" "Skipped because Sphinx documentation was not generated"
     fi
 
     if [[ -f "${ROOT_DIR}/htmlcov/index.html" ]]; then
@@ -268,7 +315,7 @@ main() {
         mark_result "Open Coverage" "SKIP" "Skipped because coverage was not generated"
     fi
 
-    if [[ "${LINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${TESTS_OK}" -eq 1 ]]; then
+    if [[ "${LINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 ]]; then
         if clean_package_artifacts; then
             CLEAN_OK=1
             mark_result "Clean Build" "PASS" "Stale package artifacts removed"
@@ -324,7 +371,7 @@ main() {
         mark_result "Import Check" "SKIP" "Skipped because wheel install failed"
     fi
 
-    if [[ "${VENV_OK}" -eq 1 && "${INSTALL_OK}" -eq 1 && "${LINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${TESTS_OK}" -eq 1 && "${CLEAN_OK}" -eq 1 && "${BUILD_OK}" -eq 1 && "${WHEEL_OK}" -eq 1 && "${PACKAGE_INSTALL_OK}" -eq 1 && "${IMPORT_OK}" -eq 1 ]]; then
+    if [[ "${VENV_OK}" -eq 1 && "${INSTALL_OK}" -eq 1 && "${LINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 && "${CLEAN_OK}" -eq 1 && "${BUILD_OK}" -eq 1 && "${WHEEL_OK}" -eq 1 && "${PACKAGE_INSTALL_OK}" -eq 1 && "${IMPORT_OK}" -eq 1 ]]; then
         exit_code=0
     fi
 

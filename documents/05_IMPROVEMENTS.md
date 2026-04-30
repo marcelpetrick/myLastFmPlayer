@@ -8,8 +8,8 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 2. lookup and download workflows update the table row by row as each track changes state.
 
 ## Documentation
-* 3. Doxygen or Sphinx docu shal be configured. What is more fitting for a Python project? make a choice. then configure it. add this to the local pipeline too
-* 4. fix the documentation of all classes. make it fitting for asenior developer. document the signatures of public methods, etc. the sphinx/doxgen run shall be error free.
+* fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.
+* 4. fix the documentation of all classes. make it fitting for senior developer. document the signatures of public methods, etc. the sphinx/doxgen run shall be error free.
 
 ## UI design
 * switch to use qml isntead of a widget based app? benefits

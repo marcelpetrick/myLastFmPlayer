@@ -6,9 +6,9 @@
 
 **Note: projected is generated with AI.**
 
-**License: GPLv3. See `LICENSE`.**
+**License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `00.00.25` - work in progress; tons of features are not implemented
+Current version: `00.00.26` - work in progress; tons of features are not implemented
 
 ## Current state
 
