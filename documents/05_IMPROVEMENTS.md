@@ -9,7 +9,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Documentation
 * 3. Doxygen or Sphinx docu shal be configured. What is more fitting for a Python project? make a choice. then configure it. add this to the local pipeline too
-* 4. fix the documentation of all classes. make it fitting for asenior developer. document the signatures of public methods, etc. the sphinx/doxgen run shall be error free. 
+* 4. fix the documentation of all classes. make it fitting for asenior developer. document the signatures of public methods, etc. the sphinx/doxgen run shall be error free.
 
 ## UI design
 * switch to use qml isntead of a widget based app? benefits

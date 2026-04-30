@@ -147,7 +147,7 @@ open_coverage_report() {
     log "Coverage report: ${coverage_index}"
     if open_command="$(detect_open_command)"; then
         log "Opening coverage report with '${open_command}'."
-        if "${open_command}" "${coverage_index}"; then
+        if "${open_command}" "${coverage_index}" >/dev/null 2>&1; then
             return 0
         fi
         warn "Could not open the generated coverage report automatically."
