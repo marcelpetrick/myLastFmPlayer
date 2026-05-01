@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `00.00.30` - work in progress; tons of features are not implemented
+Current version: `00.00.31` - work in progress; tons of features are not implemented
 
 ## Current state
 
@@ -160,6 +160,12 @@ The shared download cache is stored here:
 
 ```text
 ~/.local/share/myLastFmPlayer/download-cache.json
+```
+
+The shared YouTube lookup cache is stored here:
+
+```text
+~/.local/share/myLastFmPlayer/lookup-cache.json
 ```
 
 If `XDG_DATA_HOME` is set, the base directory changes to:

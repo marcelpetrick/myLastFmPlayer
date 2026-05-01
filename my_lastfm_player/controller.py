@@ -85,6 +85,9 @@ class ApplicationController(QObject):
         LOGGER.info("Starting application controller")
         print("[myLastFmPlayer] Starting application controller", flush=True)
         self.window.fetch_requested.connect(self.fetch_loved_tracks)
+        self.window.username_input.editingFinished.connect(
+            self.load_cached_tracks_for_entered_username
+        )
         self.window.fetch_pause_requested.connect(self.toggle_fetch_pause)
         self.window.fetch_stop_requested.connect(self.stop_fetch)
         self.window.download_requested.connect(self.download_tracks)
@@ -92,6 +95,27 @@ class ApplicationController(QObject):
         self.window.pause_requested.connect(self.pause_playback)
         self.window.stop_requested.connect(self.stop_playback)
         self.check_dependencies()
+
+    def load_cached_tracks_for_entered_username(self) -> bool:
+        """Load locally stored tracks for the entered username when available."""
+
+        username = self.window.username()
+        if not username:
+            return False
+
+        tracks = self.repository.load_tracks(username)
+        if not tracks:
+            return False
+
+        tracks = self.repository.mark_cached_downloads(
+            self.repository.mark_cached_lookups(tracks)
+        )
+        self.repository.save_tracks(username, tracks)
+        self.window.set_tracks(tracks)
+        self.window.append_feedback(
+            f"Loaded {len(tracks)} cached tracks for {username}; skipped Last.fm fetch."
+        )
+        return True
 
     def check_dependencies(self) -> DependencyCheckResult:
         """Check external tools and update dependency status in the window."""
@@ -114,6 +138,11 @@ class ApplicationController(QObject):
         if not username:
             LOGGER.warning("Fetch requested without a Last.fm username")
             self.window.append_feedback("Enter a Last.fm username before fetching tracks.")
+            return
+
+        if self.load_cached_tracks_for_entered_username():
+            self.window.set_fetch_control_state(active=False, paused=False)
+            self.window.set_progress(100, "Loaded cached tracks")
             return
 
         LOGGER.info("Fetch requested for Last.fm user %s", username)

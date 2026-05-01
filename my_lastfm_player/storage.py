@@ -12,6 +12,7 @@ from my_lastfm_player.models import Track, TrackStatus
 APP_DIR_NAME = "myLastFmPlayer"
 TRACKS_DIR_NAME = "tracks"
 CACHE_FILENAME = "download-cache.json"
+LOOKUP_CACHE_FILENAME = "lookup-cache.json"
 DEFAULT_DOWNLOADS_DIR = "downloads"
 
 
@@ -27,6 +28,7 @@ class JsonTrackRepository:
         self.downloads_dir = downloads_dir or self.data_dir / DEFAULT_DOWNLOADS_DIR
         self.tracks_dir = self.data_dir / TRACKS_DIR_NAME
         self.cache_path = self.data_dir / CACHE_FILENAME
+        self.lookup_cache_path = self.data_dir / LOOKUP_CACHE_FILENAME
 
     def load_tracks(self, username: str) -> list[Track]:
         """Load all stored tracks for ``username``."""
@@ -102,6 +104,74 @@ class JsonTrackRepository:
                     error=None,
                 )
             )
+        return marked_tracks
+
+    def load_lookup_cache(self) -> dict[str, Track]:
+        """Load cached YouTube lookup results keyed by cache key."""
+
+        if not self.lookup_cache_path.exists():
+            return {}
+
+        data = _read_json_file(self.lookup_cache_path)
+        if not isinstance(data, list):
+            raise StorageError(
+                f"{self.lookup_cache_path} must contain a JSON array of cached lookups"
+            )
+
+        tracks = [Track.from_dict(item) for item in data]
+        return {track.cache_key: track for track in tracks}
+
+    def save_lookup_cache(self, tracks: list[Track]) -> None:
+        """Persist tracks with resolved or known-missing YouTube lookup state."""
+
+        existing_cache = self.load_lookup_cache()
+        lookup_tracks = [
+            track
+            for track in tracks
+            if track.youtube_url or track.status is TrackStatus.NOT_FOUND
+        ]
+        merged_cache = {**existing_cache, **{track.cache_key: track for track in lookup_tracks}}
+        sorted_tracks = sorted(merged_cache.values(), key=lambda item: item.cache_key)
+        _atomic_write_json(
+            self.lookup_cache_path,
+            [track.to_dict() for track in sorted_tracks],
+        )
+
+    def mark_cached_lookups(self, tracks: list[Track]) -> list[Track]:
+        """Return ``tracks`` with cached YouTube lookup results restored."""
+
+        cache = self.load_lookup_cache()
+        marked_tracks: list[Track] = []
+        for track in tracks:
+            cached_track = cache.get(track.cache_key)
+            if cached_track is None:
+                marked_tracks.append(track)
+                continue
+            if cached_track.youtube_url:
+                marked_tracks.append(
+                    replace(
+                        track,
+                        youtube_url=track.youtube_url or cached_track.youtube_url,
+                        status=(
+                            track.status
+                            if track.status is TrackStatus.DOWNLOADED
+                            else TrackStatus.QUEUED
+                        ),
+                        error=None,
+                    )
+                )
+                continue
+            if cached_track.status is TrackStatus.NOT_FOUND:
+                marked_tracks.append(
+                    replace(
+                        track,
+                        youtube_url=None,
+                        status=TrackStatus.NOT_FOUND,
+                        error=cached_track.error,
+                    )
+                )
+                continue
+            marked_tracks.append(track)
         return marked_tracks
 
 

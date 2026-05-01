@@ -56,7 +56,9 @@ class YouTubeResolver:
 
         resolved_tracks: list[Track] = []
         unresolved_indexes = [
-            index for index, track in enumerate(tracks) if not track.youtube_url
+            index
+            for index, track in enumerate(tracks)
+            if not track.youtube_url and track.status is not TrackStatus.NOT_FOUND
         ]
         unresolved_indexes = _prioritize_indexes(
             unresolved_indexes,
@@ -105,7 +107,7 @@ class YouTubeResolver:
     ) -> list[Track]:
         """Resolve stored tracks for ``username`` and persist the updated list."""
 
-        tracks = repository.load_tracks(username)
+        tracks = repository.mark_cached_lookups(repository.load_tracks(username))
         resolved_tracks = self.resolve_tracks(
             tracks,
             progress_callback=progress_callback,
@@ -118,6 +120,7 @@ class YouTubeResolver:
             repository.load_tracks(username),
         )
         repository.save_tracks(username, resolved_tracks)
+        repository.save_lookup_cache(resolved_tracks)
         return resolved_tracks
 
     def search_first_result(self, query: str) -> str | None:

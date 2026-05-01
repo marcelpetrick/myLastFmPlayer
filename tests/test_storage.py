@@ -8,6 +8,7 @@ import pytest
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import (
     CACHE_FILENAME,
+    LOOKUP_CACHE_FILENAME,
     TRACKS_DIR_NAME,
     JsonTrackRepository,
     StorageError,
@@ -150,6 +151,33 @@ def test_mark_cached_downloads_keeps_existing_youtube_url(tmp_path: Path) -> Non
     )[0]
 
     assert marked_track.youtube_url == "https://youtube.example/watch?v=current"
+
+
+def test_lookup_cache_restores_resolved_and_missing_tracks(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    resolved = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtube.example/watch?v=abc",
+        status=TrackStatus.QUEUED,
+    )
+    missing = Track(artist="Missing", title="Track", status=TrackStatus.NOT_FOUND)
+
+    repository.save_lookup_cache([resolved, missing, Track(artist="Uncached", title="Track")])
+
+    marked_tracks = repository.mark_cached_lookups(
+        [
+            Track(artist="Artist", title="Title", status=TrackStatus.FETCHED),
+            Track(artist="Missing", title="Track", status=TrackStatus.FETCHED),
+            Track(artist="Other", title="Track", status=TrackStatus.FETCHED),
+        ]
+    )
+
+    assert (tmp_path / LOOKUP_CACHE_FILENAME).is_file()
+    assert marked_tracks[0].youtube_url == "https://youtube.example/watch?v=abc"
+    assert marked_tracks[0].status == TrackStatus.QUEUED
+    assert marked_tracks[1].status == TrackStatus.NOT_FOUND
+    assert marked_tracks[2].status == TrackStatus.FETCHED
 
 
 def test_atomic_write_replaces_existing_json_without_temp_files(tmp_path: Path) -> None:

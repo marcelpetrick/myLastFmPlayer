@@ -139,6 +139,15 @@ def test_resolve_tracks_skips_tracks_that_already_have_youtube_urls() -> None:
     assert runner.commands == []
 
 
+def test_resolve_tracks_skips_cached_not_found_tracks() -> None:
+    runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=new"}))
+    resolver = YouTubeResolver(command_runner=runner)
+    missing = Track(artist="Artist", title="Title", status=TrackStatus.NOT_FOUND)
+
+    assert resolver.resolve_tracks([missing]) == [missing]
+    assert runner.commands == []
+
+
 def test_resolve_tracks_prioritizes_and_limits_selected_track() -> None:
     runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=new"}))
     resolver = YouTubeResolver(command_runner=runner)
@@ -181,6 +190,34 @@ def test_resolve_and_store_tracks_persists_results(tmp_path: Path) -> None:
 
     assert tracks == repository.load_tracks("example")
     assert repository.load_tracks("example")[0].youtube_url == "https://youtube.example/watch?v=abc"
+    assert repository.load_lookup_cache()[tracks[0].cache_key].youtube_url == (
+        "https://youtube.example/watch?v=abc"
+    )
+
+
+def test_resolve_and_store_tracks_uses_lookup_cache(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(artist="Artist", title="Title")
+    repository.save_tracks("example", [track])
+    repository.save_lookup_cache(
+        [
+            Track(
+                artist="Artist",
+                title="Title",
+                youtube_url="https://youtube.example/watch?v=cached",
+                status=TrackStatus.QUEUED,
+            )
+        ]
+    )
+    runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=new"}))
+
+    tracks = YouTubeResolver(command_runner=runner).resolve_and_store_tracks("example", repository)
+
+    assert runner.commands == []
+    assert tracks[0].youtube_url == "https://youtube.example/watch?v=cached"
+    assert repository.load_tracks("example")[0].youtube_url == (
+        "https://youtube.example/watch?v=cached"
+    )
 
 
 def test_resolve_and_store_tracks_keeps_existing_download_state(tmp_path: Path) -> None:

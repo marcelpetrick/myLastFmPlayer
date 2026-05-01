@@ -43,6 +43,36 @@ def test_controller_rejects_empty_username(qapp) -> None:
     assert "Enter a Last.fm username" in window.feedback_log.toPlainText()
 
 
+def test_controller_loads_cached_tracks_without_fetching(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("example")
+    cached_track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtube.example/watch?v=cached",
+        status=TrackStatus.QUEUED,
+    )
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks("example", [cached_track])
+    fetch_calls: list[str] = []
+
+    def fail_fetch_factory(*_args):
+        fetch_calls.append("fetch")
+        raise AssertionError("web fetch should not start when cached tracks exist")
+
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        fetch_worker_factory=fail_fetch_factory,  # type: ignore[arg-type]
+    )
+
+    controller.fetch_loved_tracks()
+
+    assert fetch_calls == []
+    assert window.tracks() == [cached_track]
+    assert "Loaded 1 cached tracks for example" in window.feedback_log.toPlainText()
+
+
 def test_controller_rejects_empty_username_for_lookup(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)
