@@ -6,6 +6,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import replace
 from typing import Any
 
+from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 
@@ -82,7 +83,14 @@ class YouTubeResolver:
             _report(
                 progress_callback,
                 _percent(resolved_count - 1, total_to_resolve),
-                f"Searching {resolved_count}/{total_to_resolve}: {track.artist} - {track.title}",
+                translate(
+                    "YouTubeResolver",
+                    "Searching {done}/{total}: {artist} - {title}",
+                    done=resolved_count,
+                    total=total_to_resolve,
+                    artist=track.artist,
+                    title=track.title,
+                ),
             )
             searching_track = replace(track, status=TrackStatus.SEARCHING)
             _report_track_update(track_update_callback, searching_track)
@@ -213,8 +221,22 @@ def _percent(done: int, total: int) -> int:
 
 def _resolved_message(done: int, total: int, track: Track) -> str:
     if track.youtube_url:
-        return f"Resolved {done}/{total}: {track.artist} - {track.title}"
-    return f"No YouTube result {done}/{total}: {track.artist} - {track.title}"
+        return translate(
+            "YouTubeResolver",
+            "Resolved {done}/{total}: {artist} - {title}",
+            done=done,
+            total=total,
+            artist=track.artist,
+            title=track.title,
+        )
+    return translate(
+        "YouTubeResolver",
+        "No YouTube result {done}/{total}: {artist} - {title}",
+        done=done,
+        total=total,
+        artist=track.artist,
+        title=track.title,
+    )
 
 
 def _report(

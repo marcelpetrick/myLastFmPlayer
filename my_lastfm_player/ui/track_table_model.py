@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt6.QtCore import QAbstractTableModel, QCoreApplication, QModelIndex, Qt
 
 from my_lastfm_player.models import Track, TrackStatus
 
@@ -50,7 +50,7 @@ class TrackTableModel(QAbstractTableModel):
         """Return horizontal header labels for display roles."""
 
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
-            return self.HEADERS[section]
+            return self.tr(self.HEADERS[section])
         return None
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
@@ -94,19 +94,37 @@ class TrackTableModel(QAbstractTableModel):
             case 1:
                 return track.title
             case 2:
-                return track.status.value
+                return self.tr(track.status.value)
             case _:
                 return None
+
+    def retranslate(self) -> None:
+        """Notify views that translated headers and status labels changed."""
+
+        if self.columnCount() > 0:
+            self.headerDataChanged.emit(
+                Qt.Orientation.Horizontal,
+                0,
+                self.columnCount() - 1,
+            )
+        if self.rowCount() > 0:
+            top_left = self.index(0, 0)
+            bottom_right = self.index(self.rowCount() - 1, self.columnCount() - 1)
+            self.dataChanged.emit(top_left, bottom_right, [Qt.ItemDataRole.DisplayRole])
 
 
 def example_tracks() -> list[Track]:
     """Return placeholder tracks used before real data is loaded."""
 
     return [
-        Track(artist="Example Artist", title="Example Track", status=TrackStatus.FETCHED),
         Track(
-            artist="Another Artist",
-            title="Waiting for implementation",
+            artist=QCoreApplication.translate("TrackTableModel", "Example Artist"),
+            title=QCoreApplication.translate("TrackTableModel", "Example Track"),
+            status=TrackStatus.FETCHED,
+        ),
+        Track(
+            artist=QCoreApplication.translate("TrackTableModel", "Another Artist"),
+            title=QCoreApplication.translate("TrackTableModel", "Waiting for implementation"),
             status=TrackStatus.QUEUED,
         ),
     ]

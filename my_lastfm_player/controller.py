@@ -7,6 +7,7 @@ from PyQt6.QtCore import QObject, QThread
 
 from my_lastfm_player.dependencies import DependencyCheckResult, check_external_dependencies
 from my_lastfm_player.download import DownloadManager
+from my_lastfm_player.i18n import translate
 from my_lastfm_player.lastfm import LastFmLovedTracksScraper
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.playback import PlaybackError, PlaybackService
@@ -113,7 +114,12 @@ class ApplicationController(QObject):
         self.repository.save_tracks(username, tracks)
         self.window.set_tracks(tracks)
         self.window.append_feedback(
-            f"Loaded {len(tracks)} cached tracks for {username}; skipped Last.fm fetch."
+            translate(
+                "ApplicationController",
+                "Loaded {count} cached tracks for {username}; skipped Last.fm fetch.",
+                count=len(tracks),
+                username=username,
+            )
         )
         return True
 
@@ -137,12 +143,20 @@ class ApplicationController(QObject):
         username = self.window.username()
         if not username:
             LOGGER.warning("Fetch requested without a Last.fm username")
-            self.window.append_feedback("Enter a Last.fm username before fetching tracks.")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Enter a Last.fm username before fetching tracks.",
+                )
+            )
             return
 
         if self.load_cached_tracks_for_entered_username():
             self.window.set_fetch_control_state(active=False, paused=False)
-            self.window.set_progress(100, "Loaded cached tracks")
+            self.window.set_progress(
+                100,
+                translate("ApplicationController", "Loaded cached tracks"),
+            )
             return
 
         LOGGER.info("Fetch requested for Last.fm user %s", username)
@@ -150,7 +164,7 @@ class ApplicationController(QObject):
         self.window.set_workflow_enabled(False)
         self.window.set_fetch_control_state(active=True, paused=False)
         self._fetch_paused = False
-        self.window.set_progress(0, "Starting fetch")
+        self.window.set_progress(0, translate("ApplicationController", "Starting fetch"))
         worker = self.fetch_worker_factory(username, self.scraper, self.repository)
         self._active_fetch_worker = worker
         self._run_worker(worker)
@@ -164,12 +178,12 @@ class ApplicationController(QObject):
             self._active_fetch_worker.resume_fetch()
             self._fetch_paused = False
             self.window.set_fetch_control_state(active=True, paused=False)
-            self.window.append_feedback("Fetch resumed.")
+            self.window.append_feedback(translate("ApplicationController", "Fetch resumed."))
             return
         self._active_fetch_worker.pause_fetch()
         self._fetch_paused = True
         self.window.set_fetch_control_state(active=True, paused=True)
-        self.window.append_feedback("Fetch paused.")
+        self.window.append_feedback(translate("ApplicationController", "Fetch paused."))
 
     def stop_fetch(self) -> None:
         """Request cancellation of the active Last.fm fetch worker."""
@@ -179,7 +193,7 @@ class ApplicationController(QObject):
         self._active_fetch_worker.stop_fetch()
         self._fetch_paused = False
         self.window.set_fetch_control_state(active=False, paused=False)
-        self.window.append_feedback("Stopping fetch.")
+        self.window.append_feedback(translate("ApplicationController", "Stopping fetch."))
 
     def resolve_youtube_urls(
         self,
@@ -192,12 +206,20 @@ class ApplicationController(QObject):
         username = username or self.window.username()
         if not username:
             LOGGER.warning("Lookup requested without a Last.fm username")
-            self.window.append_feedback("Enter a Last.fm username before resolving tracks.")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Enter a Last.fm username before resolving tracks.",
+                )
+            )
             return
 
         LOGGER.info("YouTube lookup requested for Last.fm user %s", username)
         print(f"[myLastFmPlayer] Starting YouTube lookup for {username}", flush=True)
-        self.window.set_progress(0, "Starting YouTube lookup")
+        self.window.set_progress(
+            0,
+            translate("ApplicationController", "Starting YouTube lookup"),
+        )
         worker = self.lookup_worker_factory(
             username,
             self.youtube_resolver,
@@ -218,7 +240,12 @@ class ApplicationController(QObject):
         username = username or self.window.username()
         if not username:
             LOGGER.warning("Download requested without a Last.fm username")
-            self.window.append_feedback("Enter a Last.fm username before downloading tracks.")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Enter a Last.fm username before downloading tracks.",
+                )
+            )
             return
 
         concurrency = self.window.concurrency_input.value()
@@ -232,7 +259,7 @@ class ApplicationController(QObject):
             f"with concurrency {concurrency}",
             flush=True,
         )
-        self.window.set_progress(0, "Starting downloads")
+        self.window.set_progress(0, translate("ApplicationController", "Starting downloads"))
         worker = self.download_worker_factory(
             username,
             self.download_manager,
@@ -249,7 +276,9 @@ class ApplicationController(QObject):
         selected_row = self.window.selected_track_row()
         selected_track = self.window.selected_track()
         if selected_row is None or selected_track is None:
-            self.window.append_feedback("Select a downloaded track before playing.")
+            self.window.append_feedback(
+                translate("ApplicationController", "Select a downloaded track before playing.")
+            )
             return
 
         self._play_track(selected_row, selected_track)
@@ -262,18 +291,20 @@ class ApplicationController(QObject):
         except PlaybackError as error:
             self.window.append_feedback(str(error))
             return
-        self.window.append_feedback("Playback paused.")
+        self.window.append_feedback(translate("ApplicationController", "Playback paused."))
 
     def stop_playback(self) -> None:
         """Stop active playback and persist the restored downloaded state."""
 
         stopped_track = self.playback_service.stop()
         if stopped_track is None:
-            self.window.append_feedback("No track is currently playing.")
+            self.window.append_feedback(
+                translate("ApplicationController", "No track is currently playing.")
+            )
             return
 
         self._update_track_by_cache_key(stopped_track)
-        self.window.append_feedback("Playback stopped.")
+        self.window.append_feedback(translate("ApplicationController", "Playback stopped."))
         self._save_visible_tracks()
 
     def _run_worker(self, worker: WorkflowWorker) -> None:
@@ -323,11 +354,24 @@ class ApplicationController(QObject):
 
     def _handle_tracks_loaded(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
-            self.window.append_feedback(f"Fetch for {username} returned invalid track data.")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Fetch for {username} returned invalid track data.",
+                    username=username,
+                )
+            )
             return
 
         self.window.set_tracks(tracks)
-        self.window.append_feedback(f"Fetched and stored {len(tracks)} tracks for {username}.")
+        self.window.append_feedback(
+            translate(
+                "ApplicationController",
+                "Fetched and stored {count} tracks for {username}.",
+                count=len(tracks),
+                username=username,
+            )
+        )
         self._active_fetch_worker = None
         self._fetch_paused = False
         self.window.set_fetch_control_state(active=False, paused=False)
@@ -344,25 +388,55 @@ class ApplicationController(QObject):
         self._fetch_paused = False
         self.window.set_fetch_control_state(active=False, paused=False)
         if not isinstance(tracks, list):
-            self.window.append_feedback(f"Stopped fetch for {username} returned invalid data.")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Stopped fetch for {username} returned invalid data.",
+                    username=username,
+                )
+            )
             return
 
         self.window.set_tracks(tracks)
-        self.window.append_feedback(f"Stopped fetch for {username} after {len(tracks)} tracks.")
+        self.window.append_feedback(
+            translate(
+                "ApplicationController",
+                "Stopped fetch for {username} after {count} tracks.",
+                username=username,
+                count=len(tracks),
+            )
+        )
 
     def _handle_tracks_updated(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
-            self.window.append_feedback(f"Fetch for {username} returned invalid partial data.")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Fetch for {username} returned invalid partial data.",
+                    username=username,
+                )
+            )
             return
 
         self.window.set_tracks(tracks)
-        self.window.show_status(f"Fetched {len(tracks)} tracks for {username}")
+        self.window.show_status(
+            translate(
+                "ApplicationController",
+                "Fetched {count} tracks for {username}",
+                count=len(tracks),
+                username=username,
+            )
+        )
         LOGGER.info("Loaded %s partial fetched tracks into UI for %s", len(tracks), username)
 
     def _handle_track_updated(self, username: str, track: object) -> None:
         if not isinstance(track, Track):
             self.window.append_feedback(
-                f"Workflow for {username} returned an invalid track update."
+                translate(
+                    "ApplicationController",
+                    "Workflow for {username} returned an invalid track update.",
+                    username=username,
+                )
             )
             return
 
@@ -370,11 +444,23 @@ class ApplicationController(QObject):
 
     def _handle_tracks_resolved(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
-            self.window.append_feedback(f"Lookup for {username} returned invalid track data.")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Lookup for {username} returned invalid track data.",
+                    username=username,
+                )
+            )
             return
 
         self.window.set_tracks(tracks)
-        self.window.append_feedback(f"Resolved YouTube URLs for {len(tracks)} tracks.")
+        self.window.append_feedback(
+            translate(
+                "ApplicationController",
+                "Resolved YouTube URLs for {count} tracks.",
+                count=len(tracks),
+            )
+        )
         LOGGER.info("Loaded %s resolved tracks into UI for %s", len(tracks), username)
         if self._pending_play_cache_key and self._track_has_youtube_url(
             tracks,
@@ -384,15 +470,30 @@ class ApplicationController(QObject):
         elif self._has_download_candidates(tracks):
             self._start_automatic_download(username)
         else:
-            self.window.append_feedback("No queued tracks are ready for download.")
+            self.window.append_feedback(
+                translate("ApplicationController", "No queued tracks are ready for download.")
+            )
 
     def _handle_tracks_downloaded(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
-            self.window.append_feedback(f"Download for {username} returned invalid track data.")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Download for {username} returned invalid track data.",
+                    username=username,
+                )
+            )
             return
 
         self.window.set_tracks(tracks)
-        self.window.append_feedback(f"Downloaded {len(tracks)} tracks for {username}.")
+        self.window.append_feedback(
+            translate(
+                "ApplicationController",
+                "Downloaded {count} tracks for {username}.",
+                count=len(tracks),
+                username=username,
+            )
+        )
         LOGGER.info("Loaded %s downloaded tracks into UI for %s", len(tracks), username)
         if self._pending_play_cache_key:
             self._play_prepared_track(self._pending_play_cache_key)
@@ -401,7 +502,7 @@ class ApplicationController(QObject):
         LOGGER.error("Worker error: %s", message)
         print(f"[myLastFmPlayer] Worker error shown in UI: {message}", flush=True)
         self.window.append_feedback(message)
-        self.window.set_progress(0, "Failed")
+        self.window.set_progress(0, translate("ApplicationController", "Failed"))
 
     def _restore_previous_playing_track(
         self,
@@ -437,7 +538,14 @@ class ApplicationController(QObject):
 
         self._restore_previous_playing_track(previous_track, track)
         self.window.update_track(row, playing_track)
-        self.window.append_feedback(f"Playing {playing_track.artist} - {playing_track.title}.")
+        self.window.append_feedback(
+            translate(
+                "ApplicationController",
+                "Playing {artist} - {title}.",
+                artist=playing_track.artist,
+                title=playing_track.title,
+            )
+        )
         self._save_visible_tracks()
 
     def _can_prepare_for_playback(self, track: Track) -> bool:
@@ -448,12 +556,22 @@ class ApplicationController(QObject):
     def _prepare_selected_track_for_playback(self, track: Track) -> None:
         username = self.window.username()
         if not username:
-            self.window.append_feedback("Enter a Last.fm username before preparing playback.")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Enter a Last.fm username before preparing playback.",
+                )
+            )
             return
         self._pending_play_cache_key = track.cache_key
         self._save_visible_tracks()
         self.window.append_feedback(
-            f"Preparing {track.artist} - {track.title} for playback."
+            translate(
+                "ApplicationController",
+                "Preparing {artist} - {title} for playback.",
+                artist=track.artist,
+                title=track.title,
+            )
         )
         if track.youtube_url:
             self._start_priority_download(username, track.cache_key)
@@ -465,21 +583,31 @@ class ApplicationController(QObject):
         )
 
     def _start_automatic_lookup(self, username: str, track_count: int) -> None:
-        message = f"Starting automatic YouTube lookup for {track_count} fetched tracks."
+        message = translate(
+            "ApplicationController",
+            "Starting automatic YouTube lookup for {count} fetched tracks.",
+            count=track_count,
+        )
         LOGGER.info("%s User=%s", message, username)
         print(f"[myLastFmPlayer] {message} user={username}", flush=True)
         self.window.append_feedback(message)
         self.resolve_youtube_urls(username)
 
     def _start_automatic_download(self, username: str) -> None:
-        message = "Starting automatic download queue for resolved tracks."
+        message = translate(
+            "ApplicationController",
+            "Starting automatic download queue for resolved tracks.",
+        )
         LOGGER.info("%s User=%s", message, username)
         print(f"[myLastFmPlayer] {message} user={username}", flush=True)
         self.window.append_feedback(message)
         self.download_tracks(username)
 
     def _start_priority_download(self, username: str, cache_key: str) -> None:
-        message = "Starting priority download for selected track."
+        message = translate(
+            "ApplicationController",
+            "Starting priority download for selected track.",
+        )
         LOGGER.info("%s User=%s cache_key=%s", message, username, cache_key)
         print(
             f"[myLastFmPlayer] {message} user={username} cache_key={cache_key}",

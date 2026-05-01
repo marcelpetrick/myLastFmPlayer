@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
@@ -26,6 +27,7 @@ from PyQt6.QtWidgets import (
 )
 
 from my_lastfm_player import __version__
+from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track
 from my_lastfm_player.ui.track_table_model import TrackTableModel, example_tracks
 
@@ -43,16 +45,22 @@ class MainWindow(QMainWindow):
     pause_requested = pyqtSignal()
     stop_requested = pyqtSignal()
 
-    def __init__(self) -> None:
+    def __init__(self, translation_manager: TranslationManager | None = None) -> None:
         super().__init__()
+        self.translation_manager = translation_manager
+        self._fetch_paused = False
+        self._last_progress_label = "Idle"
+        self._last_status_message = "Ready"
         self.set_application_title(__version__)
         self.resize(1120, 720)
 
         self._build_actions()
+        self._build_menus()
         self._build_toolbar()
         self._build_central_widget()
         self.set_tracks(example_tracks())
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage(self.tr("Ready"))
+        self.retranslate_ui()
 
     def set_application_title(self, version: str) -> None:
         """Set the window title using the current application ``version``."""
@@ -60,19 +68,34 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(application_title(version))
 
     def _build_actions(self) -> None:
-        self.refresh_action = QAction("Fetch loved tracks", self)
+        self.refresh_action = QAction(self)
         self.refresh_action.triggered.connect(self.fetch_requested.emit)
 
-        self.quit_action = QAction("Quit", self)
+        self.quit_action = QAction(self)
         self.quit_action.triggered.connect(self.close)
 
+        self.language_actions: dict[str, QAction] = {}
+        for language in SUPPORTED_LANGUAGES:
+            action = QAction(language.native_name, self)
+            action.setCheckable(True)
+            action.triggered.connect(
+                lambda _checked=False, code=language.code: self.set_language(code)
+            )
+            self.language_actions[language.code] = action
+
+    def _build_menus(self) -> None:
+        self.language_menu = QMenu(self)
+        for language in SUPPORTED_LANGUAGES:
+            self.language_menu.addAction(self.language_actions[language.code])
+        self.menuBar().addMenu(self.language_menu)
+
     def _build_toolbar(self) -> None:
-        toolbar = QToolBar("Main")
-        toolbar.setMovable(False)
-        toolbar.addAction(self.refresh_action)
-        toolbar.addSeparator()
-        toolbar.addAction(self.quit_action)
-        self.addToolBar(toolbar)
+        self.toolbar = QToolBar(self)
+        self.toolbar.setMovable(False)
+        self.toolbar.addAction(self.refresh_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.quit_action)
+        self.addToolBar(self.toolbar)
 
     def _build_central_widget(self) -> None:
         root = QWidget(self)
@@ -93,27 +116,24 @@ class MainWindow(QMainWindow):
         layout = QGridLayout(frame)
         layout.setColumnStretch(1, 1)
 
-        username_label = QLabel("Last.fm username")
+        self.username_label = QLabel()
         self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Enter username")
         self.username_input.returnPressed.connect(self.fetch_requested.emit)
 
-        self.fetch_button = QPushButton("Fetch")
-        self.fetch_pause_button = QPushButton("Pause")
-        self.fetch_stop_button = QPushButton("Stop")
+        self.fetch_button = QPushButton()
+        self.fetch_pause_button = QPushButton()
+        self.fetch_stop_button = QPushButton()
         self.fetch_button.clicked.connect(self.fetch_requested.emit)
         self.fetch_pause_button.clicked.connect(self.fetch_pause_requested.emit)
         self.fetch_stop_button.clicked.connect(self.fetch_stop_requested.emit)
-        self.fetch_pause_button.setToolTip("Pause or resume the active Last.fm fetch")
-        self.fetch_stop_button.setToolTip("Stop the active Last.fm fetch")
         self.set_fetch_control_state(active=False, paused=False)
 
-        self.dependency_label = QLabel("Dependencies: yt-dlp and ffmpeg not checked yet")
+        self.dependency_label = QLabel()
         self.dependency_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
 
-        layout.addWidget(username_label, 0, 0)
+        layout.addWidget(self.username_label, 0, 0)
         layout.addWidget(self.username_input, 0, 1)
         layout.addWidget(self.fetch_button, 0, 2)
         layout.addWidget(self.fetch_pause_button, 0, 3)
@@ -147,29 +167,30 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
 
-        playback_group = QGroupBox("Playback")
-        playback_layout = QHBoxLayout(playback_group)
-        self.play_button = QPushButton("Play")
-        self.pause_button = QPushButton("Pause")
-        self.stop_button = QPushButton("Stop")
+        self.playback_group = QGroupBox()
+        playback_layout = QHBoxLayout(self.playback_group)
+        self.play_button = QPushButton()
+        self.pause_button = QPushButton()
+        self.stop_button = QPushButton()
         self.play_button.clicked.connect(self.play_requested.emit)
         self.pause_button.clicked.connect(self.pause_requested.emit)
         self.stop_button.clicked.connect(self.stop_requested.emit)
         for button in (self.play_button, self.pause_button, self.stop_button):
             playback_layout.addWidget(button)
 
-        downloads_group = QGroupBox("Downloads")
-        downloads_layout = QFormLayout(downloads_group)
-        self.download_toggle_button = QPushButton("Download Queued")
+        self.downloads_group = QGroupBox()
+        self.downloads_layout = QFormLayout(self.downloads_group)
+        self.download_toggle_button = QPushButton()
         self.download_toggle_button.clicked.connect(self.download_requested.emit)
+        self.concurrency_label = QLabel()
         self.concurrency_input = QSpinBox()
         self.concurrency_input.setRange(1, 8)
         self.concurrency_input.setValue(2)
-        downloads_layout.addRow("Concurrency", self.concurrency_input)
-        downloads_layout.addRow(self.download_toggle_button)
+        self.downloads_layout.addRow(self.concurrency_label, self.concurrency_input)
+        self.downloads_layout.addRow(self.download_toggle_button)
 
-        layout.addWidget(playback_group)
-        layout.addWidget(downloads_group)
+        layout.addWidget(self.playback_group)
+        layout.addWidget(self.downloads_group)
         layout.addStretch(1)
 
         return panel
@@ -183,13 +204,11 @@ class MainWindow(QMainWindow):
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.progress_bar.setFormat("Idle")
+        self.progress_bar.setFormat(self.tr("Idle"))
 
         self.feedback_log = QPlainTextEdit()
         self.feedback_log.setReadOnly(True)
         self.feedback_log.setMaximumBlockCount(500)
-        self.feedback_log.setPlaceholderText("Status updates and errors will appear here.")
-
         layout.addWidget(self.progress_bar)
         layout.addWidget(self.feedback_log)
 
@@ -201,7 +220,7 @@ class MainWindow(QMainWindow):
         self.track_model.set_tracks(tracks)
         self.track_table.resizeRowsToContents()
         print(f"[myLastFmPlayer] Table now contains {len(tracks)} tracks", flush=True)
-        self.show_status(f"Loaded {len(tracks)} tracks")
+        self.show_status(self.tr("Loaded {count} tracks").format(count=len(tracks)))
 
     def username(self) -> str:
         """Return the trimmed Last.fm username currently entered by the user."""
@@ -220,11 +239,13 @@ class MainWindow(QMainWindow):
 
         self.fetch_pause_button.setEnabled(active)
         self.fetch_stop_button.setEnabled(active)
-        self.fetch_pause_button.setText("Resume" if paused else "Pause")
+        self._fetch_paused = paused
+        self.fetch_pause_button.setText(self.tr("Resume") if paused else self.tr("Pause"))
         if paused:
-            self.fetch_pause_button.setToolTip("Resume the paused Last.fm fetch")
+            self.fetch_pause_button.setToolTip(self.tr("Resume the paused Last.fm fetch"))
         else:
-            self.fetch_pause_button.setToolTip("Pause the active Last.fm fetch")
+            self.fetch_pause_button.setToolTip(self.tr("Pause the active Last.fm fetch"))
+        self.fetch_stop_button.setToolTip(self.tr("Stop the active Last.fm fetch"))
 
     def set_workflow_enabled(self, enabled: bool) -> None:
         """Enable or disable controls that start long-running workflows."""
@@ -266,7 +287,14 @@ class MainWindow(QMainWindow):
         """Replace one visible row with ``track`` and update the status bar."""
 
         self.track_model.update_track(row, track)
-        self.show_status(f"Updated {track.artist} - {track.title}: {track.status.value}")
+        status = self.tr(track.status.value)
+        self.show_status(
+            self.tr("Updated {artist} - {title}: {status}").format(
+                artist=track.artist,
+                title=track.title,
+                status=status,
+            )
+        )
 
     def tracks(self) -> list[Track]:
         """Return a copy of the tracks currently visible in the table."""
@@ -279,6 +307,7 @@ class MainWindow(QMainWindow):
         bounded_value = max(0, min(100, value))
         self.progress_bar.setValue(bounded_value)
         self.progress_bar.setFormat(label)
+        self._last_progress_label = label
         self.show_status(label)
 
     def append_feedback(self, message: str) -> None:
@@ -292,11 +321,60 @@ class MainWindow(QMainWindow):
 
         LOGGER.info("UI status: %s", message)
         print(f"[myLastFmPlayer] UI status: {message}", flush=True)
+        self._last_status_message = message
         self.statusBar().showMessage(message)
 
     def _show_not_implemented(self) -> None:
-        message = "This control is part of the MVP shell and will be wired in later steps."
+        message = self.tr("This control is part of the MVP shell and will be wired in later steps.")
         self.append_feedback(message)
+
+    def set_language(self, code: str) -> None:
+        """Switch the active UI language and update visible widgets immediately."""
+
+        if self.translation_manager is not None:
+            self.translation_manager.set_language(code)
+        for language_code, action in self.language_actions.items():
+            action.setChecked(language_code == code)
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        """Apply current translations to all static widgets."""
+
+        self.refresh_action.setText(self.tr("Fetch loved tracks"))
+        self.quit_action.setText(self.tr("Quit"))
+        self.language_menu.setTitle(self.tr("Language"))
+        self.toolbar.setWindowTitle(self.tr("Main"))
+        self.username_label.setText(self.tr("Last.fm username"))
+        self.username_input.setPlaceholderText(self.tr("Enter username"))
+        self.fetch_button.setText(self.tr("Fetch"))
+        self.playback_group.setTitle(self.tr("Playback"))
+        self.play_button.setText(self.tr("Play"))
+        self.pause_button.setText(self.tr("Pause"))
+        self.stop_button.setText(self.tr("Stop"))
+        self.downloads_group.setTitle(self.tr("Downloads"))
+        self.download_toggle_button.setText(self.tr("Download Queued"))
+        self.concurrency_label.setText(self.tr("Concurrency"))
+        self.feedback_log.setPlaceholderText(
+            self.tr("Status updates and errors will appear here.")
+        )
+        if not self.dependency_label.text():
+            self.dependency_label.setText(
+                self.tr("Dependencies: yt-dlp and ffmpeg not checked yet")
+            )
+        if self._last_progress_label == "Idle":
+            self.progress_bar.setFormat(self.tr("Idle"))
+        self.set_fetch_control_state(
+            active=self.fetch_pause_button.isEnabled(),
+            paused=self._fetch_paused,
+        )
+        self.track_model.retranslate()
+        if self._last_status_message == "Ready":
+            self.statusBar().showMessage(self.tr("Ready"))
+        self.language_actions[
+            self.translation_manager.current_language
+            if self.translation_manager is not None
+            else DEFAULT_LANGUAGE_CODE
+        ].setChecked(True)
 
 
 def application_title(version: str) -> str:

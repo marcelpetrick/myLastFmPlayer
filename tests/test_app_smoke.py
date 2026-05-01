@@ -2,19 +2,20 @@ from __future__ import annotations
 
 from my_lastfm_player import __version__
 from my_lastfm_player import main as main_module
+from my_lastfm_player.i18n import SUPPORTED_LANGUAGES
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.ui.main_window import MainWindow, application_title
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "00.00.31"
+    assert __version__ == "00.00.32"
 
 
 def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v00.00.31"
+    assert window.windowTitle() == "myLastFmPlayer v00.00.32"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -46,6 +47,9 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
             return 0
 
     class FakeMainWindow:
+        def __init__(self, **_kwargs) -> None:
+            return None
+
         def show(self) -> None:
             return None
 
@@ -62,7 +66,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 00.00.31\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 00.00.32\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -101,6 +105,16 @@ def test_main_window_fetch_controls_emit_fetch_signal(qapp) -> None:
     window.refresh_action.trigger()
 
     assert emissions == [True, True]
+
+
+def test_main_window_has_language_menu(qapp) -> None:
+    window = MainWindow()
+
+    assert window.language_menu.title() == "Language"
+    assert {action.text() for action in window.language_menu.actions()} == {
+        language.native_name for language in SUPPORTED_LANGUAGES
+    }
+    assert window.language_actions["en"].isChecked()
 
 
 def test_main_window_download_control_emits_download_signal(qapp) -> None:

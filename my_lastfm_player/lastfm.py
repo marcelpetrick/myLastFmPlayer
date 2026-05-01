@@ -11,6 +11,7 @@ from urllib.parse import quote, urljoin
 import requests
 from bs4 import BeautifulSoup, Tag
 
+from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.version import __version__
@@ -246,7 +247,14 @@ class LastFmLovedTracksScraper:
             if page_count == 1:
                 _emit_progress(
                     progress_callback,
-                    FetchProgress(0, f"Found Last.fm user {username}"),
+                    FetchProgress(
+                        0,
+                        translate(
+                            "LastFmLovedTracksScraper",
+                            "Found Last.fm user {username}",
+                            username=username,
+                        ),
+                    ),
                 )
             page = self.parser.parse(fetched_page.html, fetched_page.url)
             if page.total_tracks is not None:
@@ -403,8 +411,17 @@ def _parse_count(value: str) -> int | None:
 
 def _progress_message(fetched_count: int, total_count: int | None) -> str:
     if total_count is None:
-        return f"Fetched {fetched_count} tracks"
-    return f"Fetched {fetched_count}/{total_count} tracks"
+        return translate(
+            "LastFmLovedTracksScraper",
+            "Fetched {count} tracks",
+            count=fetched_count,
+        )
+    return translate(
+        "LastFmLovedTracksScraper",
+        "Fetched {done}/{total} tracks",
+        done=fetched_count,
+        total=total_count,
+    )
 
 
 def _emit_progress(progress_callback: ProgressCallback | None, progress: FetchProgress) -> None:

@@ -7,6 +7,7 @@ from threading import Event
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from my_lastfm_player.download import DEFAULT_CONCURRENCY, DownloadManager
+from my_lastfm_player.i18n import translate
 from my_lastfm_player.lastfm import FetchProgress, LastFmLovedTracksScraper
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.youtube import YouTubeResolver
@@ -48,7 +49,14 @@ class FetchLovedTracksWorker(QObject):
                 f"[myLastFmPlayer] Worker started fetching loved tracks for {self.username}",
                 flush=True,
             )
-            self.progress.emit(0, f"Looking up Last.fm user {self.username}")
+            self.progress.emit(
+                0,
+                translate(
+                    "FetchLovedTracksWorker",
+                    "Looking up Last.fm user {username}",
+                    username=self.username,
+                ),
+            )
             tracks = self.scraper.fetch_and_store_loved_tracks(
                 self.username,
                 self.repository,
@@ -57,10 +65,24 @@ class FetchLovedTracksWorker(QObject):
                 control_callback=self._can_continue_fetching,
             )
             if self._stop_requested:
-                self.progress.emit(0, f"Stopped fetch after {len(tracks)} tracks")
+                self.progress.emit(
+                    0,
+                    translate(
+                        "FetchLovedTracksWorker",
+                        "Stopped fetch after {count} tracks",
+                        count=len(tracks),
+                    ),
+                )
                 self.fetch_stopped.emit(self.username, tracks)
             else:
-                self.progress.emit(100, f"Fetched {len(tracks)} tracks")
+                self.progress.emit(
+                    100,
+                    translate(
+                        "FetchLovedTracksWorker",
+                        "Fetched {count} tracks",
+                        count=len(tracks),
+                    ),
+                )
                 self.tracks_loaded.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
             LOGGER.exception("Loved-track fetch failed for %s", self.username)
@@ -149,7 +171,14 @@ class LookupTracksWorker(QObject):
 
         try:
             LOGGER.info("Worker started resolving YouTube URLs for %s", self.username)
-            self.progress.emit(0, f"Resolving YouTube URLs for {self.username}")
+            self.progress.emit(
+                0,
+                translate(
+                    "LookupTracksWorker",
+                    "Resolving YouTube URLs for {username}",
+                    username=self.username,
+                ),
+            )
             tracks = self.resolver.resolve_and_store_tracks(
                 self.username,
                 self.repository,
@@ -158,7 +187,14 @@ class LookupTracksWorker(QObject):
                 priority_cache_key=self.priority_cache_key,
                 max_tracks=self.max_tracks,
             )
-            self.progress.emit(100, f"Resolved {len(tracks)} tracks")
+            self.progress.emit(
+                100,
+                translate(
+                    "LookupTracksWorker",
+                    "Resolved {count} tracks",
+                    count=len(tracks),
+                ),
+            )
             self.tracks_resolved.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
             LOGGER.exception("YouTube lookup failed for %s", self.username)

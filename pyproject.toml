@@ -33,6 +33,9 @@ my-lastfm-player = "my_lastfm_player.main:main"
 [tool.setuptools.packages.find]
 include = ["my_lastfm_player*"]
 
+[tool.setuptools.package-data]
+my_lastfm_player = ["translations/*.qm", "translations/*.ts"]
+
 [tool.setuptools.dynamic]
 version = { attr = "my_lastfm_player.version.__version__" }
 

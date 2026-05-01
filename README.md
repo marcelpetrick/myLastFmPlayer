@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `00.00.31` - work in progress; tons of features are not implemented
+Current version: `00.00.32` - work in progress; tons of features are not implemented
 
 ## Current state
 
@@ -253,6 +253,26 @@ MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 ./localPipeline.sh --noRun
 ```
 
 That test fetches all loved-track pages from Last.fm for `first` and prints the tracks during the test run.
+
+## Translations
+
+The UI is prepared for Qt Linguist translations. English is the source/default language, and `.ts` files are available for Croatian, German, Mandarin, and Ukrainian in:
+
+```text
+my_lastfm_player/translations/
+```
+
+Regenerate the Qt translation source files after changing user-visible strings:
+
+```sh
+tools/update_translations.sh
+```
+
+After editing the `.ts` files with Qt Linguist or another Qt-compatible translation tool, compile runtime `.qm` files:
+
+```sh
+tools/compile_translations.sh
+```
 
 ## Current State
 

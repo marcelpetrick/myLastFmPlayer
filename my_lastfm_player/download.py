@@ -10,6 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 from threading import Event
 
+from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 
@@ -114,7 +115,11 @@ class DownloadManager:
         candidates = _prioritize_candidates(candidates, priority_cache_key)
         if max_downloads is not None:
             candidates = candidates[:max_downloads]
-        _report(progress_callback, 0, f"Queued {len(candidates)} downloads")
+        _report(
+            progress_callback,
+            0,
+            translate("DownloadManager", "Queued {count} downloads", count=len(candidates)),
+        )
         if not candidates:
             return results
 
@@ -142,7 +147,12 @@ class DownloadManager:
                 _report(
                     progress_callback,
                     percent,
-                    f"Downloaded {completed_count}/{len(candidates)} tracks",
+                    translate(
+                        "DownloadManager",
+                        "Downloaded {done}/{total} tracks",
+                        done=completed_count,
+                        total=len(candidates),
+                    ),
                 )
 
         return results
