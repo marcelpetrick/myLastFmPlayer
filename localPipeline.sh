@@ -42,7 +42,7 @@ Local project pipeline:
   9. Build source and wheel distributions
   10. Install the freshly built wheel
   11. Verify that the installed package imports and exposes its version
-  12. Launch the installed application by default
+  12. Launch the installed application once by default
       Use --noRun to suppress application launch
   13. Print a final stage-by-stage summary
 
@@ -93,6 +93,7 @@ open_html_report() {
     local report_label="$1"
     local report_path="$2"
     local open_command=""
+    local opener_pid=0
 
     if [[ ! -f "${report_path}" ]]; then
         warn "${report_label} was not found: ${report_path}"
@@ -108,7 +109,17 @@ open_html_report() {
             continue
         fi
         log "Opening ${report_label} with '${open_command}'."
-        if "${open_command}" "${report_path}" >/dev/null 2>&1; then
+        "${open_command}" "${report_path}" >/dev/null 2>&1 &
+        opener_pid=$!
+
+        sleep 1
+        if kill -0 "${opener_pid}" >/dev/null 2>&1; then
+            disown "${opener_pid}" >/dev/null 2>&1 || true
+            OPEN_REPORT_COMMAND="${open_command}"
+            return 0
+        fi
+
+        if wait "${opener_pid}"; then
             OPEN_REPORT_COMMAND="${open_command}"
             return 0
         fi
@@ -220,8 +231,19 @@ launch_application() {
         return 1
     fi
 
-    log "Starting my-lastfm-player. Close the app window to finish the pipeline."
-    "${APP}"
+    local app_pid=0
+
+    log "Starting my-lastfm-player once. The pipeline will not restart it after the app exits."
+    "${APP}" >/dev/null 2>&1 &
+    app_pid=$!
+
+    sleep 1
+    if kill -0 "${app_pid}" >/dev/null 2>&1; then
+        disown "${app_pid}" >/dev/null 2>&1 || true
+        return 0
+    fi
+
+    wait "${app_pid}"
 }
 
 main() {
@@ -375,7 +397,7 @@ main() {
         if [[ "${RUN_APP}" == true ]]; then
             if launch_application; then
                 LAUNCH_OK=1
-                mark_result "Launch App" "PASS" "my-lastfm-player was started and exited"
+                mark_result "Launch App" "PASS" "my-lastfm-player was started once"
             else
                 mark_result "Launch App" "WARN" "Launching the app failed; this does not affect the pipeline result"
             fi

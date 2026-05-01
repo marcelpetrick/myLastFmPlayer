@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `00.00.29` - work in progress; tons of features are not implemented
+Current version: `00.00.30` - work in progress; tons of features are not implemented
 
 ## Current state
 
@@ -138,7 +138,7 @@ Package Build    : PASS Source and wheel distributions built
 Wheel            : PASS Found built wheel in dist/
 Wheel Install    : PASS Built wheel installed into .venv
 Import Check     : PASS Installed package imports successfully
-Launch App       : PASS my-lastfm-player was started and exited
+Launch App       : PASS my-lastfm-player was started once
 ============================================
 ```
 
@@ -176,13 +176,13 @@ For example, with `XDG_DATA_HOME=/tmp/app-data`, downloads are stored in:
 
 ## Local Pipeline
 
-Install development dependencies and run the full local build, lint, documentation, test, coverage, package, install verification sequence, and then start the installed application:
+Install development dependencies and run the full local build, lint, documentation, test, coverage, package, install verification sequence, and then start the installed application once:
 
 ```sh
 ./localPipeline.sh
 ```
 
-The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, builds Sphinx documentation, runs pytest with coverage, opens the generated HTML reports when possible, builds the package, installs the built wheel, verifies the package can be imported, and then starts `my-lastfm-player` like a user would.
+The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, builds Sphinx documentation, runs pytest with coverage, opens the generated HTML reports when possible, builds the package, installs the built wheel, verifies the package can be imported, and then starts `my-lastfm-player` like a user would. Without `--noRun`, the app is started once and the launch stage is marked successful after the process is handed off.
 
 ### Build Workflow
 
@@ -210,7 +210,7 @@ flowchart TD
     P --> Q["Force reinstall built wheel without dependencies"]
     Q --> R["Import package and print version"]
     R --> S{"RUN_APP=true?"}
-    S -->|yes| T["Start installed my-lastfm-player command"]
+    S -->|yes| T["Start installed my-lastfm-player once"]
     S -->|no| U["Skip GUI startup"]
     T --> V["Print stage summary and exit"]
     U --> V
@@ -225,7 +225,7 @@ The workflow phases are:
 5. Report opening: prints the Sphinx and coverage HTML paths and tries to open them with `MY_LASTFM_PLAYER_REPORT_BROWSER` when set, otherwise `firefox`, otherwise `xdg-open`, otherwise `open`; a failed auto-open is reported as `WARN`, not as a failed build.
 6. Package build: removes stale `build/`, `dist/`, and egg-info output before running `python -m build`.
 7. Install verification: installs the freshly built wheel and imports `my_lastfm_player` to confirm the packaged application exposes its version.
-8. Runtime smoke check: starts `my-lastfm-player` unless `--noRun` was provided.
+8. Runtime launch: starts `my-lastfm-player` once unless `--noRun` was provided; quitting the app does not make the pipeline reopen it.
 9. Final summary: prints a stage-by-stage table so the developer can see which parts passed, failed, were skipped, or only produced warnings.
 
 To run every check without launching the GUI at the end:

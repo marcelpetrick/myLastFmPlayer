@@ -8,7 +8,7 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 2. lookup and download workflows update the table row by row as each track changes state.
 * fixed: 5. Last.fm fetching has pause/resume and stop controls beside the fetch button, with backend cancellation support and unit coverage.
 * fixed: 6. local pipeline HTML report opening now prefers `MY_LASTFM_PLAYER_REPORT_BROWSER`, then Firefox, then `xdg-open`, then `open`, and reports which opener accepted each file.
-* 7. fix the localRun.sh - when no "noRun", then it shall run infinietely.
+* fixed: 7. `localPipeline.sh` now starts the installed app once unless `--noRun` is provided and does not reopen it after the user quits.
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.
