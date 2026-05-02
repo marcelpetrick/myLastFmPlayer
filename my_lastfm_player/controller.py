@@ -71,6 +71,7 @@ class ApplicationController(QObject):
         self._pending_play_cache_key: str | None = None
         self._active_fetch_worker: FetchLovedTracksWorker | None = None
         self._fetch_paused = False
+        self._playback_callbacks_connected = False
 
     @property
     def playback_service(self) -> PlaybackService:
@@ -78,6 +79,7 @@ class ApplicationController(QObject):
 
         if self._playback_service is None:
             self._playback_service = PlaybackService()
+        self._connect_playback_callbacks()
         return self._playback_service
 
     def start(self) -> None:
@@ -95,6 +97,7 @@ class ApplicationController(QObject):
         self.window.play_requested.connect(self.play_selected_track)
         self.window.pause_requested.connect(self.pause_playback)
         self.window.stop_requested.connect(self.stop_playback)
+        self.window.seek_requested.connect(self.seek_playback)
         self.check_dependencies()
 
     def load_cached_tracks_for_entered_username(self) -> bool:
@@ -304,8 +307,22 @@ class ApplicationController(QObject):
             return
 
         self._update_track_by_cache_key(stopped_track)
+        self.window.reset_playback_timeline()
         self.window.append_feedback(translate("ApplicationController", "Playback stopped."))
         self._save_visible_tracks()
+
+    def seek_playback(self, position_ms: int) -> None:
+        """Seek active playback to ``position_ms`` and refresh the timeline."""
+
+        try:
+            self.playback_service.seek(position_ms)
+        except PlaybackError as error:
+            self.window.append_feedback(str(error))
+            return
+        self.window.set_playback_timeline(
+            self.playback_service.position_ms(),
+            self.playback_service.duration_ms(),
+        )
 
     def _run_worker(self, worker: WorkflowWorker) -> None:
         thread = QThread(self)
@@ -538,6 +555,10 @@ class ApplicationController(QObject):
 
         self._restore_previous_playing_track(previous_track, track)
         self.window.update_track(row, playing_track)
+        self.window.set_playback_timeline(
+            self.playback_service.position_ms(),
+            self.playback_service.duration_ms(),
+        )
         self.window.append_feedback(
             translate(
                 "ApplicationController",
@@ -639,6 +660,19 @@ class ApplicationController(QObject):
             self._pending_play_cache_key = None
             self._play_track(row, track)
             return
+
+    def _connect_playback_callbacks(self) -> None:
+        if self._playback_callbacks_connected or self._playback_service is None:
+            return
+        self._playback_service.on_position_changed(self._handle_playback_position_changed)
+        self._playback_service.on_duration_changed(self._handle_playback_duration_changed)
+        self._playback_callbacks_connected = True
+
+    def _handle_playback_position_changed(self, position_ms: int) -> None:
+        self.window.set_playback_timeline(position_ms, self.playback_service.duration_ms())
+
+    def _handle_playback_duration_changed(self, duration_ms: int) -> None:
+        self.window.set_playback_timeline(self.playback_service.position_ms(), duration_ms)
 
     def _complete_worker_run(self) -> None:
         self._running_worker_count = max(0, self._running_worker_count - 1)

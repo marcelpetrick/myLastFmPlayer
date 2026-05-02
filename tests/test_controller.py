@@ -293,6 +293,8 @@ class FakePlaybackService:
     def __init__(self) -> None:
         self.current_track: Track | None = None
         self.events: list[str] = []
+        self.position = 0
+        self.duration = 0
 
     def play(self, track: Track) -> Track:
         self.events.append(f"play:{track.title}")
@@ -313,6 +315,22 @@ class FakePlaybackService:
         self.current_track = None
         return stopped_track
 
+    def seek(self, position_ms: int) -> None:
+        self.events.append(f"seek:{position_ms}")
+        self.position = position_ms
+
+    def position_ms(self) -> int:
+        return self.position
+
+    def duration_ms(self) -> int:
+        return self.duration
+
+    def on_position_changed(self, _callback) -> None:
+        return None
+
+    def on_duration_changed(self, _callback) -> None:
+        return None
+
 
 def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
     window = MainWindow()
@@ -326,6 +344,7 @@ def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
     window.set_tracks([track])
     window.track_table.selectRow(0)
     playback = FakePlaybackService()
+    playback.duration = 180_000
     controller = ApplicationController(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
@@ -336,6 +355,7 @@ def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
 
     assert playback.events == ["play:Title"]
     assert window.track_model.track_at(0).status == TrackStatus.PLAYING
+    assert window.playback_slider.maximum() == 180_000
     assert "Playing Artist - Title." in window.feedback_log.toPlainText()
 
 
@@ -357,5 +377,20 @@ def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
 
     assert playback.events == ["pause", "stop"]
     assert window.track_model.track_at(0).status == TrackStatus.DOWNLOADED
+    assert window.playback_slider.maximum() == 0
     assert "Playback paused." in window.feedback_log.toPlainText()
     assert "Playback stopped." in window.feedback_log.toPlainText()
+
+
+def test_controller_seeks_active_playback(qapp) -> None:
+    window = MainWindow()
+    playback = FakePlaybackService()
+    playback.current_track = Track(artist="Artist", title="Title", status=TrackStatus.PLAYING)
+    playback.duration = 240_000
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+
+    controller.seek_playback(75_000)
+
+    assert playback.events == ["seek:75000"]
+    assert window.playback_slider.value() == 75_000
+    assert window.total_time_label.text() == "4:00"

@@ -4,13 +4,13 @@ from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
 from my_lastfm_player.i18n import SUPPORTED_LANGUAGES
 from my_lastfm_player.models import Track, TrackStatus
-from my_lastfm_player.ui.main_window import MainWindow, application_title
+from my_lastfm_player.ui.main_window import MainWindow, application_title, format_playback_time
 from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.33"
-    assert __display_version__ == "0.0.33"
+    assert __version__ == "0.0.34"
+    assert __display_version__ == "0.0.34"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -22,7 +22,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.33"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.34"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -73,7 +73,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.33\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.34\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -166,3 +166,30 @@ def test_main_window_playback_controls_emit_signals(qapp) -> None:
     window.stop_button.click()
 
     assert events == ["play", "pause", "stop"]
+
+
+def test_main_window_playback_timeline_formats_and_seeks(qapp) -> None:
+    window = MainWindow()
+    seeks: list[int] = []
+    window.seek_requested.connect(seeks.append)
+
+    assert not window.playback_slider.isEnabled()
+    assert window.current_time_label.text() == "0:00"
+    assert window.total_time_label.text() == "0:00"
+
+    window.set_playback_timeline(65_000, 185_000)
+
+    assert window.playback_slider.isEnabled()
+    assert window.playback_slider.maximum() == 185_000
+    assert window.playback_slider.value() == 65_000
+    assert window.current_time_label.text() == "1:05"
+    assert window.total_time_label.text() == "3:05"
+
+    window.playback_slider.setValue(90_000)
+    window.playback_slider.sliderReleased.emit()
+
+    assert seeks == [90_000]
+
+
+def test_format_playback_time_handles_hours() -> None:
+    assert format_playback_time(3_723_000) == "1:02:03"

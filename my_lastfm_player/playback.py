@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
 
@@ -34,6 +35,31 @@ class PlaybackBackend(Protocol):
 
         ...
 
+    def seek(self, position_ms: int) -> None:
+        """Seek current playback to ``position_ms``."""
+
+        ...
+
+    def position_ms(self) -> int:
+        """Return the current playback position in milliseconds."""
+
+        ...
+
+    def duration_ms(self) -> int:
+        """Return the current media duration in milliseconds."""
+
+        ...
+
+    def on_position_changed(self, callback: Callable[[int], None]) -> None:
+        """Register ``callback`` for backend position changes."""
+
+        ...
+
+    def on_duration_changed(self, callback: Callable[[int], None]) -> None:
+        """Register ``callback`` for backend duration changes."""
+
+        ...
+
 
 class QtPlaybackBackend:
     """PyQt multimedia backend for local audio playback."""
@@ -42,6 +68,10 @@ class QtPlaybackBackend:
         self.audio_output = QAudioOutput()
         self.player = QMediaPlayer()
         self.player.setAudioOutput(self.audio_output)
+        self._position_callbacks: list[Callable[[int], None]] = []
+        self._duration_callbacks: list[Callable[[int], None]] = []
+        self.player.positionChanged.connect(self._notify_position_changed)
+        self.player.durationChanged.connect(self._notify_duration_changed)
 
     def play(self, path: Path) -> None:
         """Start playing ``path`` through ``QMediaPlayer``."""
@@ -58,6 +88,39 @@ class QtPlaybackBackend:
         """Stop the Qt media player."""
 
         self.player.stop()
+
+    def seek(self, position_ms: int) -> None:
+        """Seek the Qt media player to ``position_ms``."""
+
+        self.player.setPosition(max(0, position_ms))
+
+    def position_ms(self) -> int:
+        """Return the Qt media player's current position."""
+
+        return max(0, self.player.position())
+
+    def duration_ms(self) -> int:
+        """Return the Qt media player's current duration."""
+
+        return max(0, self.player.duration())
+
+    def on_position_changed(self, callback: Callable[[int], None]) -> None:
+        """Register ``callback`` for Qt position changes."""
+
+        self._position_callbacks.append(callback)
+
+    def on_duration_changed(self, callback: Callable[[int], None]) -> None:
+        """Register ``callback`` for Qt duration changes."""
+
+        self._duration_callbacks.append(callback)
+
+    def _notify_position_changed(self, position_ms: int) -> None:
+        for callback in self._position_callbacks:
+            callback(max(0, position_ms))
+
+    def _notify_duration_changed(self, duration_ms: int) -> None:
+        for callback in self._duration_callbacks:
+            callback(max(0, duration_ms))
 
 
 class PlaybackService:
@@ -109,6 +172,33 @@ class PlaybackService:
         stopped_track = self.current_track.with_status(TrackStatus.DOWNLOADED, error=None)
         self.current_track = None
         return stopped_track
+
+    def seek(self, position_ms: int) -> None:
+        """Seek the current track or raise ``PlaybackError`` when idle."""
+
+        if self.current_track is None:
+            raise PlaybackError("No track is currently playing")
+        self.backend.seek(max(0, position_ms))
+
+    def position_ms(self) -> int:
+        """Return the current playback position in milliseconds."""
+
+        return self.backend.position_ms()
+
+    def duration_ms(self) -> int:
+        """Return the current media duration in milliseconds."""
+
+        return self.backend.duration_ms()
+
+    def on_position_changed(self, callback: Callable[[int], None]) -> None:
+        """Register ``callback`` for playback position updates."""
+
+        self.backend.on_position_changed(callback)
+
+    def on_duration_changed(self, callback: Callable[[int], None]) -> None:
+        """Register ``callback`` for playback duration updates."""
+
+        self.backend.on_duration_changed(callback)
 
 
 def _validated_local_path(track: Track) -> Path:

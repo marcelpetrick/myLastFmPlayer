@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,10 @@ from my_lastfm_player.playback import PlaybackError, PlaybackService
 class FakePlaybackBackend:
     def __init__(self) -> None:
         self.events: list[tuple[str, Path | None]] = []
+        self.position = 0
+        self.duration = 180_000
+        self.position_callbacks: list[Callable[[int], None]] = []
+        self.duration_callbacks: list[Callable[[int], None]] = []
 
     def play(self, path: Path) -> None:
         self.events.append(("play", path))
@@ -20,6 +25,22 @@ class FakePlaybackBackend:
 
     def stop(self) -> None:
         self.events.append(("stop", None))
+
+    def seek(self, position_ms: int) -> None:
+        self.position = position_ms
+        self.events.append(("seek", None))
+
+    def position_ms(self) -> int:
+        return self.position
+
+    def duration_ms(self) -> int:
+        return self.duration
+
+    def on_position_changed(self, callback: Callable[[int], None]) -> None:
+        self.position_callbacks.append(callback)
+
+    def on_duration_changed(self, callback: Callable[[int], None]) -> None:
+        self.duration_callbacks.append(callback)
 
 
 def test_playback_service_plays_downloaded_track(tmp_path: Path) -> None:
@@ -96,6 +117,27 @@ def test_playback_service_pause_and_stop(tmp_path: Path) -> None:
     assert backend.events[-2:] == [("pause", None), ("stop", None)]
 
 
+def test_playback_service_seeks_current_track(tmp_path: Path) -> None:
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
+    backend = FakePlaybackBackend()
+    service = PlaybackService(backend=backend)
+    service.play(
+        Track(
+            artist="Artist",
+            title="Title",
+            local_path=str(audio_path),
+            status=TrackStatus.DOWNLOADED,
+        )
+    )
+
+    service.seek(42_500)
+
+    assert service.position_ms() == 42_500
+    assert service.duration_ms() == 180_000
+    assert backend.events[-1] == ("seek", None)
+
+
 def test_playback_service_rejects_missing_or_not_downloaded_tracks(tmp_path: Path) -> None:
     service = PlaybackService(backend=FakePlaybackBackend())
 
@@ -118,3 +160,6 @@ def test_playback_service_rejects_pause_without_current_track() -> None:
 
     with pytest.raises(PlaybackError, match="No track"):
         service.pause()
+
+    with pytest.raises(PlaybackError, match="No track"):
+        service.seek(10_000)

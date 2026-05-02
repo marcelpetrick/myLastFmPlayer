@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QSlider,
     QSpinBox,
     QTableView,
     QToolBar,
@@ -44,6 +45,7 @@ class MainWindow(QMainWindow):
     play_requested = pyqtSignal()
     pause_requested = pyqtSignal()
     stop_requested = pyqtSignal()
+    seek_requested = pyqtSignal(int)
 
     def __init__(self, translation_manager: TranslationManager | None = None) -> None:
         super().__init__()
@@ -51,6 +53,7 @@ class MainWindow(QMainWindow):
         self._fetch_paused = False
         self._last_progress_label = "Idle"
         self._last_status_message = "Ready"
+        self._playback_duration_ms = 0
         self.set_application_title(__display_version__)
         self.resize(1120, 720)
 
@@ -168,7 +171,8 @@ class MainWindow(QMainWindow):
         layout.setSpacing(12)
 
         self.playback_group = QGroupBox()
-        playback_layout = QHBoxLayout(self.playback_group)
+        playback_layout = QVBoxLayout(self.playback_group)
+        playback_button_layout = QHBoxLayout()
         self.play_button = QPushButton()
         self.pause_button = QPushButton()
         self.stop_button = QPushButton()
@@ -176,7 +180,28 @@ class MainWindow(QMainWindow):
         self.pause_button.clicked.connect(self.pause_requested.emit)
         self.stop_button.clicked.connect(self.stop_requested.emit)
         for button in (self.play_button, self.pause_button, self.stop_button):
-            playback_layout.addWidget(button)
+            playback_button_layout.addWidget(button)
+
+        playback_timeline_layout = QHBoxLayout()
+        self.playback_slider = QSlider(Qt.Orientation.Horizontal)
+        self.playback_slider.setRange(0, 0)
+        self.playback_slider.setEnabled(False)
+        self.playback_slider.setMinimumWidth(280)
+        self.playback_slider.sliderReleased.connect(self._emit_timeline_seek)
+        self.current_time_label = QLabel(format_playback_time(0))
+        self.current_time_label.setMinimumWidth(48)
+        self.current_time_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.time_separator_label = QLabel("/")
+        self.total_time_label = QLabel(format_playback_time(0))
+        self.total_time_label.setMinimumWidth(48)
+        playback_timeline_layout.addWidget(self.playback_slider, stretch=1)
+        playback_timeline_layout.addWidget(self.current_time_label)
+        playback_timeline_layout.addWidget(self.time_separator_label)
+        playback_timeline_layout.addWidget(self.total_time_label)
+        playback_layout.addLayout(playback_button_layout)
+        playback_layout.addLayout(playback_timeline_layout)
 
         self.downloads_group = QGroupBox()
         self.downloads_layout = QFormLayout(self.downloads_group)
@@ -324,6 +349,30 @@ class MainWindow(QMainWindow):
         self._last_status_message = message
         self.statusBar().showMessage(message)
 
+    def set_playback_timeline(self, position_ms: int, duration_ms: int) -> None:
+        """Update the playback timeline slider and readable time labels."""
+
+        bounded_duration = max(0, duration_ms)
+        bounded_position = max(0, min(max(0, position_ms), bounded_duration))
+        self._playback_duration_ms = bounded_duration
+        self.playback_slider.setEnabled(bounded_duration > 0)
+        self.playback_slider.setMaximum(bounded_duration)
+        self.playback_slider.blockSignals(True)
+        self.playback_slider.setValue(bounded_position)
+        self.playback_slider.blockSignals(False)
+        self.current_time_label.setText(format_playback_time(bounded_position))
+        self.total_time_label.setText(format_playback_time(bounded_duration))
+
+    def reset_playback_timeline(self) -> None:
+        """Reset the playback timeline to an idle state."""
+
+        self.set_playback_timeline(0, 0)
+
+    def _emit_timeline_seek(self) -> None:
+        if self._playback_duration_ms <= 0:
+            return
+        self.seek_requested.emit(self.playback_slider.value())
+
     def _show_not_implemented(self) -> None:
         message = self.tr("This control is part of the MVP shell and will be wired in later steps.")
         self.append_feedback(message)
@@ -351,6 +400,7 @@ class MainWindow(QMainWindow):
         self.play_button.setText(self.tr("Play"))
         self.pause_button.setText(self.tr("Pause"))
         self.stop_button.setText(self.tr("Stop"))
+        self.playback_slider.setToolTip(self.tr("Playback position"))
         self.downloads_group.setTitle(self.tr("Downloads"))
         self.download_toggle_button.setText(self.tr("Download Queued"))
         self.concurrency_label.setText(self.tr("Concurrency"))
@@ -381,3 +431,14 @@ def application_title(version: str) -> str:
     """Return the application title with ``version`` as a suffix."""
 
     return f"myLastFmPlayer v{version}"
+
+
+def format_playback_time(milliseconds: int) -> str:
+    """Format ``milliseconds`` as a compact human-readable playback time."""
+
+    total_seconds = max(0, milliseconds) // 1000
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02}:{seconds:02}"
+    return f"{minutes}:{seconds:02}"

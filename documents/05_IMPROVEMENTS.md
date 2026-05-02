@@ -11,8 +11,8 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 7. `localPipeline.sh` now starts the installed app once unless `--noRun` is provided and does not reopen it after the user quits.
 * fixed: 11. built packages show the first six digits of the build-time git commit hash as a user-facing version suffix.
 * fixed: 12. `my_lastfm_player/version.py` is the single source of truth for the base version; package metadata and documentation checks read that value.
-* 13. make it possible to skip to certain moment of playtime of the song
-* 14. scrobble the songs back to last fm: first auth to lkast.fm, then scrobble the song - how does this even work?
+* fixed: 13. playback now has a seekable timeline slider with current and total time labels.
+* 14. scrobble the songs back to last fm: first auth to last.fm, then scrobble the song - how does this even work?
 * 15. playlist feature? like drag and drop for the songs? and then those are played one after each other?
 
 
