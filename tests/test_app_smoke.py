@@ -12,8 +12,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.36"
-    assert __display_version__ == "0.0.36"
+    assert __version__ == "0.0.37"
+    assert __display_version__ == "0.0.37"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -25,7 +25,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.36"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.37"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -76,7 +76,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.36\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.37\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -169,6 +169,18 @@ def test_main_window_playback_controls_emit_signals(qapp) -> None:
     window.stop_button.click()
 
     assert events == ["play", "pause", "stop"]
+
+
+def test_main_window_double_clicking_track_requests_playback(qapp) -> None:
+    window = MainWindow()
+    events: list[str] = []
+    window.play_requested.connect(lambda: events.append("play"))
+
+    source_index = window.track_model.index(0, 0)
+    proxy_index = window.track_sort_model.mapFromSource(source_index)
+    window.track_table.doubleClicked.emit(proxy_index)
+
+    assert events == ["play"]
 
 
 def test_main_window_playback_timeline_formats_and_seeks(qapp) -> None:

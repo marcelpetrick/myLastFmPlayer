@@ -157,6 +157,7 @@ class MainWindow(QMainWindow):
         self.track_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.track_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.track_table.setSortingEnabled(True)
+        self.track_table.doubleClicked.connect(lambda _index: self.play_requested.emit())
         self.track_table.verticalHeader().setVisible(False)
         header = self.track_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)

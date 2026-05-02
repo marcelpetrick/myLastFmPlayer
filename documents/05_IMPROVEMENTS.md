@@ -11,10 +11,10 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 7. `localPipeline.sh` now starts the installed app once unless `--noRun` is provided and does not reopen it after the user quits.
 * fixed: 11. built packages show the first six digits of the build-time git commit hash as a user-facing version suffix.
 * fixed: 12. `my_lastfm_player/version.py` is the single source of truth for the base version; package metadata and documentation checks read that value.
-* fixed: 13. playback now has a seekable timeline slider with current and total time labels.
+* fixed: 13. playback now has a seekable timeline slider with current and total time labels; clicking the timeline jumps immediately to that position.
 * 14. scrobble the songs back to last fm: first auth to last.fm, then scrobble the song - how does this even work?
 * 15. playlist feature? like drag and drop for the songs? and then those are played one after each other?
-
+* fixed: 16. double-clicking a song in the track list now starts the same playback flow as the Play button.
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.
@@ -23,7 +23,7 @@ This document collects follow-up improvements noticed during implementation. The
 ## UI design
 * 8. switch to use qml isntead of a widget based app? benefits
 * 9. themes, color schemes? dark light mode at least
-* 10. i18n for the project? language select and then translation
+* fixed: 10. the app has Qt translation support, translation file generation commands, and a live language-selection menu.
 
 ## Packaging and Versioning
 
