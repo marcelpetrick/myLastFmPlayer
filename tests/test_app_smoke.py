@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from PyQt6.QtCore import QEvent, QPointF, Qt
+from PyQt6.QtGui import QMouseEvent
+
 from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
 from my_lastfm_player.i18n import SUPPORTED_LANGUAGES
@@ -9,8 +12,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.34"
-    assert __display_version__ == "0.0.34"
+    assert __version__ == "0.0.35"
+    assert __display_version__ == "0.0.35"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -22,7 +25,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.34"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.35"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -73,7 +76,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.34\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.35\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -189,6 +192,28 @@ def test_main_window_playback_timeline_formats_and_seeks(qapp) -> None:
     window.playback_slider.sliderReleased.emit()
 
     assert seeks == [90_000]
+
+
+def test_main_window_playback_timeline_click_seeks_immediately(qapp) -> None:
+    window = MainWindow()
+    seeks: list[int] = []
+    window.seek_requested.connect(seeks.append)
+    window.set_playback_timeline(0, 200_000)
+    window.playback_slider.resize(200, window.playback_slider.height())
+
+    event = QMouseEvent(
+        QEvent.Type.MouseButtonPress,
+        QPointF(50, 4),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    expected_position = window._timeline_value_for_x_position(50)
+
+    assert window.eventFilter(window.playback_slider, event)
+    assert window.playback_slider.value() == expected_position
+    assert window.current_time_label.text() == format_playback_time(expected_position)
+    assert seeks == [expected_position]
 
 
 def test_format_playback_time_handles_hours() -> None:

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6.QtCore import QSortFilterProxyModel, Qt, pyqtSignal
-from PyQt6.QtGui import QAction
+from PyQt6.QtCore import QEvent, QSortFilterProxyModel, Qt, pyqtSignal
+from PyQt6.QtGui import QAction, QMouseEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QFormLayout,
@@ -187,6 +187,7 @@ class MainWindow(QMainWindow):
         self.playback_slider.setRange(0, 0)
         self.playback_slider.setEnabled(False)
         self.playback_slider.setMinimumWidth(280)
+        self.playback_slider.installEventFilter(self)
         self.playback_slider.sliderReleased.connect(self._emit_timeline_seek)
         self.current_time_label = QLabel(format_playback_time(0))
         self.current_time_label.setMinimumWidth(48)
@@ -372,6 +373,27 @@ class MainWindow(QMainWindow):
         if self._playback_duration_ms <= 0:
             return
         self.seek_requested.emit(self.playback_slider.value())
+
+    def eventFilter(self, watched: object, event: QEvent) -> bool:
+        """Handle immediate seeking when the playback timeline groove is clicked."""
+
+        if (
+            watched is self.playback_slider
+            and event.type() == QEvent.Type.MouseButtonPress
+            and isinstance(event, QMouseEvent)
+            and event.button() == Qt.MouseButton.LeftButton
+            and self._playback_duration_ms > 0
+        ):
+            value = self._timeline_value_for_x_position(round(event.position().x()))
+            self.set_playback_timeline(value, self._playback_duration_ms)
+            self.seek_requested.emit(value)
+            return True
+        return super().eventFilter(watched, event)
+
+    def _timeline_value_for_x_position(self, x_position: int) -> int:
+        slider_width = max(1, self.playback_slider.width())
+        bounded_position = max(0, min(x_position, slider_width))
+        return round(self._playback_duration_ms * bounded_position / slider_width)
 
     def _show_not_implemented(self) -> None:
         message = self.tr("This control is part of the MVP shell and will be wired in later steps.")
