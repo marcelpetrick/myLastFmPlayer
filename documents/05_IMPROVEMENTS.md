@@ -9,8 +9,8 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 5. Last.fm fetching has pause/resume and stop controls beside the fetch button, with backend cancellation support and unit coverage.
 * fixed: 6. local pipeline HTML report opening now prefers `MY_LASTFM_PLAYER_REPORT_BROWSER`, then Firefox, then `xdg-open`, then `open`, and reports which opener accepted each file.
 * fixed: 7. `localPipeline.sh` now starts the installed app once unless `--noRun` is provided and does not reopen it after the user quits.
-* 11. expand the versionning - show the hash value of the commit (first six digits) as suffix for the version
-* 12. versioning: one single source of truth: use it for documentation as well, but not in several places where just doubled. the readme shall mention it and then the code ONCE (cmakelist?)
+* fixed: 11. built packages show the first six digits of the build-time git commit hash as a user-facing version suffix.
+* fixed: 12. `my_lastfm_player/version.py` is the single source of truth for the base version; package metadata and documentation checks read that value.
 * 13. make it possible to skip to certain moment of playtime of the song
 * 14. scrobble the songs back to last fm: first auth to lkast.fm, then scrobble the song - how does this even work?
 * 15. playlist feature? like drag and drop for the songs? and then those are played one after each other?
@@ -27,7 +27,7 @@ This document collects follow-up improvements noticed during implementation. The
 
 ## Packaging and Versioning
 
-- 16. versioning: Python package metadata normalizes two-digit versions such as `00.00.20` to `0.0.20` for built wheel filenames. The app-facing version keeps the requested two-digit format, but release tooling should make this distinction explicit.
+- fixed: 16. versioning now uses unpadded `0.0.x` values directly, so package metadata, wheel filenames, and app-facing base versions match.
 - The documented rule says every future commit should increase the patch number. This is easy to forget manually; a small pre-commit or release helper could enforce it.
 
 ## Pipeline
@@ -68,4 +68,3 @@ This document collects follow-up improvements noticed during implementation. The
 - Playback uses `QMediaPlayer`, which keeps the app inside PyQt but means codec support depends on the user's Qt multimedia backend. A future startup check could verify MP3 playback support and show a clear warning.
 - Playback status currently persists the selected track as `Playing` while active and restores it to `Downloaded` when stopped. If the app exits during playback, startup should normalize any stale `Playing` rows back to `Downloaded`.
 - The controller saves visible table tracks after playback state changes. A future storage abstraction should provide a narrower single-track update API to avoid rewriting large user files for a single status change.
-. 

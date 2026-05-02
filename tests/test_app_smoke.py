@@ -1,21 +1,28 @@
 from __future__ import annotations
 
-from my_lastfm_player import __version__
+from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
 from my_lastfm_player.i18n import SUPPORTED_LANGUAGES
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.ui.main_window import MainWindow, application_title
+from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "00.00.32"
+    assert __version__ == "0.0.33"
+    assert __display_version__ == "0.0.33"
+
+
+def test_display_version_adds_build_commit_suffix() -> None:
+    assert display_version("1.2.3", "abcdef123") == "1.2.3+abcdef"
+    assert display_version("1.2.3", "") == "1.2.3"
 
 
 def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v00.00.32"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.33"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -28,7 +35,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
 
 
 def test_application_title_includes_version_suffix() -> None:
-    assert application_title("01.02.03") == "myLastFmPlayer v01.02.03"
+    assert application_title("1.2.3+abcdef") == "myLastFmPlayer v1.2.3+abcdef"
 
 
 def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
@@ -66,7 +73,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 00.00.32\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.33\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:

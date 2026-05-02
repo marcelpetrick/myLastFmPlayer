@@ -222,7 +222,10 @@ install_built_wheel() {
 
 verify_package_import() {
     log "Verifying package import and version."
-    "${PYTHON}" -c "import my_lastfm_player; print(f'Package import ok: {my_lastfm_player.__version__}')"
+    (
+        cd "${ROOT_DIR}/dist"
+        "${PYTHON}" -c "import my_lastfm_player; print(f'Package import ok: {my_lastfm_player.__display_version__}')"
+    )
 }
 
 launch_application() {

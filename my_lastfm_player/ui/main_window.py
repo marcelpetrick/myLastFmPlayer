@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from my_lastfm_player import __version__
+from my_lastfm_player import __display_version__
 from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track
 from my_lastfm_player.ui.track_table_model import TrackTableModel, example_tracks
@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
         self._fetch_paused = False
         self._last_progress_label = "Idle"
         self._last_status_message = "Ready"
-        self.set_application_title(__version__)
+        self.set_application_title(__display_version__)
         self.resize(1120, 720)
 
         self._build_actions()

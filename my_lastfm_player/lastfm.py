@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup, Tag
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track
 from my_lastfm_player.storage import JsonTrackRepository
-from my_lastfm_player.version import __version__
+from my_lastfm_player.version import __display_version__
 
 LASTFM_BASE_URL = "https://www.last.fm"
 REQUEST_TIMEOUT_SECONDS = 20
@@ -23,7 +23,7 @@ LASTFM_RETRY_DELAY_SECONDS = 2.0
 LASTFM_PAGE_DELAY_SECONDS = 1.5
 LASTFM_HEADERS = {
     "User-Agent": (
-        f"myLastFmPlayer/{__version__} "
+        f"myLastFmPlayer/{__display_version__} "
         "(https://github.com/local/myLastFmPlayer; mail@marcelpetrick.it)"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

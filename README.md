@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `00.00.32` - work in progress; tons of features are not implemented
+Current version: `0.0.33` - work in progress; tons of features are not implemented
 
 ## Current state
 
@@ -16,19 +16,26 @@ Current version: `00.00.32` - work in progress; tons of features are not impleme
 
 ## Versioning
 
-This project uses a two-digit SemVer-style version number:
+This project uses a SemVer-style base version:
 
 ```text
 MAJOR.MINOR.PATCH
 ```
 
-Each numeric part is written with two digits. The first version was `00.00.01`.
+The version is written without leading zero padding. The first version was `0.0.1`.
+The single source of truth is `my_lastfm_player/version.py`; Python package metadata reads
+the same `__version__` value through `pyproject.toml`.
 
 - `MAJOR`: incompatible or breaking changes.
 - `MINOR`: backwards-compatible feature additions.
 - `PATCH`: fixes, documentation, tooling, and other incremental changes.
 
 For this project, every future commit should increase the `PATCH` number unless the change intentionally requires a `MINOR` or `MAJOR` bump.
+
+Built packages can show a build suffix in user-facing locations such as the startup
+line and window title. The suffix is the first six digits of the git commit hash,
+generated at package build time into `my_lastfm_player/_build_info.py`. Source-tree
+development runs show only the base version when that generated metadata is absent.
 
 ## Requirements
 

@@ -1,6 +1,25 @@
 from __future__ import annotations
 
+import ast
 from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def read_project_version() -> str:
+    version_path = REPO_ROOT / "my_lastfm_player/version.py"
+    tree = ast.parse(version_path.read_text(encoding="utf-8"), filename=str(version_path))
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__version__":
+                    value = ast.literal_eval(node.value)
+                    if isinstance(value, str):
+                        return value
+    raise RuntimeError(f"Could not find __version__ in {version_path}")
+
+
+PROJECT_VERSION = read_project_version()
 
 REQUIRED_FILES = [
     Path("README.md"),
@@ -16,8 +35,10 @@ REQUIRED_FILES = [
 REQUIRED_README_SNIPPETS = [
     "Author: Marcel Petrick <mail@marcelpetrick.it>",
     "License: GPLv3 or later.",
-    "Current version: `00.00.32`",
+    f"Current version: `{PROJECT_VERSION}`",
     "MAJOR.MINOR.PATCH",
+    "single source of truth",
+    "commit hash",
     "every future commit should increase the `PATCH` number",
     "python3 -m venv .venv",
     "python -m pip install -e .",
@@ -72,7 +93,7 @@ def check_readme(repo_root: Path) -> list[str]:
 
 
 def main() -> int:
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = REPO_ROOT
     errors = [
         *check_required_files(repo_root),
         *check_markdown(repo_root),
