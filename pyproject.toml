@@ -46,7 +46,7 @@ addopts = [
     "--cov=my_lastfm_player",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
-    "--cov-fail-under=75",
+    "--cov-fail-under=90",
 ]
 testpaths = ["tests"]
 

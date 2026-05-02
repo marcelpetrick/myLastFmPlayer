@@ -5,8 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from my_lastfm_player import playback as playback_module
 from my_lastfm_player.models import Track, TrackStatus
-from my_lastfm_player.playback import PlaybackError, PlaybackService
+from my_lastfm_player.playback import PlaybackError, PlaybackService, QtPlaybackBackend
 
 
 class FakePlaybackBackend:
@@ -163,3 +164,89 @@ def test_playback_service_rejects_pause_without_current_track() -> None:
 
     with pytest.raises(PlaybackError, match="No track"):
         service.seek(10_000)
+
+
+class FakeSignal:
+    def __init__(self) -> None:
+        self.callbacks: list[Callable[[int], None]] = []
+
+    def connect(self, callback: Callable[[int], None]) -> None:
+        self.callbacks.append(callback)
+
+
+class FakeQtMediaPlayer:
+    def __init__(self) -> None:
+        self.positionChanged = FakeSignal()
+        self.durationChanged = FakeSignal()
+        self.audio_output = None
+        self.source = None
+        self.play_called = False
+        self.pause_called = False
+        self.stop_called = False
+        self.position_value = -10
+        self.duration_value = -20
+
+    def setAudioOutput(self, audio_output) -> None:
+        self.audio_output = audio_output
+
+    def setSource(self, source) -> None:
+        self.source = source
+
+    def play(self) -> None:
+        self.play_called = True
+
+    def pause(self) -> None:
+        self.pause_called = True
+
+    def stop(self) -> None:
+        self.stop_called = True
+
+    def setPosition(self, position: int) -> None:
+        self.position_value = position
+
+    def position(self) -> int:
+        return self.position_value
+
+    def duration(self) -> int:
+        return self.duration_value
+
+
+def test_qt_playback_backend_wraps_player_and_normalizes_values(
+    monkeypatch, tmp_path: Path
+) -> None:
+    created_players: list[FakeQtMediaPlayer] = []
+
+    def fake_player_factory() -> FakeQtMediaPlayer:
+        player = FakeQtMediaPlayer()
+        created_players.append(player)
+        return player
+
+    monkeypatch.setattr(playback_module, "QAudioOutput", lambda: "audio-output")
+    monkeypatch.setattr(playback_module, "QMediaPlayer", fake_player_factory)
+
+    backend = QtPlaybackBackend()
+    player = created_players[0]
+    positions: list[int] = []
+    durations: list[int] = []
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake")
+
+    backend.on_position_changed(positions.append)
+    backend.on_duration_changed(durations.append)
+    backend.play(audio_path)
+    backend.pause()
+    backend.stop()
+    backend.seek(-100)
+    backend._notify_position_changed(-5)
+    backend._notify_duration_changed(-9)
+
+    assert player.audio_output == "audio-output"
+    assert player.source is not None
+    assert player.play_called
+    assert player.pause_called
+    assert player.stop_called
+    assert player.position_value == 0
+    assert backend.position_ms() == 0
+    assert backend.duration_ms() == 0
+    assert positions == [0]
+    assert durations == [0]
