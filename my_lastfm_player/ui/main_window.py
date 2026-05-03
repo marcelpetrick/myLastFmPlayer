@@ -74,6 +74,9 @@ class MainWindow(QMainWindow):
         self.refresh_action = QAction(self)
         self.refresh_action.triggered.connect(self.fetch_requested.emit)
 
+        self.preferences_action = QAction(self)
+        self.preferences_action.triggered.connect(self._show_not_implemented)
+
         self.quit_action = QAction(self)
         self.quit_action.triggered.connect(self.close)
 
@@ -87,6 +90,12 @@ class MainWindow(QMainWindow):
             self.language_actions[language.code] = action
 
     def _build_menus(self) -> None:
+        self.main_menu = QMenu(self)
+        self.main_menu.addAction(self.refresh_action)
+        self.main_menu.addAction(self.preferences_action)
+        self.main_menu.addAction(self.quit_action)
+        self.menuBar().addMenu(self.main_menu)
+
         self.language_menu = QMenu(self)
         for language in SUPPORTED_LANGUAGES:
             self.language_menu.addAction(self.language_actions[language.code])
@@ -95,9 +104,6 @@ class MainWindow(QMainWindow):
     def _build_toolbar(self) -> None:
         self.toolbar = QToolBar(self)
         self.toolbar.setMovable(False)
-        self.toolbar.addAction(self.refresh_action)
-        self.toolbar.addSeparator()
-        self.toolbar.addAction(self.quit_action)
         self.addToolBar(self.toolbar)
 
     def _build_central_widget(self) -> None:
@@ -443,7 +449,9 @@ class MainWindow(QMainWindow):
         """Apply current translations to all static widgets."""
 
         self.refresh_action.setText(self.tr("Fetch loved tracks"))
+        self.preferences_action.setText(self.tr("Preferences"))
         self.quit_action.setText(self.tr("Quit"))
+        self.main_menu.setTitle(self.tr("Main"))
         self.language_menu.setTitle(self.tr("Language"))
         self.toolbar.setWindowTitle(self.tr("Main"))
         self.username_label.setText(self.tr("Last.fm username"))

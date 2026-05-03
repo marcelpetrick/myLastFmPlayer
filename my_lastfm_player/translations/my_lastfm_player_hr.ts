@@ -256,135 +256,141 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="475" />
+        <location filename="../ui/main_window.py" line="486" />
         <location filename="../ui/main_window.py" line="65" />
         <source>Ready</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="468" />
-        <location filename="../ui/main_window.py" line="234" />
+        <location filename="../ui/main_window.py" line="479" />
+        <location filename="../ui/main_window.py" line="243" />
         <source>Idle</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="250" />
+        <location filename="../ui/main_window.py" line="259" />
         <source>Loaded {count} tracks</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="270" />
+        <location filename="../ui/main_window.py" line="279" />
         <source>Resume</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="454" />
-        <location filename="../ui/main_window.py" line="270" />
+        <location filename="../ui/main_window.py" line="465" />
+        <location filename="../ui/main_window.py" line="279" />
         <source>Pause</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="272" />
+        <location filename="../ui/main_window.py" line="281" />
         <source>Resume the paused Last.fm fetch</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="274" />
+        <location filename="../ui/main_window.py" line="283" />
         <source>Pause the active Last.fm fetch</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="275" />
+        <location filename="../ui/main_window.py" line="284" />
         <source>Stop the active Last.fm fetch</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="349" />
+        <location filename="../ui/main_window.py" line="358" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="430" />
+        <location filename="../ui/main_window.py" line="439" />
         <source>This control is part of the MVP shell and will be wired in later steps.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="445" />
+        <location filename="../ui/main_window.py" line="454" />
         <source>Fetch loved tracks</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="446" />
-        <source>Quit</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="447" />
-        <source>Language</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="448" />
-        <source>Main</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="449" />
-        <source>Last.fm username</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="450" />
-        <source>Enter username</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="451" />
-        <source>Fetch</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="452" />
-        <source>Playback</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="453" />
-        <source>Play</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
         <location filename="../ui/main_window.py" line="455" />
-        <source>Stop</source>
+        <source>Preferences</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../ui/main_window.py" line="456" />
-        <source>Playback position</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="457" />
-        <source>Downloads</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="458" />
-        <source>Download Queued</source>
+        <source>Quit</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../ui/main_window.py" line="459" />
-        <source>Concurrency</source>
+        <location filename="../ui/main_window.py" line="457" />
+        <source>Main</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="458" />
+        <source>Language</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="460" />
+        <source>Last.fm username</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../ui/main_window.py" line="461" />
+        <source>Enter username</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="462" />
+        <source>Fetch</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="463" />
+        <source>Playback</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="464" />
+        <source>Play</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="466" />
+        <source>Stop</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="467" />
+        <source>Playback position</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="468" />
+        <source>Downloads</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="469" />
+        <source>Download Queued</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="470" />
+        <source>Concurrency</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="472" />
         <source>Status updates and errors will appear here.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="465" />
+        <location filename="../ui/main_window.py" line="476" />
         <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
         <translation type="unfinished" />
     </message>
