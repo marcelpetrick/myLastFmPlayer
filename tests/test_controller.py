@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from PyQt6.QtCore import Qt
+
 from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.dependencies import DependencyCheckResult
 from my_lastfm_player.models import Track, TrackStatus
@@ -402,6 +404,7 @@ class FakePlaybackService:
         self.duration = 0
         self.position_callback = None
         self.duration_callback = None
+        self.finished_callback = None
         self.fail_pause = False
         self.fail_seek = False
 
@@ -420,6 +423,15 @@ class FakePlaybackService:
 
     def stop(self) -> Track | None:
         self.events.append("stop")
+        stopped_track = (
+            self.current_track.with_status(TrackStatus.DOWNLOADED)
+            if self.current_track
+            else None
+        )
+        self.current_track = None
+        return stopped_track
+
+    def finish_current(self) -> Track | None:
         stopped_track = (
             self.current_track.with_status(TrackStatus.DOWNLOADED)
             if self.current_track
@@ -448,6 +460,9 @@ class FakePlaybackService:
     def on_duration_changed(self, callback) -> None:
         self.duration_callback = callback
 
+    def on_finished(self, callback) -> None:
+        self.finished_callback = callback
+
 
 def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
     window = MainWindow()
@@ -474,6 +489,93 @@ def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
     assert window.track_model.track_at(0).status == TrackStatus.PLAYING
     assert window.playback_slider.maximum() == 180_000
     assert "Playing Artist - Title." in window.feedback_log.toPlainText()
+
+
+def test_controller_auto_plays_next_track_after_finished_in_sort_order(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    tracks = [
+        Track(
+            artist="Zed",
+            title="Last",
+            local_path=str(tmp_path / "last.mp3"),
+            status=TrackStatus.DOWNLOADED,
+        ),
+        Track(
+            artist="Alpha",
+            title="First",
+            local_path=str(tmp_path / "first.mp3"),
+            status=TrackStatus.DOWNLOADED,
+        ),
+        Track(
+            artist="Middle",
+            title="Second",
+            local_path=str(tmp_path / "second.mp3"),
+            status=TrackStatus.DOWNLOADED,
+        ),
+    ]
+    window.set_tracks(tracks)
+    window.track_sort_model.sort(0, Qt.SortOrder.AscendingOrder)
+    window.select_track_row(1)
+    playback = FakePlaybackService()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        playback_service=playback,  # type: ignore[arg-type]
+    )
+
+    controller.play_selected_track()
+    assert playback.finished_callback is not None
+    playback.finished_callback()
+
+    assert playback.events == ["play:First", "play:Second"]
+    assert window.track_model.track_at(1).status == TrackStatus.DOWNLOADED
+    assert window.track_model.track_at(2).status == TrackStatus.PLAYING
+    assert window.selected_track() == tracks[2].with_status(TrackStatus.PLAYING)
+    assert "Continuing with next track: Middle - Second." in window.feedback_log.toPlainText()
+
+
+def test_controller_wraps_to_first_sorted_track_after_last_track_finishes(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    tracks = [
+        Track(
+            artist="Zed",
+            title="Last",
+            local_path=str(tmp_path / "last.mp3"),
+            status=TrackStatus.DOWNLOADED,
+        ),
+        Track(
+            artist="Alpha",
+            title="First",
+            local_path=str(tmp_path / "first.mp3"),
+            status=TrackStatus.DOWNLOADED,
+        ),
+    ]
+    window.set_tracks(tracks)
+    window.track_sort_model.sort(0, Qt.SortOrder.AscendingOrder)
+    window.select_track_row(0)
+    playback = FakePlaybackService()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        playback_service=playback,  # type: ignore[arg-type]
+    )
+
+    controller.play_selected_track()
+    assert playback.finished_callback is not None
+    playback.finished_callback()
+
+    assert playback.events == ["play:Last", "play:First"]
+    assert window.track_model.track_at(0).status == TrackStatus.DOWNLOADED
+    assert window.track_model.track_at(1).status == TrackStatus.PLAYING
+    assert window.selected_track() == tracks[1].with_status(TrackStatus.PLAYING)
 
 
 def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:

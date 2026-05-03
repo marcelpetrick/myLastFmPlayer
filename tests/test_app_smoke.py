@@ -12,8 +12,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.37"
-    assert __display_version__ == "0.0.37"
+    assert __version__ == "0.0.38"
+    assert __display_version__ == "0.0.38"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -25,7 +25,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.37"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.38"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -76,7 +76,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.37\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.38\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -93,6 +93,26 @@ def test_main_window_binds_track_data_and_selection(qapp) -> None:
     assert window.track_model.data(window.track_model.index(0, 0)) == "Zed"
     assert window.track_model.data(window.track_model.index(1, 2)) == "Downloaded"
     assert window.selected_track() == tracks[1]
+
+
+def test_main_window_finds_next_track_in_current_sort_order(qapp) -> None:
+    window = MainWindow()
+    tracks = [
+        Track(artist="Zed", title="Last", status=TrackStatus.DOWNLOADED),
+        Track(artist="Alpha", title="First", status=TrackStatus.DOWNLOADED),
+        Track(artist="Middle", title="Second", status=TrackStatus.DOWNLOADED),
+    ]
+    window.set_tracks(tracks)
+    window.track_sort_model.sort(0, Qt.SortOrder.AscendingOrder)
+
+    next_track = window.next_track_after(tracks[1].cache_key)
+
+    assert next_track == (2, tracks[2])
+    assert window.next_track_after(tracks[0].cache_key) == (1, tracks[1])
+
+    window.select_track_row(2)
+
+    assert window.selected_track() == tracks[2]
 
 
 def test_main_window_updates_progress_and_feedback(qapp) -> None:

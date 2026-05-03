@@ -310,6 +310,36 @@ class MainWindow(QMainWindow):
         source_index = self.track_sort_model.mapToSource(selected_rows[0])
         return source_index.row()
 
+    def next_track_after(self, cache_key: str) -> tuple[int, Track] | None:
+        """Return the next source row after ``cache_key`` in sort order, wrapping at end."""
+
+        for proxy_row in range(self.track_sort_model.rowCount()):
+            proxy_index = self.track_sort_model.index(proxy_row, 0)
+            source_index = self.track_sort_model.mapToSource(proxy_index)
+            track = self.track_model.track_at(source_index.row())
+            if track.cache_key != cache_key:
+                continue
+            next_proxy_row = proxy_row + 1
+            if next_proxy_row >= self.track_sort_model.rowCount():
+                next_proxy_row = 0
+            next_source_index = self.track_sort_model.mapToSource(
+                self.track_sort_model.index(next_proxy_row, 0)
+            )
+            next_source_row = next_source_index.row()
+            return next_source_row, self.track_model.track_at(next_source_row)
+        return None
+
+    def select_track_row(self, source_row: int) -> None:
+        """Select ``source_row`` in the table while respecting the active sort order."""
+
+        if not 0 <= source_row < self.track_model.rowCount():
+            return
+        source_index = self.track_model.index(source_row, 0)
+        proxy_index = self.track_sort_model.mapFromSource(source_index)
+        if not proxy_index.isValid():
+            return
+        self.track_table.selectRow(proxy_index.row())
+
     def update_track(self, row: int, track: Track) -> None:
         """Replace one visible row with ``track`` and update the status bar."""
 

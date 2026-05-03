@@ -17,6 +17,7 @@ class FakePlaybackBackend:
         self.duration = 180_000
         self.position_callbacks: list[Callable[[int], None]] = []
         self.duration_callbacks: list[Callable[[int], None]] = []
+        self.finished_callbacks: list[Callable[[], None]] = []
 
     def play(self, path: Path) -> None:
         self.events.append(("play", path))
@@ -42,6 +43,9 @@ class FakePlaybackBackend:
 
     def on_duration_changed(self, callback: Callable[[int], None]) -> None:
         self.duration_callbacks.append(callback)
+
+    def on_finished(self, callback: Callable[[], None]) -> None:
+        self.finished_callbacks.append(callback)
 
 
 def test_playback_service_plays_downloaded_track(tmp_path: Path) -> None:
@@ -118,6 +122,30 @@ def test_playback_service_pause_and_stop(tmp_path: Path) -> None:
     assert backend.events[-2:] == [("pause", None), ("stop", None)]
 
 
+def test_playback_service_finishes_current_track_without_stopping_backend(
+    tmp_path: Path,
+) -> None:
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
+    backend = FakePlaybackBackend()
+    service = PlaybackService(backend=backend)
+    service.play(
+        Track(
+            artist="Artist",
+            title="Title",
+            local_path=str(audio_path),
+            status=TrackStatus.DOWNLOADED,
+        )
+    )
+
+    finished_track = service.finish_current()
+
+    assert finished_track is not None
+    assert finished_track.status == TrackStatus.DOWNLOADED
+    assert service.current_track is None
+    assert backend.events == [("play", audio_path)]
+
+
 def test_playback_service_seeks_current_track(tmp_path: Path) -> None:
     audio_path = tmp_path / "track.mp3"
     audio_path.write_bytes(b"fake mp3")
@@ -178,6 +206,7 @@ class FakeQtMediaPlayer:
     def __init__(self) -> None:
         self.positionChanged = FakeSignal()
         self.durationChanged = FakeSignal()
+        self.mediaStatusChanged = FakeSignal()
         self.audio_output = None
         self.source = None
         self.play_called = False
@@ -228,17 +257,21 @@ def test_qt_playback_backend_wraps_player_and_normalizes_values(
     player = created_players[0]
     positions: list[int] = []
     durations: list[int] = []
+    finished: list[bool] = []
     audio_path = tmp_path / "track.mp3"
     audio_path.write_bytes(b"fake")
 
     backend.on_position_changed(positions.append)
     backend.on_duration_changed(durations.append)
+    backend.on_finished(lambda: finished.append(True))
     backend.play(audio_path)
     backend.pause()
     backend.stop()
     backend.seek(-100)
     backend._notify_position_changed(-5)
     backend._notify_duration_changed(-9)
+    backend._notify_media_status_changed(object())
+    backend._notify_media_status_changed(playback_module._END_OF_MEDIA_STATUS)
 
     assert player.audio_output == "audio-output"
     assert player.source is not None
@@ -250,3 +283,4 @@ def test_qt_playback_backend_wraps_player_and_normalizes_values(
     assert backend.duration_ms() == 0
     assert positions == [0]
     assert durations == [0]
+    assert finished == [True]

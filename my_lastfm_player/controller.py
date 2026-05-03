@@ -666,6 +666,7 @@ class ApplicationController(QObject):
             return
         self._playback_service.on_position_changed(self._handle_playback_position_changed)
         self._playback_service.on_duration_changed(self._handle_playback_duration_changed)
+        self._playback_service.on_finished(self._handle_playback_finished)
         self._playback_callbacks_connected = True
 
     def _handle_playback_position_changed(self, position_ms: int) -> None:
@@ -673,6 +674,33 @@ class ApplicationController(QObject):
 
     def _handle_playback_duration_changed(self, duration_ms: int) -> None:
         self.window.set_playback_timeline(self.playback_service.position_ms(), duration_ms)
+
+    def _handle_playback_finished(self) -> None:
+        finished_track = self.playback_service.finish_current()
+        if finished_track is None:
+            return
+
+        self._update_track_by_cache_key(finished_track)
+        self.window.reset_playback_timeline()
+        next_track = self.window.next_track_after(finished_track.cache_key)
+        if next_track is None:
+            self.window.append_feedback(
+                translate("ApplicationController", "Playback finished.")
+            )
+            self._save_visible_tracks()
+            return
+
+        next_row, track = next_track
+        self.window.select_track_row(next_row)
+        self.window.append_feedback(
+            translate(
+                "ApplicationController",
+                "Continuing with next track: {artist} - {title}.",
+                artist=track.artist,
+                title=track.title,
+            )
+        )
+        self._play_track(next_row, track)
 
     def _complete_worker_run(self) -> None:
         self._running_worker_count = max(0, self._running_worker_count - 1)

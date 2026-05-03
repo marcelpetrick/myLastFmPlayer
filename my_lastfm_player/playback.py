@@ -11,6 +11,7 @@ from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
 from my_lastfm_player.models import Track, TrackStatus
 
 LOGGER = logging.getLogger(__name__)
+_END_OF_MEDIA_STATUS = QMediaPlayer.MediaStatus.EndOfMedia
 
 
 class PlaybackError(RuntimeError):
@@ -60,6 +61,11 @@ class PlaybackBackend(Protocol):
 
         ...
 
+    def on_finished(self, callback: Callable[[], None]) -> None:
+        """Register ``callback`` for normal playback completion."""
+
+        ...
+
 
 class QtPlaybackBackend:
     """PyQt multimedia backend for local audio playback."""
@@ -70,8 +76,10 @@ class QtPlaybackBackend:
         self.player.setAudioOutput(self.audio_output)
         self._position_callbacks: list[Callable[[int], None]] = []
         self._duration_callbacks: list[Callable[[int], None]] = []
+        self._finished_callbacks: list[Callable[[], None]] = []
         self.player.positionChanged.connect(self._notify_position_changed)
         self.player.durationChanged.connect(self._notify_duration_changed)
+        self.player.mediaStatusChanged.connect(self._notify_media_status_changed)
 
     def play(self, path: Path) -> None:
         """Start playing ``path`` through ``QMediaPlayer``."""
@@ -114,6 +122,11 @@ class QtPlaybackBackend:
 
         self._duration_callbacks.append(callback)
 
+    def on_finished(self, callback: Callable[[], None]) -> None:
+        """Register ``callback`` for Qt end-of-media notifications."""
+
+        self._finished_callbacks.append(callback)
+
     def _notify_position_changed(self, position_ms: int) -> None:
         for callback in self._position_callbacks:
             callback(max(0, position_ms))
@@ -121,6 +134,12 @@ class QtPlaybackBackend:
     def _notify_duration_changed(self, duration_ms: int) -> None:
         for callback in self._duration_callbacks:
             callback(max(0, duration_ms))
+
+    def _notify_media_status_changed(self, status: QMediaPlayer.MediaStatus) -> None:
+        if status != _END_OF_MEDIA_STATUS:
+            return
+        for callback in self._finished_callbacks:
+            callback()
 
 
 class PlaybackService:
@@ -173,6 +192,15 @@ class PlaybackService:
         self.current_track = None
         return stopped_track
 
+    def finish_current(self) -> Track | None:
+        """Return the completed track restored to downloaded state without stopping backend."""
+
+        if self.current_track is None:
+            return None
+        finished_track = self.current_track.with_status(TrackStatus.DOWNLOADED, error=None)
+        self.current_track = None
+        return finished_track
+
     def seek(self, position_ms: int) -> None:
         """Seek the current track or raise ``PlaybackError`` when idle."""
 
@@ -199,6 +227,11 @@ class PlaybackService:
         """Register ``callback`` for playback duration updates."""
 
         self.backend.on_duration_changed(callback)
+
+    def on_finished(self, callback: Callable[[], None]) -> None:
+        """Register ``callback`` for normal playback completion."""
+
+        self.backend.on_finished(callback)
 
 
 def _validated_local_path(track: Track) -> Path:
