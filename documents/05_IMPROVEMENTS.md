@@ -25,6 +25,121 @@ This document collects follow-up improvements noticed during implementation. The
 * 9. themes, color schemes? dark light mode at least
 * fixed: 10. the app has Qt translation support, translation file generation commands, and a live language-selection menu.
 
+-----
+# scrobbling!
+
+## Requirements: Last.fm setup and scrobbling with `pylast`
+
+### Goal
+
+Enable users to connect their Last.fm account, persist the connection, fetch loved tracks, and scrobble playback history.
+
+### Preferences menu
+
+The app must include a **Last.fm preferences menu** where the user can:
+
+1. Enter their Last.fm username.
+2. Start Last.fm authentication.
+3. See whether Last.fm is connected/authenticated.
+4. Disconnect Last.fm.
+
+The username and authentication state must be persisted.
+
+### Authentication flow
+
+When the user clicks **Authenticate with Last.fm**:
+
+1. App creates a `pylast.LastFMNetwork` using app API key and secret.
+2. App generates a Last.fm web authorization URL via `pylast.SessionKeyGenerator`.
+3. App opens the URL in the user’s browser.
+4. User authorizes the app on Last.fm.
+5. App retrieves the Last.fm `session_key`.
+6. App persists:
+
+   * Last.fm username
+   * `session_key`
+   * authenticated status
+
+The app must **not** ask for or store the user’s Last.fm password.
+
+### Runtime behavior
+
+On app startup:
+
+1. Load persisted Last.fm username.
+2. Load persisted Last.fm session key.
+3. If a session key exists, initialize `pylast.LastFMNetwork` with it.
+4. Mark Last.fm as connected only if authenticated API access works.
+5. If authentication fails, keep username but mark Last.fm as not authenticated.
+
+### Fetching loved songs
+
+Fetching loved songs is separate from scrobbling.
+
+The app must support fetching loved tracks for the configured username, using the Last.fm API.
+
+Requirements:
+
+1. User must have a configured Last.fm username.
+2. Authentication is preferred but not necessarily required for public loved tracks.
+3. Fetching loved tracks must not depend on whether scrobbling is currently active.
+4. Results should be cached or stored according to the app’s normal library/indexing behavior.
+
+### Scrobbling
+
+Scrobbling requires a valid authenticated Last.fm session.
+
+The app must only scrobble when:
+
+1. Last.fm username is configured.
+2. Last.fm session key exists.
+3. Last.fm authentication is valid.
+4. User has enabled scrobbling, if the app has a separate scrobbling toggle.
+
+For each scrobble, send:
+
+* artist
+* track title
+* album, if available
+* timestamp
+* duration, if available
+
+If the app cannot scrobble, it must fail gracefully and explain why, for example:
+
+* Last.fm is not authenticated
+* missing username
+* missing track metadata
+* network/API error
+
+### Persistence
+
+Persist the following:
+
+* Last.fm username
+* Last.fm session key
+* authentication status
+* scrobbling enabled/disabled state, if applicable
+
+The session key must be stored securely where possible and must not be written to logs.
+
+### Acceptance criteria
+
+Implementation is complete when:
+
+1. User can enter Last.fm username in preferences.
+2. User can authenticate via browser from preferences.
+3. App persists username and auth session after restart.
+4. App can fetch loved songs for the configured user.
+5. App can scrobble after successful authentication.
+6. App does not ask for the Last.fm password.
+7. App clearly shows “connected” or “not connected” state.
+8. App handles failed/expired auth without crashing.
+
+END OF SCROBBLING
+
+-----
+
+
 ## Packaging and Versioning
 
 - fixed: 16. versioning now uses unpadded `0.0.x` values directly, so package metadata, wheel filenames, and app-facing base versions match.
