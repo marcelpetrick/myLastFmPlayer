@@ -181,5 +181,5 @@ END OF SCROBBLING
 ## Playback
 
 - Playback uses `QMediaPlayer`, which keeps the app inside PyQt but means codec support depends on the user's Qt multimedia backend. A future startup check could verify MP3 playback support and show a clear warning.
-- Playback status currently persists the selected track as `Playing` while active and restores it to `Downloaded` when stopped. If the app exits during playback, startup should normalize any stale `Playing` rows back to `Downloaded`.
+- fixed: Playback no longer mutates persisted track status; the `Playing` enum value was removed and the currently playing row is highlighted in bold instead, so the table sort order is preserved across play/stop.
 - The controller saves visible table tracks after playback state changes. A future storage abstraction should provide a narrower single-track update API to avoid rewriting large user files for a single status change.

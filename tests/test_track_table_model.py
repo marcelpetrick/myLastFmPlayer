@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.ui.track_table_model import TrackTableModel, example_tracks
@@ -55,3 +56,32 @@ def test_example_tracks_match_mvp_shell() -> None:
     tracks = example_tracks()
 
     assert [track.status for track in tracks] == [TrackStatus.FETCHED, TrackStatus.QUEUED]
+
+
+def test_track_table_model_bolds_currently_playing_row() -> None:
+    first = Track(artist="Artist", title="First", status=TrackStatus.DOWNLOADED)
+    second = Track(artist="Artist", title="Second", status=TrackStatus.DOWNLOADED)
+    model = TrackTableModel([first, second])
+    changes: list[tuple[int, list[int]]] = []
+    model.dataChanged.connect(
+        lambda top_left, _bottom_right, roles: changes.append((top_left.row(), list(roles)))
+    )
+
+    model.set_playing_track(second.cache_key)
+
+    assert model.playing_cache_key() == second.cache_key
+    assert model.data(model.index(0, 0), Qt.ItemDataRole.FontRole) is None
+    bold_font = model.data(model.index(1, 0), Qt.ItemDataRole.FontRole)
+    assert isinstance(bold_font, QFont)
+    assert bold_font.bold()
+    assert (1, [int(Qt.ItemDataRole.FontRole)]) in changes
+
+    model.set_playing_track(second.cache_key)
+    repeat_count = len(changes)
+    model.set_playing_track(second.cache_key)
+    assert len(changes) == repeat_count
+
+    model.set_playing_track(None)
+
+    assert model.playing_cache_key() is None
+    assert model.data(model.index(1, 0), Qt.ItemDataRole.FontRole) is None

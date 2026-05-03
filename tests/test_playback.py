@@ -62,8 +62,9 @@ def test_playback_service_plays_downloaded_track(tmp_path: Path) -> None:
 
     playing_track = service.play(track)
 
-    assert playing_track.status == TrackStatus.PLAYING
-    assert service.current_track == playing_track
+    assert playing_track is track
+    assert playing_track.status == TrackStatus.DOWNLOADED
+    assert service.current_track is track
     assert backend.events == [("play", audio_path)]
 
 

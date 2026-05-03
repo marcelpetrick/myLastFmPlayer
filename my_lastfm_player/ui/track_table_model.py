@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QAbstractTableModel, QCoreApplication, QModelIndex, Qt
+from PyQt6.QtGui import QFont
 
 from my_lastfm_player.models import Track, TrackStatus
 
@@ -13,6 +14,7 @@ class TrackTableModel(QAbstractTableModel):
     def __init__(self, tracks: list[Track] | None = None) -> None:
         super().__init__()
         self._tracks = tracks or []
+        self._playing_cache_key: str | None = None
 
     def rowCount(self, parent: QModelIndex | None = None) -> int:
         """Return the number of top-level track rows."""
@@ -28,8 +30,10 @@ class TrackTableModel(QAbstractTableModel):
             return 0
         return len(self.HEADERS)
 
-    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> str | None:
-        """Return display or user-role data for ``index``."""
+    def data(
+        self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole
+    ) -> str | QFont | None:
+        """Return display, user-role, or font data for ``index``."""
 
         if not index.isValid() or not 0 <= index.row() < len(self._tracks):
             return None
@@ -39,6 +43,10 @@ class TrackTableModel(QAbstractTableModel):
             return self._display_value(track, index.column())
         if role == Qt.ItemDataRole.UserRole:
             return track.cache_key
+        if role == Qt.ItemDataRole.FontRole and self._is_playing_row(track):
+            font = QFont()
+            font.setBold(True)
+            return font
         return None
 
     def headerData(
@@ -86,6 +94,27 @@ class TrackTableModel(QAbstractTableModel):
         """Return a copy of the model's tracks."""
 
         return list(self._tracks)
+
+    def set_playing_track(self, cache_key: str | None) -> None:
+        """Mark ``cache_key`` as the currently playing track and refresh fonts."""
+
+        if cache_key == self._playing_cache_key:
+            return
+        previous_key = self._playing_cache_key
+        self._playing_cache_key = cache_key
+        for row, track in enumerate(self._tracks):
+            if track.cache_key in (previous_key, cache_key):
+                top_left = self.index(row, 0)
+                bottom_right = self.index(row, self.columnCount() - 1)
+                self.dataChanged.emit(top_left, bottom_right, [Qt.ItemDataRole.FontRole])
+
+    def playing_cache_key(self) -> str | None:
+        """Return the cache key of the currently playing track, if any."""
+
+        return self._playing_cache_key
+
+    def _is_playing_row(self, track: Track) -> bool:
+        return self._playing_cache_key is not None and track.cache_key == self._playing_cache_key
 
     def _display_value(self, track: Track, column: int) -> str | None:
         match column:

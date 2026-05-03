@@ -14,7 +14,6 @@ class TrackStatus(StrEnum):
     SEARCHING = "Searching"
     DOWNLOADING = "Downloading"
     DOWNLOADED = "Downloaded"
-    PLAYING = "Playing"
     FAILED = "Failed"
     NOT_FOUND = "Not found"
 

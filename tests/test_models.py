@@ -18,7 +18,6 @@ def test_track_status_values_match_srs() -> None:
         "Searching",
         "Downloading",
         "Downloaded",
-        "Playing",
         "Failed",
         "Not found",
     ]

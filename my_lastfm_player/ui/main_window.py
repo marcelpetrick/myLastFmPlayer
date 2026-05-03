@@ -359,6 +359,11 @@ class MainWindow(QMainWindow):
             )
         )
 
+    def set_playing_track(self, cache_key: str | None) -> None:
+        """Highlight the row matching ``cache_key`` as the currently playing track."""
+
+        self.track_model.set_playing_track(cache_key)
+
     def tracks(self) -> list[Track]:
         """Return a copy of the tracks currently visible in the table."""
 

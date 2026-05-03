@@ -150,7 +150,7 @@ class PlaybackService:
         self.current_track: Track | None = None
 
     def play(self, track: Track) -> Track:
-        """Play ``track`` and return the same track marked as playing."""
+        """Play ``track`` and return it. Track status is not modified."""
 
         path = _validated_local_path(track)
         if self.current_track is not None and self.current_track.cache_key != track.cache_key:
@@ -159,9 +159,8 @@ class PlaybackService:
         LOGGER.info("Starting playback for %s - %s", track.artist, track.title)
         print(f"[myLastFmPlayer] Starting playback: {track.artist} - {track.title}", flush=True)
         self.backend.play(path)
-        playing_track = track.with_status(TrackStatus.PLAYING, error=None)
-        self.current_track = playing_track
-        return playing_track
+        self.current_track = track
+        return track
 
     def pause(self) -> None:
         """Pause the current track or raise ``PlaybackError`` when idle."""
@@ -177,7 +176,7 @@ class PlaybackService:
         self.backend.pause()
 
     def stop(self) -> Track | None:
-        """Stop playback and return the track restored to downloaded state."""
+        """Stop playback and return the previously playing track."""
 
         if self.current_track is None:
             return None
@@ -188,16 +187,16 @@ class PlaybackService:
         )
         print("[myLastFmPlayer] Stopping playback", flush=True)
         self.backend.stop()
-        stopped_track = self.current_track.with_status(TrackStatus.DOWNLOADED, error=None)
+        stopped_track = self.current_track
         self.current_track = None
         return stopped_track
 
     def finish_current(self) -> Track | None:
-        """Return the completed track restored to downloaded state without stopping backend."""
+        """Return the completed track without stopping the backend."""
 
         if self.current_track is None:
             return None
-        finished_track = self.current_track.with_status(TrackStatus.DOWNLOADED, error=None)
+        finished_track = self.current_track
         self.current_track = None
         return finished_track
 
@@ -235,7 +234,7 @@ class PlaybackService:
 
 
 def _validated_local_path(track: Track) -> Path:
-    if track.status is not TrackStatus.DOWNLOADED and track.status is not TrackStatus.PLAYING:
+    if track.status is not TrackStatus.DOWNLOADED:
         raise PlaybackError("Selected track is not downloaded")
     if not track.local_path:
         raise PlaybackError("Selected track has no local file path")

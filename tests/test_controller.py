@@ -410,9 +410,8 @@ class FakePlaybackService:
 
     def play(self, track: Track) -> Track:
         self.events.append(f"play:{track.title}")
-        playing_track = track.with_status(TrackStatus.PLAYING)
-        self.current_track = playing_track
-        return playing_track
+        self.current_track = track
+        return track
 
     def pause(self) -> None:
         if self.fail_pause:
@@ -423,20 +422,12 @@ class FakePlaybackService:
 
     def stop(self) -> Track | None:
         self.events.append("stop")
-        stopped_track = (
-            self.current_track.with_status(TrackStatus.DOWNLOADED)
-            if self.current_track
-            else None
-        )
+        stopped_track = self.current_track
         self.current_track = None
         return stopped_track
 
     def finish_current(self) -> Track | None:
-        stopped_track = (
-            self.current_track.with_status(TrackStatus.DOWNLOADED)
-            if self.current_track
-            else None
-        )
+        stopped_track = self.current_track
         self.current_track = None
         return stopped_track
 
@@ -486,7 +477,8 @@ def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
     controller.play_selected_track()
 
     assert playback.events == ["play:Title"]
-    assert window.track_model.track_at(0).status == TrackStatus.PLAYING
+    assert window.track_model.track_at(0).status == TrackStatus.DOWNLOADED
+    assert window.track_model.playing_cache_key() == track.cache_key
     assert window.playback_slider.maximum() == 180_000
     assert "Playing Artist - Title." in window.feedback_log.toPlainText()
 
@@ -533,8 +525,9 @@ def test_controller_auto_plays_next_track_after_finished_in_sort_order(
 
     assert playback.events == ["play:First", "play:Second"]
     assert window.track_model.track_at(1).status == TrackStatus.DOWNLOADED
-    assert window.track_model.track_at(2).status == TrackStatus.PLAYING
-    assert window.selected_track() == tracks[2].with_status(TrackStatus.PLAYING)
+    assert window.track_model.track_at(2).status == TrackStatus.DOWNLOADED
+    assert window.track_model.playing_cache_key() == tracks[2].cache_key
+    assert window.selected_track() == tracks[2]
     assert "Continuing with next track: Middle - Second." in window.feedback_log.toPlainText()
 
 
@@ -574,8 +567,9 @@ def test_controller_wraps_to_first_sorted_track_after_last_track_finishes(
 
     assert playback.events == ["play:Last", "play:First"]
     assert window.track_model.track_at(0).status == TrackStatus.DOWNLOADED
-    assert window.track_model.track_at(1).status == TrackStatus.PLAYING
-    assert window.selected_track() == tracks[1].with_status(TrackStatus.PLAYING)
+    assert window.track_model.track_at(1).status == TrackStatus.DOWNLOADED
+    assert window.track_model.playing_cache_key() == tracks[1].cache_key
+    assert window.selected_track() == tracks[1]
 
 
 def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
@@ -584,9 +578,10 @@ def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
         artist="Artist",
         title="Title",
         local_path=str(tmp_path / "track.mp3"),
-        status=TrackStatus.PLAYING,
+        status=TrackStatus.DOWNLOADED,
     )
     window.set_tracks([track])
+    window.set_playing_track(track.cache_key)
     playback = FakePlaybackService()
     playback.current_track = track
     controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
@@ -596,6 +591,7 @@ def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
 
     assert playback.events == ["pause", "stop"]
     assert window.track_model.track_at(0).status == TrackStatus.DOWNLOADED
+    assert window.track_model.playing_cache_key() is None
     assert window.playback_slider.maximum() == 0
     assert "Playback paused." in window.feedback_log.toPlainText()
     assert "Playback stopped." in window.feedback_log.toPlainText()
@@ -604,7 +600,7 @@ def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
 def test_controller_seeks_active_playback(qapp) -> None:
     window = MainWindow()
     playback = FakePlaybackService()
-    playback.current_track = Track(artist="Artist", title="Title", status=TrackStatus.PLAYING)
+    playback.current_track = Track(artist="Artist", title="Title", status=TrackStatus.DOWNLOADED)
     playback.duration = 240_000
     controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
 
@@ -630,7 +626,7 @@ def test_controller_reports_playback_errors(qapp) -> None:
     track = Track(artist="Artist", title="Title", status=TrackStatus.DOWNLOADED, local_path="x")
     controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
 
-    controller._play_track(0, track)
+    controller._play_track(track)
     controller.pause_playback()
     controller.seek_playback(10)
 
@@ -732,8 +728,7 @@ def test_controller_playback_callbacks_update_timeline_once(qapp) -> None:
 
 def test_controller_helper_branches(qapp, tmp_path) -> None:
     window = MainWindow()
-    first = Track(artist="Artist", title="First", status=TrackStatus.PLAYING)
-    second = Track(artist="Artist", title="Second", status=TrackStatus.DOWNLOADED)
+    downloaded = Track(artist="Artist", title="Downloaded", status=TrackStatus.DOWNLOADED)
     queued = Track(
         artist="Artist",
         title="Queued",
@@ -741,7 +736,7 @@ def test_controller_helper_branches(qapp, tmp_path) -> None:
         youtube_url="https://youtu.be/example",
     )
     window.username_input.setText("user")
-    window.set_tracks([first, second, queued])
+    window.set_tracks([downloaded, queued])
     repository = JsonTrackRepository(data_dir=tmp_path)
     controller = ApplicationController(window, repository=repository)
     lookup_calls: list[tuple[str | None, str | None, int | None]] = []
@@ -764,13 +759,11 @@ def test_controller_helper_branches(qapp, tmp_path) -> None:
     controller.resolve_youtube_urls = fake_resolve_youtube_urls  # type: ignore[method-assign]
     controller.download_tracks = fake_download_tracks  # type: ignore[method-assign]
 
-    controller._restore_previous_playing_track(first, second)
     controller._save_visible_tracks()
-    controller._start_automatic_lookup("user", 3)
+    controller._start_automatic_lookup("user", 2)
     controller._start_automatic_download("user")
     controller._start_priority_download("user", queued.cache_key)
 
-    assert window.track_model.track_at(0).status == TrackStatus.DOWNLOADED
     assert repository.load_tracks("user")
     assert lookup_calls == [("user", None, None)]
     assert download_calls == [("user", None, None), ("user", queued.cache_key, 1)]

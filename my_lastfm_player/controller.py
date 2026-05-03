@@ -276,15 +276,14 @@ class ApplicationController(QObject):
     def play_selected_track(self) -> None:
         """Play the selected track or prepare it for playback when needed."""
 
-        selected_row = self.window.selected_track_row()
         selected_track = self.window.selected_track()
-        if selected_row is None or selected_track is None:
+        if selected_track is None:
             self.window.append_feedback(
                 translate("ApplicationController", "Select a downloaded track before playing.")
             )
             return
 
-        self._play_track(selected_row, selected_track)
+        self._play_track(selected_track)
 
     def pause_playback(self) -> None:
         """Pause active playback and show the result in the feedback log."""
@@ -297,7 +296,7 @@ class ApplicationController(QObject):
         self.window.append_feedback(translate("ApplicationController", "Playback paused."))
 
     def stop_playback(self) -> None:
-        """Stop active playback and persist the restored downloaded state."""
+        """Stop active playback and clear the playing-row indicator."""
 
         stopped_track = self.playback_service.stop()
         if stopped_track is None:
@@ -306,10 +305,9 @@ class ApplicationController(QObject):
             )
             return
 
-        self._update_track_by_cache_key(stopped_track)
+        self.window.set_playing_track(None)
         self.window.reset_playback_timeline()
         self.window.append_feedback(translate("ApplicationController", "Playback stopped."))
-        self._save_visible_tracks()
 
     def seek_playback(self, position_ms: int) -> None:
         """Seek active playback to ``position_ms`` and refresh the timeline."""
@@ -521,15 +519,6 @@ class ApplicationController(QObject):
         self.window.append_feedback(message)
         self.window.set_progress(0, translate("ApplicationController", "Failed"))
 
-    def _restore_previous_playing_track(
-        self,
-        previous_track: Track | None,
-        selected_track: Track,
-    ) -> None:
-        if previous_track is None or previous_track.cache_key == selected_track.cache_key:
-            return
-        self._update_track_by_cache_key(previous_track.with_status(TrackStatus.DOWNLOADED))
-
     def _update_track_by_cache_key(self, track: Track) -> None:
         for row, visible_track in enumerate(self.window.tracks()):
             if visible_track.cache_key == track.cache_key:
@@ -541,20 +530,18 @@ class ApplicationController(QObject):
         if username:
             self.repository.save_tracks(username, self.window.tracks())
 
-    def _play_track(self, row: int, track: Track) -> None:
+    def _play_track(self, track: Track) -> None:
         if self._can_prepare_for_playback(track):
             self._prepare_selected_track_for_playback(track)
             return
 
-        previous_track = self.playback_service.current_track
         try:
-            playing_track = self.playback_service.play(track)
+            self.playback_service.play(track)
         except PlaybackError as error:
             self.window.append_feedback(str(error))
             return
 
-        self._restore_previous_playing_track(previous_track, track)
-        self.window.update_track(row, playing_track)
+        self.window.set_playing_track(track.cache_key)
         self.window.set_playback_timeline(
             self.playback_service.position_ms(),
             self.playback_service.duration_ms(),
@@ -563,16 +550,13 @@ class ApplicationController(QObject):
             translate(
                 "ApplicationController",
                 "Playing {artist} - {title}.",
-                artist=playing_track.artist,
-                title=playing_track.title,
+                artist=track.artist,
+                title=track.title,
             )
         )
-        self._save_visible_tracks()
 
     def _can_prepare_for_playback(self, track: Track) -> bool:
-        return track.status not in {TrackStatus.DOWNLOADED, TrackStatus.PLAYING} or (
-            track.status is TrackStatus.DOWNLOADED and not track.local_path
-        )
+        return track.status is not TrackStatus.DOWNLOADED or not track.local_path
 
     def _prepare_selected_track_for_playback(self, track: Track) -> None:
         username = self.window.username()
@@ -652,13 +636,13 @@ class ApplicationController(QObject):
         return any(track.cache_key == cache_key and bool(track.youtube_url) for track in tracks)
 
     def _play_prepared_track(self, cache_key: str) -> None:
-        for row, track in enumerate(self.window.tracks()):
+        for track in self.window.tracks():
             if track.cache_key != cache_key:
                 continue
             if track.status is not TrackStatus.DOWNLOADED:
                 return
             self._pending_play_cache_key = None
-            self._play_track(row, track)
+            self._play_track(track)
             return
 
     def _connect_playback_callbacks(self) -> None:
@@ -680,14 +664,13 @@ class ApplicationController(QObject):
         if finished_track is None:
             return
 
-        self._update_track_by_cache_key(finished_track)
+        self.window.set_playing_track(None)
         self.window.reset_playback_timeline()
         next_track = self.window.next_track_after(finished_track.cache_key)
         if next_track is None:
             self.window.append_feedback(
                 translate("ApplicationController", "Playback finished.")
             )
-            self._save_visible_tracks()
             return
 
         next_row, track = next_track
@@ -700,7 +683,7 @@ class ApplicationController(QObject):
                 title=track.title,
             )
         )
-        self._play_track(next_row, track)
+        self._play_track(track)
 
     def _complete_worker_run(self) -> None:
         self._running_worker_count = max(0, self._running_worker_count - 1)
