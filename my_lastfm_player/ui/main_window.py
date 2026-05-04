@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
 from my_lastfm_player import __display_version__
 from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track
+from my_lastfm_player.ui.flags import flag_icon
 from my_lastfm_player.ui.track_table_model import TrackTableModel, example_tracks
 
 LOGGER = logging.getLogger(__name__)
@@ -83,6 +84,7 @@ class MainWindow(QMainWindow):
         self.language_actions: dict[str, QAction] = {}
         for language in SUPPORTED_LANGUAGES:
             action = QAction(language.native_name, self)
+            action.setIcon(flag_icon(language.code))
             action.setCheckable(True)
             action.triggered.connect(
                 lambda _checked=False, code=language.code: self.set_language(code)
