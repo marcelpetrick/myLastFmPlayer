@@ -18,6 +18,30 @@ This document collects follow-up improvements noticed during implementation. The
 * 17. make the localization options using a country flag for easy recognition
 * 18. menu-options to immediately jump to the stored files directory (open with dolphin or whatever explorer user has set)
 * 19. bug with the download-state: when using cached track-files, then they are downloaded when double-cicked. But should they not exist? What about the download queued mechnaism - does not look like it really triggers the download for the "rest" (the not downloaded files)
+* 20: bug with translations; switch to mandarin, then playing a track by double click leads to crash; version 0.0.41:
+```
+2026-05-04 18:42:56,714 INFO [my_lastfm_player.playback] Starting playback for Die Irrlichter - Gaudete
+[myLastFmPlayer] Starting playback: Die Irrlichter - Gaudete
+Traceback (most recent call last):
+  File "/home/mpetrick/repos/myLastFmPlayer/.venv/lib/python3.14/site-packages/my_lastfm_player/controller.py", line 286, in play_selected_track
+    self._play_track(selected_track)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/mpetrick/repos/myLastFmPlayer/.venv/lib/python3.14/site-packages/my_lastfm_player/controller.py", line 550, in _play_track
+    translate(
+    ~~~~~~~~~^
+        "ApplicationController",
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        title=track.title,
+        ^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/mpetrick/repos/myLastFmPlayer/.venv/lib/python3.14/site-packages/my_lastfm_player/i18n.py", line 74, in translate
+    return translated.format(**values)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+KeyError: '艺术家'
+zsh: IOT instruction (core dumped)  .venv/bin/my-lastfm-player
+```
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.
