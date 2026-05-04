@@ -256,163 +256,213 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="488" />
-        <location filename="../ui/main_window.py" line="65" />
+        <location filename="../ui/main_window.py" line="490" />
+        <location filename="../ui/main_window.py" line="66" />
         <source>Ready</source>
         <translation>Spreman</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="481" />
-        <location filename="../ui/main_window.py" line="240" />
+        <location filename="../ui/main_window.py" line="483" />
+        <location filename="../ui/main_window.py" line="242" />
         <source>Idle</source>
         <translation>besposlen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="256" />
+        <location filename="../ui/main_window.py" line="258" />
         <source>Loaded {count} tracks</source>
         <translation>Učitano {count} zapisa</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="276" />
+        <location filename="../ui/main_window.py" line="278" />
         <source>Resume</source>
         <translation>Nastavi</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="467" />
-        <location filename="../ui/main_window.py" line="276" />
+        <location filename="../ui/main_window.py" line="469" />
+        <location filename="../ui/main_window.py" line="278" />
         <source>Pause</source>
         <translation>Pauza</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="278" />
+        <location filename="../ui/main_window.py" line="280" />
         <source>Resume the paused Last.fm fetch</source>
         <translation>Nastavite pauzirano dohvaćanje Last.fm-a</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="280" />
+        <location filename="../ui/main_window.py" line="282" />
         <source>Pause the active Last.fm fetch</source>
         <translation>Pauzirajte aktivno dohvaćanje Last.fm-a</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="281" />
+        <location filename="../ui/main_window.py" line="283" />
         <source>Stop the active Last.fm fetch</source>
         <translation>Zaustavite aktivno dohvaćanje Last.fm-a</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="355" />
+        <location filename="../ui/main_window.py" line="357" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation>Ažurirano {artist} - {title}: {status}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="441" />
+        <location filename="../ui/main_window.py" line="443" />
         <source>This control is part of the MVP shell and will be wired in later steps.</source>
         <translation>Ova kontrola je dio MVP ljuske i bit će spojena u kasnijim koracima.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="456" />
+        <location filename="../ui/main_window.py" line="458" />
         <source>Fetch loved tracks</source>
         <translation>Dohvatite omiljene pjesme</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="457" />
+        <location filename="../ui/main_window.py" line="459" />
         <source>Preferences</source>
         <translation>Postavke</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="458" />
+        <location filename="../ui/main_window.py" line="460" />
         <source>Quit</source>
         <translation>Prestati</translation>
     </message>
     <message>
+        <location filename="../ui/main_window.py" line="463" />
         <location filename="../ui/main_window.py" line="461" />
-        <location filename="../ui/main_window.py" line="459" />
         <source>Main</source>
         <translation>Glavni</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="460" />
+        <location filename="../ui/main_window.py" line="462" />
         <source>Language</source>
         <translation>Jezik</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="462" />
+        <location filename="../ui/main_window.py" line="464" />
         <source>Last.fm username</source>
         <translation>Last.fm korisničko ime</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="463" />
+        <location filename="../ui/main_window.py" line="465" />
         <source>Enter username</source>
         <translation>Unesite korisničko ime</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="464" />
+        <location filename="../ui/main_window.py" line="466" />
         <source>Fetch</source>
         <translation>Dohvati</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="465" />
+        <location filename="../ui/main_window.py" line="467" />
         <source>Playback</source>
         <translation>Reprodukcija</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="466" />
+        <location filename="../ui/main_window.py" line="468" />
         <source>Play</source>
         <translation>Igrati</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="468" />
+        <location filename="../ui/main_window.py" line="470" />
         <source>Stop</source>
         <translation>Stop</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="469" />
+        <location filename="../ui/main_window.py" line="471" />
         <source>Playback position</source>
         <translation>Položaj reprodukcije</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="470" />
+        <location filename="../ui/main_window.py" line="472" />
         <source>Downloads</source>
         <translation>Preuzimanja</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="471" />
+        <location filename="../ui/main_window.py" line="473" />
         <source>Download Queued</source>
         <translation>Preuzimanje na čekanju</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="472" />
+        <location filename="../ui/main_window.py" line="474" />
         <source>Concurrency</source>
         <translation>Podudarnost</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="474" />
+        <location filename="../ui/main_window.py" line="476" />
         <source>Status updates and errors will appear here.</source>
         <translation>Ovdje će se pojaviti ažuriranja statusa i pogreške.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="478" />
+        <location filename="../ui/main_window.py" line="480" />
         <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
         <translation>Zavisnosti: yt-dlp i ffmpeg još nisu provjereni</translation>
     </message>
 </context><context>
     <name>TrackTableModel</name>
     <message>
-        <location filename="../ui/track_table_model.py" line="150" />
+        <location filename="../ui/track_table_model.py" line="63" />
+        <source>Artist</source>
+        <translation>Umjetnik</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="65" />
+        <source>Title</source>
+        <translation>Titula</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="67" />
+        <source>Status</source>
+        <translation>Status</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="134" />
+        <source>Fetched</source>
+        <translation>Dohvaćeno</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="136" />
+        <source>Queued</source>
+        <translation>U redu čekanja</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="138" />
+        <source>Searching</source>
+        <translation>Traženje</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="140" />
+        <source>Downloading</source>
+        <translation>Preuzimanje</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="142" />
+        <source>Downloaded</source>
+        <translation>Preuzeto</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="144" />
+        <source>Failed</source>
+        <translation>neuspješno</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="146" />
+        <source>Not found</source>
+        <translation>Nije pronađeno</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="172" />
         <source>Example Artist</source>
         <translation>Primjer umjetnika</translation>
     </message>
     <message>
-        <location filename="../ui/track_table_model.py" line="151" />
+        <location filename="../ui/track_table_model.py" line="173" />
         <source>Example Track</source>
         <translation>Primjer zapisa</translation>
     </message>
     <message>
-        <location filename="../ui/track_table_model.py" line="155" />
+        <location filename="../ui/track_table_model.py" line="177" />
         <source>Another Artist</source>
         <translation>Još jedan umjetnik</translation>
     </message>
     <message>
-        <location filename="../ui/track_table_model.py" line="156" />
+        <location filename="../ui/track_table_model.py" line="178" />
         <source>Waiting for implementation</source>
         <translation>Čeka se implementacija</translation>
     </message>

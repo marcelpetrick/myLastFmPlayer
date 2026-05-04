@@ -256,163 +256,213 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="488" />
-        <location filename="../ui/main_window.py" line="65" />
+        <location filename="../ui/main_window.py" line="490" />
+        <location filename="../ui/main_window.py" line="66" />
         <source>Ready</source>
         <translation>Bereit</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="481" />
-        <location filename="../ui/main_window.py" line="240" />
+        <location filename="../ui/main_window.py" line="483" />
+        <location filename="../ui/main_window.py" line="242" />
         <source>Idle</source>
         <translation>Leerlauf</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="256" />
+        <location filename="../ui/main_window.py" line="258" />
         <source>Loaded {count} tracks</source>
         <translation>{count} Titel geladen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="276" />
+        <location filename="../ui/main_window.py" line="278" />
         <source>Resume</source>
         <translation>Wieder aufnehmen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="467" />
-        <location filename="../ui/main_window.py" line="276" />
+        <location filename="../ui/main_window.py" line="469" />
+        <location filename="../ui/main_window.py" line="278" />
         <source>Pause</source>
         <translation>Pause</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="278" />
+        <location filename="../ui/main_window.py" line="280" />
         <source>Resume the paused Last.fm fetch</source>
         <translation>Setzen Sie den angehaltenen Last.fm-Abruf fort</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="280" />
+        <location filename="../ui/main_window.py" line="282" />
         <source>Pause the active Last.fm fetch</source>
         <translation>Unterbrechen Sie den aktiven Last.fm-Abruf</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="281" />
+        <location filename="../ui/main_window.py" line="283" />
         <source>Stop the active Last.fm fetch</source>
         <translation>Stoppen Sie den aktiven Last.fm-Abruf</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="355" />
+        <location filename="../ui/main_window.py" line="357" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation>Aktualisiert {artist} – {title}: {status}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="441" />
+        <location filename="../ui/main_window.py" line="443" />
         <source>This control is part of the MVP shell and will be wired in later steps.</source>
         <translation>Dieses Steuerelement ist Teil der MVP-Shell und wird in späteren Schritten verkabelt.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="456" />
+        <location filename="../ui/main_window.py" line="458" />
         <source>Fetch loved tracks</source>
         <translation>Holen Sie sich beliebte Titel</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="457" />
+        <location filename="../ui/main_window.py" line="459" />
         <source>Preferences</source>
         <translation>Präferenzen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="458" />
+        <location filename="../ui/main_window.py" line="460" />
         <source>Quit</source>
         <translation>Aufhören</translation>
     </message>
     <message>
+        <location filename="../ui/main_window.py" line="463" />
         <location filename="../ui/main_window.py" line="461" />
-        <location filename="../ui/main_window.py" line="459" />
         <source>Main</source>
         <translation>Hauptsächlich</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="460" />
+        <location filename="../ui/main_window.py" line="462" />
         <source>Language</source>
         <translation>Sprache</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="462" />
+        <location filename="../ui/main_window.py" line="464" />
         <source>Last.fm username</source>
         <translation>Last.fm-Benutzername</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="463" />
+        <location filename="../ui/main_window.py" line="465" />
         <source>Enter username</source>
         <translation>Geben Sie den Benutzernamen ein</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="464" />
+        <location filename="../ui/main_window.py" line="466" />
         <source>Fetch</source>
         <translation>Bringen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="465" />
+        <location filename="../ui/main_window.py" line="467" />
         <source>Playback</source>
         <translation>Wiedergabe</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="466" />
+        <location filename="../ui/main_window.py" line="468" />
         <source>Play</source>
         <translation>Spielen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="468" />
+        <location filename="../ui/main_window.py" line="470" />
         <source>Stop</source>
         <translation>Stoppen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="469" />
+        <location filename="../ui/main_window.py" line="471" />
         <source>Playback position</source>
         <translation>Wiedergabeposition</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="470" />
+        <location filename="../ui/main_window.py" line="472" />
         <source>Downloads</source>
         <translation>Downloads</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="471" />
+        <location filename="../ui/main_window.py" line="473" />
         <source>Download Queued</source>
         <translation>Download in der Warteschlange</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="472" />
+        <location filename="../ui/main_window.py" line="474" />
         <source>Concurrency</source>
         <translation>Parallelität</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="474" />
+        <location filename="../ui/main_window.py" line="476" />
         <source>Status updates and errors will appear here.</source>
         <translation>Hier werden Statusaktualisierungen und Fehler angezeigt.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="478" />
+        <location filename="../ui/main_window.py" line="480" />
         <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
         <translation>Abhängigkeiten: yt-dlp und ffmpeg noch nicht überprüft</translation>
     </message>
 </context><context>
     <name>TrackTableModel</name>
     <message>
-        <location filename="../ui/track_table_model.py" line="150" />
+        <location filename="../ui/track_table_model.py" line="63" />
+        <source>Artist</source>
+        <translation>Künstlerin Künstler</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="65" />
+        <source>Title</source>
+        <translation>Titel</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="67" />
+        <source>Status</source>
+        <translation>Status</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="134" />
+        <source>Fetched</source>
+        <translation>Abgeholt</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="136" />
+        <source>Queued</source>
+        <translation>In der Warteschlange</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="138" />
+        <source>Searching</source>
+        <translation>Suchen</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="140" />
+        <source>Downloading</source>
+        <translation>Herunterladen</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="142" />
+        <source>Downloaded</source>
+        <translation>Heruntergeladen</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="144" />
+        <source>Failed</source>
+        <translation>Fehlgeschlagen</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="146" />
+        <source>Not found</source>
+        <translation>Nicht gefunden</translation>
+    </message>
+    <message>
+        <location filename="../ui/track_table_model.py" line="172" />
         <source>Example Artist</source>
         <translation>Beispielkünstler</translation>
     </message>
     <message>
-        <location filename="../ui/track_table_model.py" line="151" />
+        <location filename="../ui/track_table_model.py" line="173" />
         <source>Example Track</source>
         <translation>Beispiel-Track</translation>
     </message>
     <message>
-        <location filename="../ui/track_table_model.py" line="155" />
+        <location filename="../ui/track_table_model.py" line="177" />
         <source>Another Artist</source>
         <translation>Ein anderer Künstler</translation>
     </message>
     <message>
-        <location filename="../ui/track_table_model.py" line="156" />
+        <location filename="../ui/track_table_model.py" line="178" />
         <source>Waiting for implementation</source>
         <translation>Warten auf die Umsetzung</translation>
     </message>

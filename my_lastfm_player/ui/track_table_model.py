@@ -58,7 +58,13 @@ class TrackTableModel(QAbstractTableModel):
         """Return horizontal header labels for display roles."""
 
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
-            return self.tr(self.HEADERS[section])
+            match section:
+                case 0:
+                    return self.tr("Artist")
+                case 1:
+                    return self.tr("Title")
+                case 2:
+                    return self.tr("Status")
         return None
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
@@ -123,7 +129,23 @@ class TrackTableModel(QAbstractTableModel):
             case 1:
                 return track.title
             case 2:
-                return self.tr(track.status.value)
+                match track.status:
+                    case TrackStatus.FETCHED:
+                        return self.tr("Fetched")
+                    case TrackStatus.QUEUED:
+                        return self.tr("Queued")
+                    case TrackStatus.SEARCHING:
+                        return self.tr("Searching")
+                    case TrackStatus.DOWNLOADING:
+                        return self.tr("Downloading")
+                    case TrackStatus.DOWNLOADED:
+                        return self.tr("Downloaded")
+                    case TrackStatus.FAILED:
+                        return self.tr("Failed")
+                    case TrackStatus.NOT_FOUND:
+                        return self.tr("Not found")
+                    case _:
+                        return track.status.value
             case _:
                 return None
 
