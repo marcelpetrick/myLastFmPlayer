@@ -59,127 +59,127 @@
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="283" />
+        <location filename="../controller.py" line="282" />
         <source>Select a downloaded track before playing.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="297" />
+        <location filename="../controller.py" line="296" />
         <source>Playback paused.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="305" />
+        <location filename="../controller.py" line="304" />
         <source>No track is currently playing.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="311" />
+        <location filename="../controller.py" line="310" />
         <source>Playback stopped.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="375" />
+        <location filename="../controller.py" line="373" />
         <source>Fetch for {username} returned invalid track data.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="385" />
+        <location filename="../controller.py" line="383" />
         <source>Fetched and stored {count} tracks for {username}.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="409" />
+        <location filename="../controller.py" line="407" />
         <source>Stopped fetch for {username} returned invalid data.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="419" />
+        <location filename="../controller.py" line="417" />
         <source>Stopped fetch for {username} after {count} tracks.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="430" />
+        <location filename="../controller.py" line="428" />
         <source>Fetch for {username} returned invalid partial data.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="440" />
+        <location filename="../controller.py" line="438" />
         <source>Fetched {count} tracks for {username}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="452" />
+        <location filename="../controller.py" line="450" />
         <source>Workflow for {username} returned an invalid track update.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="465" />
+        <location filename="../controller.py" line="463" />
         <source>Lookup for {username} returned invalid track data.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="475" />
+        <location filename="../controller.py" line="473" />
         <source>Resolved YouTube URLs for {count} tracks.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="491" />
+        <location filename="../controller.py" line="489" />
         <source>No queued tracks are ready for download.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="497" />
+        <location filename="../controller.py" line="495" />
         <source>Download for {username} returned invalid track data.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="507" />
+        <location filename="../controller.py" line="505" />
         <source>Downloaded {count} tracks for {username}.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="522" />
+        <location filename="../controller.py" line="520" />
         <source>Failed</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="563" />
+        <location filename="../controller.py" line="550" />
         <source>Playing {artist} - {title}.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="581" />
+        <location filename="../controller.py" line="565" />
         <source>Enter a Last.fm username before preparing playback.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="590" />
+        <location filename="../controller.py" line="574" />
         <source>Preparing {artist} - {title} for playback.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="607" />
+        <location filename="../controller.py" line="591" />
         <source>Starting automatic YouTube lookup for {count} fetched tracks.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="618" />
+        <location filename="../controller.py" line="602" />
         <source>Starting automatic download queue for resolved tracks.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="628" />
+        <location filename="../controller.py" line="612" />
         <source>Starting priority download for selected track.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="688" />
+        <location filename="../controller.py" line="672" />
         <source>Playback finished.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../controller.py" line="696" />
+        <location filename="../controller.py" line="679" />
         <source>Continuing with next track: {artist} - {title}.</source>
         <translation type="unfinished" />
     </message>
@@ -256,163 +256,163 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="486" />
+        <location filename="../ui/main_window.py" line="488" />
         <location filename="../ui/main_window.py" line="65" />
         <source>Ready</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="479" />
-        <location filename="../ui/main_window.py" line="243" />
+        <location filename="../ui/main_window.py" line="481" />
+        <location filename="../ui/main_window.py" line="240" />
         <source>Idle</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="259" />
+        <location filename="../ui/main_window.py" line="256" />
         <source>Loaded {count} tracks</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="279" />
+        <location filename="../ui/main_window.py" line="276" />
         <source>Resume</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="465" />
-        <location filename="../ui/main_window.py" line="279" />
+        <location filename="../ui/main_window.py" line="467" />
+        <location filename="../ui/main_window.py" line="276" />
         <source>Pause</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="281" />
+        <location filename="../ui/main_window.py" line="278" />
         <source>Resume the paused Last.fm fetch</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="283" />
+        <location filename="../ui/main_window.py" line="280" />
         <source>Pause the active Last.fm fetch</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="284" />
+        <location filename="../ui/main_window.py" line="281" />
         <source>Stop the active Last.fm fetch</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="358" />
+        <location filename="../ui/main_window.py" line="355" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="439" />
+        <location filename="../ui/main_window.py" line="441" />
         <source>This control is part of the MVP shell and will be wired in later steps.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="454" />
+        <location filename="../ui/main_window.py" line="456" />
         <source>Fetch loved tracks</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="455" />
+        <location filename="../ui/main_window.py" line="457" />
         <source>Preferences</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="456" />
+        <location filename="../ui/main_window.py" line="458" />
         <source>Quit</source>
         <translation type="unfinished" />
     </message>
     <message>
+        <location filename="../ui/main_window.py" line="461" />
         <location filename="../ui/main_window.py" line="459" />
-        <location filename="../ui/main_window.py" line="457" />
         <source>Main</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="458" />
+        <location filename="../ui/main_window.py" line="460" />
         <source>Language</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="460" />
+        <location filename="../ui/main_window.py" line="462" />
         <source>Last.fm username</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="461" />
+        <location filename="../ui/main_window.py" line="463" />
         <source>Enter username</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="462" />
+        <location filename="../ui/main_window.py" line="464" />
         <source>Fetch</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="463" />
+        <location filename="../ui/main_window.py" line="465" />
         <source>Playback</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="464" />
+        <location filename="../ui/main_window.py" line="466" />
         <source>Play</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="466" />
+        <location filename="../ui/main_window.py" line="468" />
         <source>Stop</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="467" />
+        <location filename="../ui/main_window.py" line="469" />
         <source>Playback position</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="468" />
+        <location filename="../ui/main_window.py" line="470" />
         <source>Downloads</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="469" />
+        <location filename="../ui/main_window.py" line="471" />
         <source>Download Queued</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="470" />
+        <location filename="../ui/main_window.py" line="472" />
         <source>Concurrency</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="472" />
+        <location filename="../ui/main_window.py" line="474" />
         <source>Status updates and errors will appear here.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="476" />
+        <location filename="../ui/main_window.py" line="478" />
         <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
         <translation type="unfinished" />
     </message>
 </context><context>
     <name>TrackTableModel</name>
     <message>
-        <location filename="../ui/track_table_model.py" line="121" />
+        <location filename="../ui/track_table_model.py" line="150" />
         <source>Example Artist</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/track_table_model.py" line="122" />
+        <location filename="../ui/track_table_model.py" line="151" />
         <source>Example Track</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/track_table_model.py" line="126" />
+        <location filename="../ui/track_table_model.py" line="155" />
         <source>Another Artist</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/track_table_model.py" line="127" />
+        <location filename="../ui/track_table_model.py" line="156" />
         <source>Waiting for implementation</source>
         <translation type="unfinished" />
     </message>
