@@ -15,6 +15,9 @@ This document collects follow-up improvements noticed during implementation. The
 * 14. scrobble the songs back to last fm: first auth to last.fm, then scrobble the song - how does this even work?
 * 15. playlist feature? like drag and drop for the songs? and then those are played one after each other?
 * fixed: 16. double-clicking a song in the track list now starts the same playback flow as the Play button.
+* 17. make the localization options using a country flag for easy recognition
+* 18. menu-options to immediately jump to the stored files directory (open with dolphin or whatever explorer user has set)
+* 19. bug with the download-state: when using cached track-files, then they are downloaded when double-cicked. But should they not exist? What about the download queued mechnaism - does not look like it really triggers the download for the "rest" (the not downloaded files)
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.
