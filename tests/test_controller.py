@@ -866,6 +866,105 @@ def test_controller_prepare_and_play_prepared_edge_cases(qapp) -> None:
     assert controller._pending_play_cache_key is None
 
 
+def test_controller_scrobbles_at_ten_percent(qapp, tmp_path) -> None:
+    window = MainWindow()
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake")
+    track = Track(
+        artist="Artist",
+        title="Title",
+        local_path=str(audio_path),
+        status=TrackStatus.DOWNLOADED,
+    )
+    window.set_tracks([track])
+    playback = FakePlaybackService()
+    playback.duration = 200_000
+    from my_lastfm_player.scrobbling import ScrobblingService
+
+    scrobbles: list[dict] = []
+
+    class FakeNetwork:
+        def get_authenticated_user(self):
+            class U:
+                def get_name(self):
+                    return "user"
+            return U()
+
+        def scrobble(self, **kwargs):
+            scrobbles.append(kwargs)
+
+        def update_now_playing(self, **kwargs):
+            pass
+
+    svc = ScrobblingService(
+        api_key="k", api_secret="s", session_key="sess",
+        network_factory=lambda **kw: FakeNetwork(),
+    )
+    svc.try_connect()
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller._scrobbling_service = svc
+
+    controller._play_track(track)
+    controller._maybe_scrobble(19_999, 200_000)  # just below 10%
+    assert scrobbles == []
+
+    controller._maybe_scrobble(20_000, 200_000)  # exactly 10%
+    assert len(scrobbles) == 1
+    assert scrobbles[0]["artist"] == "Artist"
+    assert scrobbles[0]["title"] == "Title"
+
+    controller._maybe_scrobble(100_000, 200_000)  # only submitted once
+    assert len(scrobbles) == 1
+
+
+def test_controller_scrobble_resets_on_new_track(qapp, tmp_path) -> None:
+    window = MainWindow()
+    track = Track(
+        artist="Artist",
+        title="Title",
+        local_path=str(tmp_path / "t.mp3"),
+        status=TrackStatus.DOWNLOADED,
+    )
+    window.set_tracks([track])
+    playback = FakePlaybackService()
+    playback.duration = 100_000
+
+    from my_lastfm_player.scrobbling import ScrobblingService
+
+    scrobbles: list[dict] = []
+
+    class FakeNetwork:
+        def get_authenticated_user(self):
+            class U:
+                def get_name(self):
+                    return "user"
+            return U()
+
+        def scrobble(self, **kwargs):
+            scrobbles.append(kwargs)
+
+        def update_now_playing(self, **kwargs):
+            pass
+
+    svc = ScrobblingService(
+        api_key="k", api_secret="s", session_key="sess",
+        network_factory=lambda **kw: FakeNetwork(),
+    )
+    svc.try_connect()
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller._scrobbling_service = svc
+
+    controller._play_track(track)
+    controller._maybe_scrobble(10_000, 100_000)
+    assert len(scrobbles) == 1
+
+    controller._play_track(track)  # restart same track
+    assert not controller._scrobble_submitted
+
+    controller._maybe_scrobble(10_000, 100_000)
+    assert len(scrobbles) == 2
+
+
 def test_controller_forgets_threads_and_workers(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)

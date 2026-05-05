@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import time
 from collections.abc import Callable
 
 from PyQt6.QtCore import QObject, QThread
@@ -11,6 +13,7 @@ from my_lastfm_player.i18n import translate
 from my_lastfm_player.lastfm import LastFmLovedTracksScraper
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.playback import PlaybackError, PlaybackService
+from my_lastfm_player.scrobbling import ScrobblingService
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import (
@@ -72,6 +75,9 @@ class ApplicationController(QObject):
         self._active_fetch_worker: FetchLovedTracksWorker | None = None
         self._fetch_paused = False
         self._playback_callbacks_connected = False
+        self._scrobbling_service: ScrobblingService | None = None
+        self._scrobble_submitted = False
+        self._playback_start_time: int | None = None
 
     @property
     def playback_service(self) -> PlaybackService:
@@ -99,6 +105,8 @@ class ApplicationController(QObject):
         self.window.stop_requested.connect(self.stop_playback)
         self.window.seek_requested.connect(self.seek_playback)
         self.window.language_changed.connect(self.check_dependencies)
+        self.window.preferences_requested.connect(self._show_preferences)
+        self._init_scrobbling()
         self.check_dependencies()
 
     def load_cached_tracks_for_entered_username(self) -> bool:
@@ -140,6 +148,35 @@ class ApplicationController(QObject):
         if not result.is_ok:
             self.window.append_feedback(result.user_message())
         return result
+
+    def _init_scrobbling(self) -> None:
+        api_key = os.environ.get("LASTFM_API_KEY", "")
+        api_secret = os.environ.get("LASTFM_API_SECRET", "")
+        if not api_key or not api_secret:
+            LOGGER.info("LASTFM_API_KEY/LASTFM_API_SECRET not set; scrobbling disabled")
+            return
+        creds = self.repository.load_credentials()
+        self._scrobbling_service = ScrobblingService(
+            api_key=api_key,
+            api_secret=api_secret,
+            session_key=str(creds.get("session_key", "")),
+            username=str(creds.get("username", "")),
+            scrobbling_enabled=bool(creds.get("scrobbling_enabled", True)),
+        )
+        if self._scrobbling_service.session_key:
+            self._scrobbling_service.try_connect()
+
+    def _show_preferences(self) -> None:
+        from my_lastfm_player.ui.preferences_dialog import PreferencesDialog  # noqa: PLC0415
+
+        dialog = PreferencesDialog(self.window, self._scrobbling_service)
+        dialog.exec()
+        self._save_scrobbling_credentials()
+
+    def _save_scrobbling_credentials(self) -> None:
+        if self._scrobbling_service is None:
+            return
+        self.repository.save_credentials(self._scrobbling_service.credentials_dict())
 
     def fetch_loved_tracks(self) -> None:
         """Start fetching loved tracks for the username entered in the UI."""
@@ -317,6 +354,8 @@ class ApplicationController(QObject):
         self.window.set_playing_track(None)
         self.window.reset_playback_timeline()
         self.window.set_playback_controls(active=False)
+        self._scrobble_submitted = False
+        self._playback_start_time = None
         self.window.append_feedback(translate("ApplicationController", "Playback stopped."))
 
     def seek_playback(self, position_ms: int) -> None:
@@ -557,6 +596,11 @@ class ApplicationController(QObject):
             self.playback_service.position_ms(),
             self.playback_service.duration_ms(),
         )
+        self._scrobble_submitted = False
+        self._playback_start_time = int(time.time())
+        if self._scrobbling_service is not None:
+            duration_s = self.playback_service.duration_ms() // 1000
+            self._scrobbling_service.update_now_playing(track.artist, track.title, duration_s)
         self.window.append_feedback(
             translate(
                 "ApplicationController",
@@ -665,7 +709,29 @@ class ApplicationController(QObject):
         self._playback_callbacks_connected = True
 
     def _handle_playback_position_changed(self, position_ms: int) -> None:
-        self.window.set_playback_timeline(position_ms, self.playback_service.duration_ms())
+        duration_ms = self.playback_service.duration_ms()
+        self.window.set_playback_timeline(position_ms, duration_ms)
+        self._maybe_scrobble(position_ms, duration_ms)
+
+    def _maybe_scrobble(self, position_ms: int, duration_ms: int) -> None:
+        if (
+            self._scrobbling_service is None
+            or self._scrobble_submitted
+            or self._playback_start_time is None
+            or duration_ms <= 0
+            or position_ms < duration_ms // 10
+        ):
+            return
+        current_track = self.playback_service.current_track
+        if current_track is None:
+            return
+        self._scrobble_submitted = True
+        self._scrobbling_service.scrobble(
+            artist=current_track.artist,
+            title=current_track.title,
+            timestamp=self._playback_start_time,
+            duration_seconds=duration_ms // 1000,
+        )
 
     def _handle_playback_duration_changed(self, duration_ms: int) -> None:
         self.window.set_playback_timeline(self.playback_service.position_ms(), duration_ms)
@@ -678,6 +744,8 @@ class ApplicationController(QObject):
         self.window.set_playing_track(None)
         self.window.reset_playback_timeline()
         self.window.set_playback_controls(active=False)
+        self._scrobble_submitted = False
+        self._playback_start_time = None
         next_track = self.window.next_track_after(finished_track.cache_key)
         if next_track is None:
             self.window.append_feedback(

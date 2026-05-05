@@ -43,6 +43,12 @@ Storage
 .. automodule:: my_lastfm_player.storage
    :members:
 
+Scrobbling
+----------
+
+.. automodule:: my_lastfm_player.scrobbling
+   :members:
+
 Themes
 ------
 
@@ -53,6 +59,9 @@ UI
 --
 
 .. automodule:: my_lastfm_player.ui.main_window
+   :members:
+
+.. automodule:: my_lastfm_player.ui.preferences_dialog
    :members:
 
 .. automodule:: my_lastfm_player.ui.track_table_model

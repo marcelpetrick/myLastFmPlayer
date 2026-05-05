@@ -21,6 +21,7 @@ SOURCE_FILES=(
     "${ROOT_DIR}/my_lastfm_player/lastfm.py"
     "${ROOT_DIR}/my_lastfm_player/playback.py"
     "${ROOT_DIR}/my_lastfm_player/ui/main_window.py"
+    "${ROOT_DIR}/my_lastfm_player/ui/preferences_dialog.py"
     "${ROOT_DIR}/my_lastfm_player/ui/track_table_model.py"
     "${ROOT_DIR}/my_lastfm_player/workers.py"
     "${ROOT_DIR}/my_lastfm_player/youtube.py"

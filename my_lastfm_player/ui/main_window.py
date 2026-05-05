@@ -48,6 +48,7 @@ class MainWindow(QMainWindow):
     seek_requested = pyqtSignal(int)
     language_changed = pyqtSignal()
     theme_requested = pyqtSignal(str)
+    preferences_requested = pyqtSignal()
 
     def __init__(self, translation_manager: TranslationManager | None = None) -> None:
         super().__init__()
@@ -76,7 +77,7 @@ class MainWindow(QMainWindow):
         self.refresh_action.triggered.connect(self.fetch_requested.emit)
 
         self.preferences_action = QAction(self)
-        self.preferences_action.triggered.connect(self._show_not_implemented)
+        self.preferences_action.triggered.connect(self.preferences_requested.emit)
 
         self.quit_action = QAction(self)
         self.quit_action.triggered.connect(self.close)
@@ -462,10 +463,6 @@ class MainWindow(QMainWindow):
         slider_width = max(1, self.playback_slider.width())
         bounded_position = max(0, min(x_position, slider_width))
         return round(self._playback_duration_ms * bounded_position / slider_width)
-
-    def _show_not_implemented(self) -> None:
-        message = self.tr("This control is part of the MVP shell and will be wired in later steps.")
-        self.append_feedback(message)
 
     def _on_theme_action_triggered(self, action: QAction) -> None:
         mode = "dark" if action is self.theme_dark_action else "light"

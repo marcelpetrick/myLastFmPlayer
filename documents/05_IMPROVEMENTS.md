@@ -57,7 +57,7 @@ zsh: IOT instruction (core dumped)  .venv/bin/my-lastfm-player
 * fixed: 10. the app has Qt translation support, translation file generation commands, and a live language-selection menu.
 
 -----
-# scrobbling!
+# fixed: scrobbling!
 
 ## Requirements: Last.fm setup and scrobbling with `pylast`
 

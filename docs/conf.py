@@ -27,8 +27,9 @@ autodoc_default_options = {
     "show-inheritance": True,
     "exclude-members": (
         "download_requested,error,fetch_pause_requested,fetch_requested,"
-        "fetch_stop_requested,fetch_stopped,finished,pause_requested,"
-        "play_requested,progress,seek_requested,stop_requested,track_updated,tracks_downloaded,"
+        "fetch_stop_requested,fetch_stopped,finished,language_changed,pause_requested,"
+        "play_requested,preferences_requested,progress,seek_requested,stop_requested,"
+        "theme_requested,track_updated,tracks_downloaded,"
         "tracks_loaded,tracks_resolved,tracks_updated"
     ),
 }

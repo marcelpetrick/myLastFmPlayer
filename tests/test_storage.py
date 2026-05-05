@@ -201,3 +201,27 @@ def test_default_data_dir_respects_xdg_data_home(monkeypatch, tmp_path: Path) ->
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
 
     assert default_data_dir() == tmp_path / "myLastFmPlayer"
+
+
+def test_credentials_round_trip(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    credentials = {"username": "testuser", "session_key": "abc123", "scrobbling_enabled": True}
+
+    repository.save_credentials(credentials)
+    loaded = repository.load_credentials()
+
+    assert loaded == credentials
+
+
+def test_credentials_returns_empty_dict_when_missing(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+
+    assert repository.load_credentials() == {}
+
+
+def test_credentials_returns_empty_dict_for_corrupt_file(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.credentials_path.parent.mkdir(parents=True, exist_ok=True)
+    repository.credentials_path.write_text("[not a dict]", encoding="utf-8")
+
+    assert repository.load_credentials() == {}

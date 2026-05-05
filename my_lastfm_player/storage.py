@@ -13,6 +13,7 @@ APP_DIR_NAME = "myLastFmPlayer"
 TRACKS_DIR_NAME = "tracks"
 CACHE_FILENAME = "download-cache.json"
 LOOKUP_CACHE_FILENAME = "lookup-cache.json"
+CREDENTIALS_FILENAME = "lastfm-credentials.json"
 DEFAULT_DOWNLOADS_DIR = "downloads"
 
 
@@ -29,6 +30,7 @@ class JsonTrackRepository:
         self.tracks_dir = self.data_dir / TRACKS_DIR_NAME
         self.cache_path = self.data_dir / CACHE_FILENAME
         self.lookup_cache_path = self.data_dir / LOOKUP_CACHE_FILENAME
+        self.credentials_path = self.data_dir / CREDENTIALS_FILENAME
 
     def load_tracks(self, username: str) -> list[Track]:
         """Load all stored tracks for ``username``."""
@@ -173,6 +175,25 @@ class JsonTrackRepository:
                 continue
             marked_tracks.append(track)
         return marked_tracks
+
+
+    def load_credentials(self) -> dict[str, object]:
+        """Load persisted Last.fm credentials, returning an empty dict if absent or corrupt."""
+
+        if not self.credentials_path.exists():
+            return {}
+        try:
+            data = _read_json_file(self.credentials_path)
+        except StorageError:
+            return {}
+        if not isinstance(data, dict):
+            return {}
+        return data  # type: ignore[return-value]
+
+    def save_credentials(self, credentials: dict[str, object]) -> None:
+        """Atomically persist Last.fm credentials."""
+
+        _atomic_write_json(self.credentials_path, credentials)
 
 
 def default_data_dir() -> Path:
