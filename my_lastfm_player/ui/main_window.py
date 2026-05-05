@@ -22,7 +22,6 @@ from PyQt6.QtWidgets import (
     QSlider,
     QSpinBox,
     QTableView,
-    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -60,7 +59,6 @@ class MainWindow(QMainWindow):
 
         self._build_actions()
         self._build_menus()
-        self._build_toolbar()
         self._build_central_widget()
         self.set_tracks(example_tracks())
         self.statusBar().showMessage(self.tr("Ready"))
@@ -102,11 +100,6 @@ class MainWindow(QMainWindow):
         for language in SUPPORTED_LANGUAGES:
             self.language_menu.addAction(self.language_actions[language.code])
         self.menuBar().addMenu(self.language_menu)
-
-    def _build_toolbar(self) -> None:
-        self.toolbar = QToolBar(self)
-        self.toolbar.setMovable(False)
-        self.addToolBar(self.toolbar)
 
     def _build_central_widget(self) -> None:
         root = QWidget(self)
@@ -460,7 +453,6 @@ class MainWindow(QMainWindow):
         self.quit_action.setText(self.tr("Quit"))
         self.main_menu.setTitle(self.tr("Main"))
         self.language_menu.setTitle(self.tr("Language"))
-        self.toolbar.setWindowTitle(self.tr("Main"))
         self.username_label.setText(self.tr("Last.fm username"))
         self.username_input.setPlaceholderText(self.tr("Enter username"))
         self.fetch_button.setText(self.tr("Fetch"))

@@ -18,7 +18,7 @@ This document collects follow-up improvements noticed during implementation. The
 * 17. make the localization options using a country flag for easy recognition
 * 18. menu-options to immediately jump to the stored files directory (open with dolphin or whatever explorer user has set)
 * 19. bug with the download-state: when using cached track-files, then they are downloaded when double-cicked. But should they not exist? What about the download queued mechnaism - does not look like it really triggers the download for the "rest" (the not downloaded files)
-* 20: bug with translations; switch to mandarin, then playing a track by double click leads to crash; version 0.0.41:
+* fixed: 20: bug with translations; switch to mandarin, then playing a track by double click leads to crash; version 0.0.41:
 ```
 2026-05-04 18:42:56,714 INFO [my_lastfm_player.playback] Starting playback for Die Irrlichter - Gaudete
 [myLastFmPlayer] Starting playback: Die Irrlichter - Gaudete
@@ -42,6 +42,10 @@ Traceback (most recent call last):
 KeyError: '艺术家'
 zsh: IOT instruction (core dumped)  .venv/bin/my-lastfm-player
 ```
+* 21. bug: setting progress first, the pressing play does not start at this position insid the track
+* 22. bug: ui, when a song is playing, the pause and stop shall be enabled. pause stops (so pressing pause again continues to play), stop really stops plaiying. play shall be idsabled when pause and stop are active. before anything isplayed, only play is enabled, stop and pause are disbled.
+* fixed: 23. remove the separator at the top of the ui.
+* 24. bug: "dependencies installed"" is not translated; mark when available this with a green emoji-circle (ball), else when one at least is missing, red emoji ball - so that the user immeidately gets whats wrong
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.
