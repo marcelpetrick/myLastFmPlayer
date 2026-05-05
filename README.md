@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.44` - work in progress; tons of features are not implemented
+Current version: `0.0.45` - work in progress; tons of features are not implemented
 
 ## Current state
 
@@ -40,7 +40,7 @@ development runs show only the base version when that generated metadata is abse
 ## Requirements
 
 - Linux x86_64
-- Python 3.11 or newer
+- Python 3.12 or newer
 - `venv` support for Python
 
 Later MVP steps will also require:

@@ -1,31 +1,31 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=82.0.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "my-lastfm-player"
 description = "Linux desktop app for fetching Last.fm loved tracks and preparing local playback."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = "GPL-3.0-or-later"
 authors = [
     { name = "Marcel Petrick", email = "mail@marcelpetrick.it" }
 ]
 dynamic = ["version"]
 dependencies = [
-    "beautifulsoup4>=4.12",
-    "pylast>=5.0",
-    "PyQt6>=6.7",
-    "requests>=2.32",
+    "beautifulsoup4>=4.14.3",
+    "pylast>=7.0.2",
+    "PyQt6>=6.11.0",
+    "requests>=2.33.1",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "build>=1.2",
-    "pytest>=8.0",
-    "pytest-cov>=5.0",
-    "ruff>=0.8",
-    "sphinx>=8.0",
+    "build>=1.5.0",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.12",
+    "sphinx>=9.1.0",
 ]
 
 [project.scripts]
@@ -61,7 +61,7 @@ skip_covered = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
