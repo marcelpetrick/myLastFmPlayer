@@ -17,7 +17,7 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 16. double-clicking a song in the track list now starts the same playback flow as the Play button.
 * fixed: 17. make the localization options using a country flag for easy recognition
 * fixed: 18. menu-options to immediately jump to the stored files directory (open with dolphin or whatever explorer user has set)
-* 19. bug with the download-state: when using cached track-files, then they are downloaded when double-cicked. But should they not exist? What about the download queued mechnaism - does not look like it really triggers the download for the "rest" (the not downloaded files)
+* 19. bug with the download-state: when using cached track-files, then they are downloaded when double-clicked. But should they not exist? What about the download queued mechnaism - does not look like it really triggers the download for the "rest" (the not downloaded files)
 * fixed: 20: bug with translations; switch to mandarin, then playing a track by double click leads to crash; version 0.0.41:
 ```
 2026-05-04 18:42:56,714 INFO [my_lastfm_player.playback] Starting playback for Die Irrlichter - Gaudete
@@ -46,8 +46,8 @@ zsh: IOT instruction (core dumped)  .venv/bin/my-lastfm-player
 * fixed: 22. bug: ui, when a song is playing, the pause and stop shall be enabled. pause stops (so pressing pause again continues to play), stop really stops playing. play shall be disabled when pause and stop are active. before anything is played, only play is enabled, stop and pause are disabled.
 * fixed: 23. remove the separator at the top of the ui.
 * fixed: 24. bug: "dependencies installed" is not translated; mark when available this with a green emoji-circle (ball), else when one at least is missing, red emoji ball - so that the user immediately gets what's wrong
-* 25. bug: somehow for a freshastart with zero downloaded trcks the fetching of the tracks from youtue does not work. it says 150 tracks downlodaed, but nothing moves. what is wrong. would it not be easy to cross check "entry in the model of the tracks" versus - is the file existing?
-* 26. bug: when the scraping from last.fm is aborted early, then the next fetch-try will just check if there is a cahced versin. but not if the currently cached content is identical with the last.fm-content. for this you have to fetch the "oveall amount" from last.fm and in case this is different from the currently locally stored version, refretch it. put this into unit-testing. refactor code. so that there is clear "fetching is atomic"-logic.
+* 25. bug: somehow for a fresh start with zero downloaded tracks the fetching of the tracks from youtube does not work. it says 150 tracks downlodaed, but nothing moves. what is wrong. would it not be easy to cross check "entry in the model of the tracks" versus - is the file existing?
+* 26. bug: when the scraping from last.fm is aborted early, then the next fetch-try will just check if there is a cached version. but not if the currently cached content is identical with the last.fm-content. for this you have to fetch the "oveall amount" from last.fm and in case this is different from the currently locally stored version, refretch it. put this into unit-testing. refactor code. so that there is clear "fetching is atomic"-logic.
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.
