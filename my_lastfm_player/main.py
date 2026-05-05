@@ -8,6 +8,7 @@ from my_lastfm_player import __display_version__
 from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.i18n import TranslationManager
 from my_lastfm_player.logging_config import configure_logging
+from my_lastfm_player.themes import ThemeMode, apply_theme
 from my_lastfm_player.ui.main_window import MainWindow
 
 
@@ -23,6 +24,7 @@ def main() -> int:
 
     translation_manager = TranslationManager(app)
     window = MainWindow(translation_manager=translation_manager)
+    window.theme_requested.connect(lambda mode: apply_theme(app, ThemeMode(mode)))
     controller = ApplicationController(window)
     controller.start()
     window.show()

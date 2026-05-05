@@ -12,8 +12,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.42"
-    assert __display_version__ == "0.0.42"
+    assert __version__ == "0.0.43"
+    assert __display_version__ == "0.0.43"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -25,7 +25,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.42"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.43"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -56,9 +56,13 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
         def exec(self) -> int:
             return 0
 
+    class _FakeSignal:
+        def connect(self, _slot) -> None:
+            pass
+
     class FakeMainWindow:
         def __init__(self, **_kwargs) -> None:
-            return None
+            self.theme_requested = _FakeSignal()
 
         def show(self) -> None:
             return None
@@ -76,7 +80,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.42\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.43\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -154,6 +158,7 @@ def test_main_window_has_main_menu_actions_in_requested_order(qapp) -> None:
     assert [action.text() for action in window.main_menu.actions()] == [
         "Fetch loved tracks",
         "Preferences",
+        "Theme",
         "Quit",
     ]
 
@@ -262,3 +267,26 @@ def test_main_window_playback_timeline_click_seeks_immediately(qapp) -> None:
 
 def test_format_playback_time_handles_hours() -> None:
     assert format_playback_time(3_723_000) == "1:02:03"
+
+
+def test_main_window_theme_menu_emits_theme_requested(qapp) -> None:
+    window = MainWindow()
+    themes: list[str] = []
+    window.theme_requested.connect(themes.append)
+
+    window.theme_dark_action.trigger()
+    window.theme_light_action.trigger()
+
+    assert themes == ["dark", "light"]
+
+
+def test_main_window_theme_actions_are_exclusive(qapp) -> None:
+    window = MainWindow()
+
+    assert window.theme_light_action.isChecked()
+    assert not window.theme_dark_action.isChecked()
+
+    window.theme_dark_action.trigger()
+
+    assert not window.theme_light_action.isChecked()
+    assert window.theme_dark_action.isChecked()

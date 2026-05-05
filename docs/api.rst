@@ -43,6 +43,12 @@ Storage
 .. automodule:: my_lastfm_player.storage
    :members:
 
+Themes
+------
+
+.. automodule:: my_lastfm_player.themes
+   :members:
+
 UI
 --
 

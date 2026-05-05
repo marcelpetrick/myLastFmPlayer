@@ -261,140 +261,155 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="497" />
-        <location filename="../ui/main_window.py" line="65" />
+        <location filename="../ui/main_window.py" line="521" />
+        <location filename="../ui/main_window.py" line="66" />
         <source>Ready</source>
         <translation>准备好</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="490" />
-        <location filename="../ui/main_window.py" line="238" />
+        <location filename="../ui/main_window.py" line="514" />
+        <location filename="../ui/main_window.py" line="255" />
         <source>Idle</source>
         <translation>闲置的</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="254" />
+        <location filename="../ui/main_window.py" line="271" />
         <source>Loaded {count} tracks</source>
         <translation>已加载 {count} 首曲目</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="274" />
+        <location filename="../ui/main_window.py" line="291" />
         <source>Resume</source>
         <translation>恢复</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="476" />
-        <location filename="../ui/main_window.py" line="274" />
+        <location filename="../ui/main_window.py" line="500" />
+        <location filename="../ui/main_window.py" line="291" />
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="276" />
+        <location filename="../ui/main_window.py" line="293" />
         <source>Resume the paused Last.fm fetch</source>
         <translation>恢复暂停的 Last.fm 获取</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="278" />
+        <location filename="../ui/main_window.py" line="295" />
         <source>Pause the active Last.fm fetch</source>
         <translation>暂停活动的 Last.fm 获取</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="279" />
+        <location filename="../ui/main_window.py" line="296" />
         <source>Stop the active Last.fm fetch</source>
         <translation>停止活动的 Last.fm 获取</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="353" />
+        <location filename="../ui/main_window.py" line="370" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation>更新了{artist} - {title}：{status}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="450" />
+        <location filename="../ui/main_window.py" line="467" />
         <source>This control is part of the MVP shell and will be wired in later steps.</source>
         <translation>该控件是 MVP shell 的一部分，将在后面的步骤中进行连接。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="466" />
+        <location filename="../ui/main_window.py" line="487" />
         <source>Fetch loved tracks</source>
         <translation>获取喜爱的曲目</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="467" />
+        <location filename="../ui/main_window.py" line="488" />
         <source>Preferences</source>
         <translation>偏好设置</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="468" />
+        <location filename="../ui/main_window.py" line="489" />
         <source>Quit</source>
         <translation>辞职</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="469" />
+        <location filename="../ui/main_window.py" line="490" />
         <source>Main</source>
         <translation>主要的</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="470" />
+        <location filename="../ui/main_window.py" line="491" />
+        <source>Theme</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="492" />
+        <source>Light</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="493" />
+        <source>Dark</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="494" />
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="471" />
+        <location filename="../ui/main_window.py" line="495" />
         <source>Last.fm username</source>
         <translation>Last.fm 用户名</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="472" />
+        <location filename="../ui/main_window.py" line="496" />
         <source>Enter username</source>
         <translation>输入用户名</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="473" />
+        <location filename="../ui/main_window.py" line="497" />
         <source>Fetch</source>
         <translation>拿来</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="474" />
+        <location filename="../ui/main_window.py" line="498" />
         <source>Playback</source>
         <translation>回放</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="475" />
+        <location filename="../ui/main_window.py" line="499" />
         <source>Play</source>
         <translation>玩</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="477" />
+        <location filename="../ui/main_window.py" line="501" />
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="478" />
+        <location filename="../ui/main_window.py" line="502" />
         <source>Playback position</source>
         <translation>播放位置</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="479" />
+        <location filename="../ui/main_window.py" line="503" />
         <source>Downloads</source>
         <translation>下载</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="480" />
+        <location filename="../ui/main_window.py" line="504" />
         <source>Download Queued</source>
         <translation>下载排队</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="481" />
+        <location filename="../ui/main_window.py" line="505" />
         <source>Concurrency</source>
         <translation>并发性</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="483" />
+        <location filename="../ui/main_window.py" line="507" />
         <source>Status updates and errors will appear here.</source>
         <translation>状态更新和错误将显示在此处。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="487" />
+        <location filename="../ui/main_window.py" line="511" />
         <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
         <translation>依赖项： yt-dlp 和 ffmpeg 尚未检查</translation>
     </message>

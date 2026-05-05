@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from PyQt6.QtCore import QEvent, QSortFilterProxyModel, Qt, pyqtSignal
-from PyQt6.QtGui import QAction, QMouseEvent
+from PyQt6.QtGui import QAction, QActionGroup, QMouseEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QFormLayout,
@@ -47,6 +47,7 @@ class MainWindow(QMainWindow):
     stop_requested = pyqtSignal()
     seek_requested = pyqtSignal(int)
     language_changed = pyqtSignal()
+    theme_requested = pyqtSignal(str)
 
     def __init__(self, translation_manager: TranslationManager | None = None) -> None:
         super().__init__()
@@ -80,6 +81,17 @@ class MainWindow(QMainWindow):
         self.quit_action = QAction(self)
         self.quit_action.triggered.connect(self.close)
 
+        self.theme_light_action = QAction(self)
+        self.theme_light_action.setCheckable(True)
+        self.theme_light_action.setChecked(True)
+        self.theme_dark_action = QAction(self)
+        self.theme_dark_action.setCheckable(True)
+        self._theme_group = QActionGroup(self)
+        self._theme_group.setExclusive(True)
+        self._theme_group.addAction(self.theme_light_action)
+        self._theme_group.addAction(self.theme_dark_action)
+        self._theme_group.triggered.connect(self._on_theme_action_triggered)
+
         self.language_actions: dict[str, QAction] = {}
         for language in SUPPORTED_LANGUAGES:
             action = QAction(language.native_name, self)
@@ -91,9 +103,14 @@ class MainWindow(QMainWindow):
             self.language_actions[language.code] = action
 
     def _build_menus(self) -> None:
+        self.theme_menu = QMenu(self)
+        self.theme_menu.addAction(self.theme_light_action)
+        self.theme_menu.addAction(self.theme_dark_action)
+
         self.main_menu = QMenu(self)
         self.main_menu.addAction(self.refresh_action)
         self.main_menu.addAction(self.preferences_action)
+        self.main_menu.addMenu(self.theme_menu)
         self.main_menu.addAction(self.quit_action)
         self.menuBar().addMenu(self.main_menu)
 
@@ -450,6 +467,10 @@ class MainWindow(QMainWindow):
         message = self.tr("This control is part of the MVP shell and will be wired in later steps.")
         self.append_feedback(message)
 
+    def _on_theme_action_triggered(self, action: QAction) -> None:
+        mode = "dark" if action is self.theme_dark_action else "light"
+        self.theme_requested.emit(mode)
+
     def set_language(self, code: str) -> None:
         """Switch the active UI language and update visible widgets immediately."""
 
@@ -467,6 +488,9 @@ class MainWindow(QMainWindow):
         self.preferences_action.setText(self.tr("Preferences"))
         self.quit_action.setText(self.tr("Quit"))
         self.main_menu.setTitle(self.tr("Main"))
+        self.theme_menu.setTitle(self.tr("Theme"))
+        self.theme_light_action.setText(self.tr("Light"))
+        self.theme_dark_action.setText(self.tr("Dark"))
         self.language_menu.setTitle(self.tr("Language"))
         self.username_label.setText(self.tr("Last.fm username"))
         self.username_input.setPlaceholderText(self.tr("Enter username"))
