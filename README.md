@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.46` - work in progress; tons of features are not implemented
+Current version: `0.0.47` - work in progress; tons of features are not implemented
 
 ## Current state
 
@@ -85,6 +85,29 @@ Alternatively:
 
 ```sh
 python -m my_lastfm_player
+```
+
+## Last.fm Scrobbling Credentials
+
+The app ships with Last.fm desktop application credentials so scrobbling can work
+without every user registering a separate Last.fm API account:
+
+- API key: `d36dce7154716e08a1d2907b7badadf7`
+- Shared secret: `ed22747b03cabe49ab93f7215afc06fc`
+
+These are application credentials, not a user's Last.fm password or session key.
+Last.fm's desktop authentication flow requires a key and shared secret to sign
+the app's requests, while the per-user session key is created only after the user
+approves access in the browser. For desktop apps, these app credentials cannot be
+kept confidential from users of the binary or source; larger open-source music
+clients such as Strawberry follow the same practical model by shipping a shared
+Last.fm API key for all users.
+
+Advanced users and downstream packages can override the bundled credentials
+without patching source:
+
+```sh
+LASTFM_API_KEY=your_key LASTFM_API_SECRET=your_secret my-lastfm-player
 ```
 
 ## How to Use the Player

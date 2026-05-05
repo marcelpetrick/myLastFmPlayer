@@ -12,7 +12,7 @@ This document collects follow-up improvements noticed during implementation. The
 * fixed: 11. built packages show the first six digits of the build-time git commit hash as a user-facing version suffix.
 * fixed: 12. `my_lastfm_player/version.py` is the single source of truth for the base version; package metadata and documentation checks read that value.
 * fixed: 13. playback now has a seekable timeline slider with current and total time labels; clicking the timeline jumps immediately to that position.
-* 14. scrobble the songs back to last fm: first auth to last.fm, then scrobble the song - how does this even work?
+* fixed: 14. scrobble the songs back to last fm: first auth to last.fm, then scrobble the song - how does this even work?
 * 15. playlist feature? like drag and drop for the songs? and then those are played one after each other?
 * fixed: 16. double-clicking a song in the track list now starts the same playback flow as the Play button.
 * 17. make the localization options using a country flag for easy recognition
@@ -77,6 +77,16 @@ The app must include a **Last.fm preferences menu** where the user can:
 The username and authentication state must be persisted.
 
 ### Authentication flow
+
+The app includes the Last.fm desktop application credentials by default:
+
+* API key: `d36dce7154716e08a1d2907b7badadf7`
+* Shared secret: `ed22747b03cabe49ab93f7215afc06fc`
+
+`LASTFM_API_KEY` and `LASTFM_API_SECRET` still override these bundled values for
+developers, packagers, or users who want to authenticate with their own Last.fm
+API account. These are app credentials used to sign Last.fm API requests, not the
+user's password and not the persisted per-user session key.
 
 When the user clicks **Authenticate with Last.fm**:
 

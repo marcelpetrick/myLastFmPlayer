@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 from collections.abc import Callable
 
 from PyQt6.QtCore import QObject, QThread
 
+from my_lastfm_player.app_credentials import (
+    LASTFM_API_KEY_ENV,
+    LASTFM_API_SECRET_ENV,
+    lastfm_api_credentials,
+)
 from my_lastfm_player.dependencies import DependencyCheckResult, check_external_dependencies
 from my_lastfm_player.download import DownloadManager
 from my_lastfm_player.i18n import translate
@@ -150,15 +154,18 @@ class ApplicationController(QObject):
         return result
 
     def _init_scrobbling(self) -> None:
-        api_key = os.environ.get("LASTFM_API_KEY", "")
-        api_secret = os.environ.get("LASTFM_API_SECRET", "")
-        if not api_key or not api_secret:
-            LOGGER.info("LASTFM_API_KEY/LASTFM_API_SECRET not set; scrobbling disabled")
+        app_credentials = lastfm_api_credentials()
+        if not app_credentials.is_configured:
+            LOGGER.info(
+                "%s/%s not set and built-in Last.fm credentials are empty; scrobbling disabled",
+                LASTFM_API_KEY_ENV,
+                LASTFM_API_SECRET_ENV,
+            )
             return
         creds = self.repository.load_credentials()
         self._scrobbling_service = ScrobblingService(
-            api_key=api_key,
-            api_secret=api_secret,
+            api_key=app_credentials.api_key,
+            api_secret=app_credentials.api_secret,
             session_key=str(creds.get("session_key", "")),
             username=str(creds.get("username", "")),
             scrobbling_enabled=bool(creds.get("scrobbling_enabled", True)),

@@ -1,6 +1,12 @@
 API Reference
 =============
 
+App Credentials
+---------------
+
+.. automodule:: my_lastfm_player.app_credentials
+   :members:
+
 Controller
 ----------
 

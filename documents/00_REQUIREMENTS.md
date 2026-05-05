@@ -32,7 +32,7 @@ The application will:
 
 ### 2.1 External Systems
 
-* Last.fm (HTML scraping only, no API usage)
+* Last.fm (public loved-track HTML scraping plus authenticated scrobbling API calls)
 * YouTube (search + download via tools such as yt-dlp)
 
 ### 2.2 External Tools
@@ -42,7 +42,8 @@ The application will:
 
 ### 2.3 Constraints
 
-* No official APIs (no credentials required)
+* Public loved-track fetching must not require a user-supplied API key.
+* Scrobbling may use bundled Last.fm desktop application credentials and a user-authorized session key.
 * Dependence on public HTML structure
 * Linux-only target for MVP
 
@@ -330,7 +331,7 @@ sudo pacman -S yt-dlp ffmpeg
 
 ### 4.5 Usability
 
-* No API keys required
+* No user-provided API keys required for the default app build
 * Minimal setup
 * Clear UI feedback
 
