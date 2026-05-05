@@ -36,6 +36,7 @@ TESTS_DETAILS=""
 PACKAGE_BUILD_DETAILS=""
 WHEEL_DETAILS=""
 IMPORT_DETAILS=""
+TRANSLATION_DETAILS=""
 
 print_usage() {
     cat <<EOF
@@ -46,17 +47,18 @@ Local project pipeline:
   2. Install the project with development dependencies
   3. Run Ruff linting
   4. Run Pylint static analysis
-  5. Check required documentation
-  6. Build Sphinx documentation with warnings treated as errors
-  7. Run pytest with coverage and generate htmlcov/index.html
-  8. Open generated HTML reports when possible
-  9. Remove stale package build artifacts
-  10. Build source and wheel distributions
-  11. Install the freshly built wheel
-  12. Verify that the installed package imports and exposes its version
-  13. Launch the installed application once by default
+  5. Report translation completion for each Qt .ts catalog
+  6. Check required documentation
+  7. Build Sphinx documentation with warnings treated as errors
+  8. Run pytest with coverage and generate htmlcov/index.html
+  9. Open generated HTML reports when possible
+  10. Remove stale package build artifacts
+  11. Build source and wheel distributions
+  12. Install the freshly built wheel
+  13. Verify that the installed package imports and exposes its version
+  14. Launch the installed application once by default
       Use --noRun to suppress application launch
-  14. Print a final stage-by-stage summary with useful stage details
+  15. Print a final stage-by-stage summary with useful stage details
 
 Generated HTML reports are opened with MY_LASTFM_PLAYER_REPORT_BROWSER when set,
 then firefox, then xdg-open, then open.
@@ -285,6 +287,46 @@ run_pylint() {
     return 1
 }
 
+check_translations() {
+    log "Checking Qt translation completion."
+    local catalog=""
+    local language=""
+    local source_count=0
+    local unfinished_count=0
+    local total_sources=0
+    local total_unfinished=0
+    local detail_parts=()
+
+    shopt -s nullglob
+    for catalog in "${ROOT_DIR}"/my_lastfm_player/translations/*.ts; do
+        language="$(basename "${catalog}")"
+        language="${language#my_lastfm_player_}"
+        language="${language%.ts}"
+        source_count="$(grep -c "<source>" "${catalog}" || true)"
+        unfinished_count="$(grep -c 'type="unfinished"' "${catalog}" || true)"
+        total_sources=$((total_sources + source_count))
+        total_unfinished=$((total_unfinished + unfinished_count))
+        detail_parts+=("${language}: ${source_count} strings, ${unfinished_count} untranslated")
+        log "Translations ${language}: ${source_count} strings, ${unfinished_count} untranslated"
+    done
+    shopt -u nullglob
+
+    if [[ "${#detail_parts[@]}" -eq 0 ]]; then
+        TRANSLATION_DETAILS="no .ts translation catalogs found"
+        return 0
+    fi
+
+    local joined_details
+    joined_details="$(printf '%s; ' "${detail_parts[@]}")"
+    TRANSLATION_DETAILS="${joined_details%; } (total: ${total_sources} strings, ${total_unfinished} untranslated)"
+
+    if [[ "${total_unfinished}" -eq 0 ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
 run_documentation_check() {
     log "Checking required documentation."
     local log_path="${PIPELINE_LOG_DIR}/docs.log"
@@ -446,6 +488,12 @@ main() {
             mark_result "Pylint" "FAIL" "${PYLINT_DETAILS}"
         fi
 
+        if check_translations; then
+            mark_result "Translations" "PASS" "${TRANSLATION_DETAILS}"
+        else
+            mark_result "Translations" "WARN" "${TRANSLATION_DETAILS}"
+        fi
+
         if run_documentation_check; then
             DOCS_OK=1
             mark_result "Docs" "PASS" "${DOCS_DETAILS}"
@@ -469,6 +517,7 @@ main() {
     else
         mark_result "Ruff" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Pylint" "SKIP" "Skipped because dependencies are unavailable"
+        mark_result "Translations" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Docs" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Sphinx" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Tests+Coverage" "SKIP" "Skipped because dependencies are unavailable"
