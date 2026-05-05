@@ -88,6 +88,17 @@ def test_track_rejects_invalid_serialized_values() -> None:
         Track.from_dict({"artist": "Artist", "title": "Title", "lastfm_url": 123})
 
 
+def test_track_constructor_rejects_invalid_core_values() -> None:
+    with pytest.raises(ValueError, match="artist"):
+        Track(artist="", title="Title")
+
+    with pytest.raises(ValueError, match="title"):
+        Track(artist="Artist", title="")
+
+    with pytest.raises(ValueError, match="retry_count"):
+        Track(artist="Artist", title="Title", retry_count=-1)
+
+
 def test_track_status_transition_returns_updated_copy() -> None:
     fetched = Track(artist="Artist", title="Title")
     queued = fetched.with_status(TrackStatus.QUEUED)

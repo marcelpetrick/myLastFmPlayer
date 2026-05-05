@@ -75,6 +75,14 @@ def test_repository_raises_storage_error_for_wrong_user_json_shape(tmp_path: Pat
         repository.load_tracks("user")
 
 
+def test_download_cache_raises_storage_error_for_wrong_shape(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.cache_path.write_text(json.dumps({"artist": "Artist"}), encoding="utf-8")
+
+    with pytest.raises(StorageError, match="JSON array"):
+        repository.load_download_cache()
+
+
 def test_download_cache_saves_only_tracks_with_local_paths(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     cached = Track(
@@ -153,6 +161,14 @@ def test_mark_cached_downloads_keeps_existing_youtube_url(tmp_path: Path) -> Non
     assert marked_track.youtube_url == "https://youtube.example/watch?v=current"
 
 
+def test_lookup_cache_raises_storage_error_for_wrong_shape(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.lookup_cache_path.write_text(json.dumps({"artist": "Artist"}), encoding="utf-8")
+
+    with pytest.raises(StorageError, match="JSON array"):
+        repository.load_lookup_cache()
+
+
 def test_lookup_cache_restores_resolved_and_missing_tracks(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     resolved = Track(
@@ -178,6 +194,20 @@ def test_lookup_cache_restores_resolved_and_missing_tracks(tmp_path: Path) -> No
     assert marked_tracks[0].status == TrackStatus.QUEUED
     assert marked_tracks[1].status == TrackStatus.NOT_FOUND
     assert marked_tracks[2].status == TrackStatus.FETCHED
+
+
+def test_lookup_cache_leaves_unresolved_cached_tracks_unchanged(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.lookup_cache_path.write_text(
+        json.dumps([Track(artist="Artist", title="Title").to_dict()]),
+        encoding="utf-8",
+    )
+
+    marked_tracks = repository.mark_cached_lookups(
+        [Track(artist="Artist", title="Title", status=TrackStatus.FETCHED)]
+    )
+
+    assert marked_tracks == [Track(artist="Artist", title="Title", status=TrackStatus.FETCHED)]
 
 
 def test_atomic_write_replaces_existing_json_without_temp_files(tmp_path: Path) -> None:
@@ -223,5 +253,13 @@ def test_credentials_returns_empty_dict_for_corrupt_file(tmp_path: Path) -> None
     repository = JsonTrackRepository(data_dir=tmp_path)
     repository.credentials_path.parent.mkdir(parents=True, exist_ok=True)
     repository.credentials_path.write_text("[not a dict]", encoding="utf-8")
+
+    assert repository.load_credentials() == {}
+
+
+def test_credentials_returns_empty_dict_for_non_dict_json(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.credentials_path.parent.mkdir(parents=True, exist_ok=True)
+    repository.credentials_path.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
 
     assert repository.load_credentials() == {}

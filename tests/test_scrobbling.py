@@ -130,6 +130,16 @@ def test_start_web_auth_without_credentials_returns_none() -> None:
     assert not svc.auth_in_progress
 
 
+def test_start_web_auth_handles_error() -> None:
+    def failing_network(**kw):
+        raise RuntimeError("network error")
+
+    svc = ScrobblingService(api_key="k", api_secret="s", network_factory=failing_network)
+
+    assert svc.start_web_auth() is None
+    assert not svc.auth_in_progress
+
+
 def test_complete_web_auth_sets_authenticated() -> None:
     svc, networks = _make_service()
     svc.start_web_auth()
@@ -249,6 +259,23 @@ def test_update_now_playing_skipped_when_not_authenticated() -> None:
     svc, networks = _make_service()
     svc.update_now_playing("A", "T")
     assert not networks
+
+
+def test_update_now_playing_handles_network_error_gracefully() -> None:
+    def erroring_network(**kw):
+        net = FakeNetwork(**kw)
+
+        def bad_now_playing(**_):
+            raise RuntimeError("api error")
+
+        net.update_now_playing = bad_now_playing
+        return net
+
+    svc = ScrobblingService(
+        api_key="k", api_secret="s", session_key="key", network_factory=erroring_network
+    )
+    svc.try_connect()
+    svc.update_now_playing("A", "T")  # must not raise
 
 
 # ── credentials_dict ──────────────────────────────────────────────────────────

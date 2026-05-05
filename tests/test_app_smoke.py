@@ -131,6 +131,19 @@ def test_main_window_binds_track_data_and_selection(qapp) -> None:
     assert window.selected_track() == tracks[1]
 
 
+def test_main_window_selection_helpers_handle_empty_and_invalid_rows(qapp) -> None:
+    window = MainWindow()
+
+    assert window.selected_track() is None
+    assert window.selected_track_row() is None
+    assert window.next_track_after("missing") is None
+
+    window.select_track_row(-1)
+    window.select_track_row(window.track_model.rowCount())
+
+    assert window.selected_track() is None
+
+
 def test_main_window_finds_next_track_in_current_sort_order(qapp) -> None:
     window = MainWindow()
     tracks = [
