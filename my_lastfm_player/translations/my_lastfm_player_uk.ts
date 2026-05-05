@@ -181,19 +181,19 @@
     <message>
         <location filename="../controller.py" line="679" />
         <source>Continuing with next track: {artist} - {title}.</source>
-        <translation>Продовжуємо наступний трек: {виконавець} - {назва}.</translation>
+        <translation>Продовжуємо наступний трек: {artist} - {title}.</translation>
     </message>
 </context><context>
     <name>DependencyCheckResult</name>
     <message>
         <location filename="../dependencies.py" line="30" />
         <source>Dependencies installed: {tools}</source>
-        <translation>Установлено залежності: {інструменти}</translation>
+        <translation>Установлено залежності: {tools}</translation>
     </message>
     <message>
         <location filename="../dependencies.py" line="35" />
         <source>Missing dependencies: {tools}</source>
-        <translation>Відсутні залежності: {інструменти}</translation>
+        <translation>Відсутні залежності: {tools}</translation>
     </message>
 </context><context>
     <name>DownloadManager</name>

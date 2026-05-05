@@ -68,3 +68,15 @@ def test_translation_manager_installs_removes_and_handles_load_failure(monkeypat
 def test_translate_formats_named_values(qapp) -> None:
     assert translate("Tests", "Hello {name}", name="World") == "Hello World"
     assert translate("Tests", "Plain text") == "Plain text"
+
+
+def test_translate_falls_back_to_source_on_bad_placeholder(monkeypatch, qapp) -> None:
+    from PyQt6.QtCore import QCoreApplication
+
+    monkeypatch.setattr(
+        QCoreApplication,
+        "translate",
+        staticmethod(lambda _ctx, _txt: "播放{艺术家}"),
+    )
+    result = translate("ApplicationController", "Playing {artist}", artist="Kraftwerk")
+    assert result == "Playing Kraftwerk"

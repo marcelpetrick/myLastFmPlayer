@@ -146,7 +146,7 @@
     <message>
         <location filename="../controller.py" line="550" />
         <source>Playing {artist} - {title}.</source>
-        <translation>正在播放{艺术家} - {标题}。</translation>
+        <translation>正在播放{artist} - {title}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="565" />
@@ -188,12 +188,12 @@
     <message>
         <location filename="../dependencies.py" line="30" />
         <source>Dependencies installed: {tools}</source>
-        <translation>安装的依赖项：{工具}</translation>
+        <translation>安装的依赖项：{tools}</translation>
     </message>
     <message>
         <location filename="../dependencies.py" line="35" />
         <source>Missing dependencies: {tools}</source>
-        <translation>缺少依赖项：{工具}</translation>
+        <translation>缺少依赖项：{tools}</translation>
     </message>
 </context><context>
     <name>DownloadManager</name>
@@ -301,7 +301,7 @@
     <message>
         <location filename="../ui/main_window.py" line="357" />
         <source>Updated {artist} - {title}: {status}</source>
-        <translation>更新了{艺术家} - {标题}：{状态}</translation>
+        <translation>更新了{artist} - {title}：{status}</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="443" />
@@ -471,16 +471,16 @@
     <message>
         <location filename="../youtube.py" line="86" />
         <source>Searching {done}/{total}: {artist} - {title}</source>
-        <translation>搜索{已完成}/{总计}：{艺术家} - {标题}</translation>
+        <translation>搜索{done}/{total}：{artist} - {title}</translation>
     </message>
     <message>
         <location filename="../youtube.py" line="224" />
         <source>Resolved {done}/{total}: {artist} - {title}</source>
-        <translation>已解决的{完成}/{总计}：{艺术家} - {标题}</translation>
+        <translation>已解析{done}/{total}：{artist} - {title}</translation>
     </message>
     <message>
         <location filename="../youtube.py" line="232" />
         <source>No YouTube result {done}/{total}: {artist} - {title}</source>
-        <translation>没有 YouTube 结果{完成}/{总计}：{artist} - {title}</translation>
+        <translation>没有 YouTube 结果{done}/{total}：{artist} - {title}</translation>
     </message>
 </context></TS>

@@ -81,7 +81,7 @@
     <message>
         <location filename="../controller.py" line="373" />
         <source>Fetch for {username} returned invalid track data.</source>
-        <translation>Der Abruf für {Benutzername} hat ungültige Trackdaten zurückgegeben.</translation>
+        <translation>Der Abruf für {username} hat ungültige Trackdaten zurückgegeben.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="383" />
@@ -91,7 +91,7 @@
     <message>
         <location filename="../controller.py" line="407" />
         <source>Stopped fetch for {username} returned invalid data.</source>
-        <translation>Der Abruf für {Benutzername} wurde gestoppt und lieferte ungültige Daten.</translation>
+        <translation>Der Abruf für {username} wurde gestoppt und lieferte ungültige Daten.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="417" />
@@ -101,7 +101,7 @@
     <message>
         <location filename="../controller.py" line="428" />
         <source>Fetch for {username} returned invalid partial data.</source>
-        <translation>Der Abruf für {Benutzername} hat ungültige Teildaten zurückgegeben.</translation>
+        <translation>Der Abruf für {username} hat ungültige Teildaten zurückgegeben.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="438" />
@@ -111,12 +111,12 @@
     <message>
         <location filename="../controller.py" line="450" />
         <source>Workflow for {username} returned an invalid track update.</source>
-        <translation>Der Workflow für {Benutzername} hat eine ungültige Trackaktualisierung zurückgegeben.</translation>
+        <translation>Der Workflow für {username} hat eine ungültige Trackaktualisierung zurückgegeben.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="463" />
         <source>Lookup for {username} returned invalid track data.</source>
-        <translation>Bei der Suche nach {Benutzername} wurden ungültige Trackdaten zurückgegeben.</translation>
+        <translation>Bei der Suche nach {username} wurden ungültige Trackdaten zurückgegeben.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="473" />
@@ -131,7 +131,7 @@
     <message>
         <location filename="../controller.py" line="495" />
         <source>Download for {username} returned invalid track data.</source>
-        <translation>Der Download für {Benutzername} hat ungültige Trackdaten zurückgegeben.</translation>
+        <translation>Der Download für {username} hat ungültige Trackdaten zurückgegeben.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="505" />
@@ -146,7 +146,7 @@
     <message>
         <location filename="../controller.py" line="550" />
         <source>Playing {artist} - {title}.</source>
-        <translation>Ich spiele {Künstler} – {Titel}.</translation>
+        <translation>Ich spiele {artist} – {title}.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="565" />
@@ -156,7 +156,7 @@
     <message>
         <location filename="../controller.py" line="574" />
         <source>Preparing {artist} - {title} for playback.</source>
-        <translation>{Künstler} – {Titel} wird für die Wiedergabe vorbereitet.</translation>
+        <translation>{artist} – {title} wird für die Wiedergabe vorbereitet.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="591" />
@@ -212,7 +212,7 @@
     <message>
         <location filename="../workers.py" line="54" />
         <source>Looking up Last.fm user {username}</source>
-        <translation>Suche nach Last.fm-Benutzer {Benutzername}</translation>
+        <translation>Suche nach Last.fm-Benutzer {username}</translation>
     </message>
     <message>
         <location filename="../workers.py" line="70" />
@@ -229,7 +229,7 @@
     <message>
         <location filename="../lastfm.py" line="252" />
         <source>Found Last.fm user {username}</source>
-        <translation>Last.fm-Benutzer {Benutzername} gefunden</translation>
+        <translation>Last.fm-Benutzer {username} gefunden</translation>
     </message>
     <message>
         <location filename="../lastfm.py" line="414" />
@@ -246,7 +246,7 @@
     <message>
         <location filename="../workers.py" line="176" />
         <source>Resolving YouTube URLs for {username}</source>
-        <translation>Auflösen von YouTube-URLs für {Benutzername}</translation>
+        <translation>Auflösen von YouTube-URLs für {username}</translation>
     </message>
     <message>
         <location filename="../workers.py" line="192" />

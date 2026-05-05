@@ -71,5 +71,8 @@ def translate(context: str, text: str, **values: object) -> str:
 
     translated = QCoreApplication.translate(context, text)
     if values:
-        return translated.format(**values)
+        try:
+            return translated.format(**values)
+        except KeyError:
+            return text.format(**values)
     return translated
