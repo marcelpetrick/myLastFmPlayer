@@ -4,7 +4,8 @@ import logging
 import time
 from collections.abc import Callable
 
-from PyQt6.QtCore import QObject, QThread
+from PyQt6.QtCore import QObject, QThread, QUrl
+from PyQt6.QtGui import QDesktopServices
 
 from my_lastfm_player.app_credentials import (
     LASTFM_API_KEY_ENV,
@@ -110,6 +111,7 @@ class ApplicationController(QObject):
         self.window.seek_requested.connect(self.seek_playback)
         self.window.language_changed.connect(self.check_dependencies)
         self.window.preferences_requested.connect(self._show_preferences)
+        self.window.file_cache_requested.connect(self.open_file_cache)
         self._init_scrobbling()
         self.check_dependencies()
 
@@ -152,6 +154,41 @@ class ApplicationController(QObject):
         if not result.is_ok:
             self.window.append_feedback(result.user_message())
         return result
+
+    def open_file_cache(self) -> None:
+        """Open the local downloaded-track cache with the system file manager."""
+
+        cache_dir = self.repository.downloads_dir
+        try:
+            cache_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            LOGGER.exception("Could not create file cache directory %s", cache_dir)
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Could not open file cache: {error}",
+                    error=error,
+                )
+            )
+            return
+
+        if QDesktopServices.openUrl(QUrl.fromLocalFile(str(cache_dir))):
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Opened file cache: {path}",
+                    path=cache_dir,
+                )
+            )
+            return
+
+        self.window.append_feedback(
+            translate(
+                "ApplicationController",
+                "Could not open file cache: {path}",
+                path=cache_dir,
+            )
+        )
 
     def _init_scrobbling(self) -> None:
         app_credentials = lastfm_api_credentials()

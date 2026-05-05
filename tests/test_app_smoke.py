@@ -17,8 +17,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.48"
-    assert __display_version__ == "0.0.48"
+    assert __version__ == "0.0.49"
+    assert __display_version__ == "0.0.49"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -55,7 +55,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.48"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.49"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -110,7 +110,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.48\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.49\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -188,9 +188,20 @@ def test_main_window_has_main_menu_actions_in_requested_order(qapp) -> None:
     assert [action.text() for action in window.main_menu.actions()] == [
         "Fetch loved tracks",
         "Preferences",
+        "Go to file cache",
         "Theme",
         "Quit",
     ]
+
+
+def test_main_window_file_cache_menu_action_emits_request(qapp) -> None:
+    window = MainWindow()
+    emissions: list[bool] = []
+    window.file_cache_requested.connect(lambda: emissions.append(True))
+
+    window.file_cache_action.trigger()
+
+    assert emissions == [True]
 
 
 def test_main_window_download_control_emits_download_signal(qapp) -> None:

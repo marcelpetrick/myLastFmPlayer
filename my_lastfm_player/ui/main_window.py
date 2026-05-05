@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
     language_changed = pyqtSignal()
     theme_requested = pyqtSignal(str)
     preferences_requested = pyqtSignal()
+    file_cache_requested = pyqtSignal()
 
     def __init__(self, translation_manager: TranslationManager | None = None) -> None:
         super().__init__()
@@ -78,6 +79,9 @@ class MainWindow(QMainWindow):
 
         self.preferences_action = QAction(self)
         self.preferences_action.triggered.connect(self.preferences_requested.emit)
+
+        self.file_cache_action = QAction(self)
+        self.file_cache_action.triggered.connect(self.file_cache_requested.emit)
 
         self.quit_action = QAction(self)
         self.quit_action.triggered.connect(self.close)
@@ -123,6 +127,7 @@ class MainWindow(QMainWindow):
         self.main_menu = QMenu(self)
         self.main_menu.addAction(self.refresh_action)
         self.main_menu.addAction(self.preferences_action)
+        self.main_menu.addAction(self.file_cache_action)
         self.main_menu.addMenu(self.theme_menu)
         self.main_menu.addAction(self.quit_action)
         self.menuBar().addMenu(self.main_menu)
@@ -496,6 +501,7 @@ class MainWindow(QMainWindow):
 
         self.refresh_action.setText(self.tr("Fetch loved tracks"))
         self.preferences_action.setText(self.tr("Preferences"))
+        self.file_cache_action.setText(self.tr("Go to file cache"))
         self.quit_action.setText(self.tr("Quit"))
         self.main_menu.setTitle(self.tr("Main"))
         self.theme_menu.setTitle(self.tr("Theme"))

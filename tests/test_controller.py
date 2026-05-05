@@ -101,6 +101,46 @@ def test_controller_retranslates_dependency_label_on_language_change(qapp) -> No
     assert call_count == calls_after_start + 1
 
 
+def test_controller_start_connects_file_cache_menu_action(qapp, tmp_path, monkeypatch) -> None:
+    opened_paths: list[str] = []
+
+    def fake_open_url(url) -> bool:
+        opened_paths.append(url.toLocalFile())
+        return True
+
+    monkeypatch.setattr(controller_module.QDesktopServices, "openUrl", fake_open_url)
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        dependency_checker=lambda: DependencyCheckResult(installed=(), missing=()),
+    )
+
+    controller.start()
+    window.file_cache_action.trigger()
+
+    assert opened_paths == [str(repository.downloads_dir)]
+    assert repository.downloads_dir.is_dir()
+    assert "Opened file cache:" in window.feedback_log.toPlainText()
+
+
+def test_controller_reports_file_cache_open_failure(qapp, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        controller_module.QDesktopServices,
+        "openUrl",
+        lambda _url: False,
+    )
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+
+    controller.open_file_cache()
+
+    assert repository.downloads_dir.is_dir()
+    assert "Could not open file cache:" in window.feedback_log.toPlainText()
+
+
 def test_controller_initializes_scrobbling_with_bundled_credentials(qapp, tmp_path) -> None:
     window = MainWindow()
     controller = ApplicationController(
