@@ -126,6 +126,56 @@ def test_playback_service_pause_and_stop(tmp_path: Path) -> None:
     assert backend.events[-2:] == [("pause", None), ("stop", None)]
 
 
+def test_playback_service_resume_and_state_transitions(tmp_path: Path) -> None:
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
+    backend = FakePlaybackBackend()
+    service = PlaybackService(backend=backend)
+    service.play(
+        Track(
+            artist="Artist",
+            title="Title",
+            local_path=str(audio_path),
+            status=TrackStatus.DOWNLOADED,
+        )
+    )
+
+    service.pause()
+    assert service.is_paused()
+    service.resume()
+
+    assert not service.is_paused()
+    assert backend.events[-2:] == [("pause", None), ("resume", None)]
+
+
+def test_playback_service_rejects_resume_without_paused_track(tmp_path: Path) -> None:
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
+    service = PlaybackService(backend=FakePlaybackBackend())
+
+    with pytest.raises(PlaybackError, match="No paused track"):
+        service.resume()
+
+    service.play(
+        Track(
+            artist="Artist",
+            title="Title",
+            local_path=str(audio_path),
+            status=TrackStatus.DOWNLOADED,
+        )
+    )
+
+    with pytest.raises(PlaybackError, match="No paused track"):
+        service.resume()
+
+
+def test_playback_service_stop_and_finish_are_noop_when_idle() -> None:
+    service = PlaybackService(backend=FakePlaybackBackend())
+
+    assert service.stop() is None
+    assert service.finish_current() is None
+
+
 def test_playback_service_finishes_current_track_without_stopping_backend(
     tmp_path: Path,
 ) -> None:
@@ -188,6 +238,13 @@ def test_playback_service_rejects_missing_or_not_downloaded_tracks(tmp_path: Pat
         )
 
 
+def test_playback_service_rejects_downloaded_track_without_local_path() -> None:
+    service = PlaybackService(backend=FakePlaybackBackend())
+
+    with pytest.raises(PlaybackError, match="no local file path"):
+        service.play(Track(artist="Artist", title="Title", status=TrackStatus.DOWNLOADED))
+
+
 def test_playback_service_rejects_pause_without_current_track() -> None:
     service = PlaybackService(backend=FakePlaybackBackend())
 
@@ -196,6 +253,25 @@ def test_playback_service_rejects_pause_without_current_track() -> None:
 
     with pytest.raises(PlaybackError, match="No track"):
         service.seek(10_000)
+
+
+def test_playback_service_forwards_backend_callbacks() -> None:
+    backend = FakePlaybackBackend()
+    service = PlaybackService(backend=backend)
+    positions: list[int] = []
+    durations: list[int] = []
+    finished: list[bool] = []
+
+    service.on_position_changed(positions.append)
+    service.on_duration_changed(durations.append)
+    service.on_finished(lambda: finished.append(True))
+    backend.position_callbacks[0](123)
+    backend.duration_callbacks[0](456)
+    backend.finished_callbacks[0]()
+
+    assert positions == [123]
+    assert durations == [456]
+    assert finished == [True]
 
 
 class FakeSignal:

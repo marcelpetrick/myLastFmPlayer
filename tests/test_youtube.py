@@ -8,7 +8,7 @@ import pytest
 
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
-from my_lastfm_player.youtube import YouTubeLookupError, YouTubeResolver
+from my_lastfm_player.youtube import YouTubeLookupError, YouTubeResolver, _percent
 
 
 class FakeRunner:
@@ -83,6 +83,42 @@ def test_search_first_result_falls_back_to_video_id() -> None:
     )
 
 
+def test_search_first_result_falls_back_to_original_or_direct_url() -> None:
+    original_runner = FakeRunner(stdout=json.dumps({"original_url": "https://youtu.be/original"}))
+    direct_runner = FakeRunner(stdout=json.dumps({"url": "https://youtu.be/direct"}))
+
+    assert YouTubeResolver(command_runner=original_runner).search_first_result("query") == (
+        "https://youtu.be/original"
+    )
+    assert YouTubeResolver(command_runner=direct_runner).search_first_result("query") == (
+        "https://youtu.be/direct"
+    )
+
+
+def test_search_first_result_returns_none_for_empty_or_unusable_payloads() -> None:
+    assert (
+        YouTubeResolver(command_runner=FakeRunner(stdout="")).search_first_result("query")
+        is None
+    )
+    assert (
+        YouTubeResolver(command_runner=FakeRunner(stdout=json.dumps({"entries": [None, "x"]})))
+        .search_first_result("query")
+        is None
+    )
+    assert (
+        YouTubeResolver(command_runner=FakeRunner(stdout=json.dumps({"title": "No URL"})))
+        .search_first_result("query")
+        is None
+    )
+
+
+def test_search_first_result_raises_for_unexpected_json_shape() -> None:
+    runner = FakeRunner(stdout=json.dumps(["not", "a", "dict"]))
+
+    with pytest.raises(YouTubeLookupError, match="unexpected JSON shape"):
+        YouTubeResolver(command_runner=runner).search_first_result("query")
+
+
 def test_search_first_result_returns_none_for_no_results() -> None:
     runner = FakeRunner(stderr="ERROR: no video results", returncode=1)
 
@@ -128,6 +164,23 @@ def test_resolve_track_marks_missing_as_not_found() -> None:
 
     assert resolved.youtube_url is None
     assert resolved.status == TrackStatus.NOT_FOUND
+
+
+def test_resolve_tracks_reports_no_result_progress() -> None:
+    runner = FakeRunner(stderr="no results", returncode=1)
+    resolver = YouTubeResolver(command_runner=runner)
+    progress: list[tuple[int, str]] = []
+
+    tracks = resolver.resolve_tracks(
+        [Track(artist="Artist", title="Title")],
+        progress_callback=lambda value, message: progress.append((value, message)),
+    )
+
+    assert tracks[0].status == TrackStatus.NOT_FOUND
+    assert progress == [
+        (0, "Searching 1/1: Artist - Title"),
+        (99, "No YouTube result 1/1: Artist - Title"),
+    ]
 
 
 def test_resolve_tracks_skips_tracks_that_already_have_youtube_urls() -> None:
@@ -240,3 +293,8 @@ def test_resolve_and_store_tracks_keeps_existing_download_state(tmp_path: Path) 
     assert tracks[0].status == TrackStatus.DOWNLOADED
     assert tracks[0].local_path == "/music/Artist - Title.mp3"
     assert tracks[0].youtube_url == "https://youtube.example/watch?v=abc"
+
+
+def test_percent_handles_zero_total_and_caps_before_complete() -> None:
+    assert _percent(0, 0) == 100
+    assert _percent(999, 1000) == 99

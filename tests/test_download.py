@@ -11,12 +11,19 @@ from my_lastfm_player.storage import JsonTrackRepository
 
 
 class FakeRunner:
-    def __init__(self, return_codes: list[int] | None = None) -> None:
+    def __init__(
+        self,
+        return_codes: list[int] | None = None,
+        error: OSError | None = None,
+    ) -> None:
         self.return_codes = return_codes or [0]
+        self.error = error
         self.commands: list[list[str]] = []
 
     def __call__(self, command, **_kwargs) -> subprocess.CompletedProcess[str]:
         self.commands.append(list(command))
+        if self.error is not None:
+            raise self.error
         return_code = self.return_codes.pop(0) if self.return_codes else 0
         stderr = "download failed" if return_code else ""
         return subprocess.CompletedProcess(command, return_code, stdout="", stderr=stderr)
@@ -88,6 +95,60 @@ def test_download_manager_retries_and_marks_failed(tmp_path: Path) -> None:
     assert tracks[0].status == TrackStatus.FAILED
     assert tracks[0].retry_count == 3
     assert tracks[0].error == "download failed"
+
+
+def test_download_manager_pause_and_resume_toggle_queue_state() -> None:
+    manager = DownloadManager()
+
+    manager.pause()
+    assert not manager._resume_event.is_set()
+
+    manager.resume()
+    assert manager._resume_event.is_set()
+
+
+def test_download_manager_reports_zero_candidates(tmp_path: Path) -> None:
+    progress: list[tuple[int, str]] = []
+    tracks = [Track(artist="Artist", title="Title")]
+
+    result = DownloadManager(command_runner=FakeRunner()).download_tracks(
+        tracks,
+        tmp_path,
+        progress_callback=lambda value, message: progress.append((value, message)),
+    )
+
+    assert result == tracks
+    assert progress == [(0, "Queued 0 downloads")]
+
+
+def test_download_manager_handles_missing_url_and_command_error(tmp_path: Path) -> None:
+    missing_url_track = Track(artist="Artist", title="Title", status=TrackStatus.QUEUED)
+
+    missing_url_result = DownloadManager(
+        command_runner=FakeRunner(),
+        max_retries=1,
+    )._download_track_with_retries(missing_url_track, tmp_path)
+
+    assert missing_url_result.status == TrackStatus.FAILED
+    assert missing_url_result.error == "Track has no YouTube URL"
+
+    command_error_result = DownloadManager(
+        command_runner=FakeRunner(error=OSError("missing executable")),
+        max_retries=1,
+    ).download_tracks(
+        [
+            Track(
+                artist="Artist",
+                title="Title",
+                youtube_url="https://youtu.be/example",
+                status=TrackStatus.QUEUED,
+            )
+        ],
+        tmp_path,
+    )
+
+    assert command_error_result[0].status == TrackStatus.FAILED
+    assert "Could not run yt-dlp" in command_error_result[0].error
 
 
 def test_download_manager_skips_cached_downloads(tmp_path: Path) -> None:
