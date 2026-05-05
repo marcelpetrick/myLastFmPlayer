@@ -261,150 +261,160 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="518" />
+        <location filename="../ui/main_window.py" line="533" />
         <location filename="../ui/main_window.py" line="67" />
         <source>Ready</source>
         <translation>Готовий</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="511" />
-        <location filename="../ui/main_window.py" line="256" />
+        <location filename="../ui/main_window.py" line="526" />
+        <location filename="../ui/main_window.py" line="268" />
         <source>Idle</source>
         <translation>Бездіяльність</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="272" />
+        <location filename="../ui/main_window.py" line="284" />
         <source>Loaded {count} tracks</source>
         <translation>Завантажено {count} треків</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="292" />
+        <location filename="../ui/main_window.py" line="304" />
         <source>Resume</source>
         <translation>Резюме</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="497" />
-        <location filename="../ui/main_window.py" line="292" />
+        <location filename="../ui/main_window.py" line="512" />
+        <location filename="../ui/main_window.py" line="304" />
         <source>Pause</source>
         <translation>Пауза</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="294" />
+        <location filename="../ui/main_window.py" line="306" />
         <source>Resume the paused Last.fm fetch</source>
         <translation>Відновити призупинене отримання Last.fm</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="296" />
+        <location filename="../ui/main_window.py" line="308" />
         <source>Pause the active Last.fm fetch</source>
         <translation>Призупинити активне отримання Last.fm</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="297" />
+        <location filename="../ui/main_window.py" line="309" />
         <source>Stop the active Last.fm fetch</source>
         <translation>Зупиніть активне отримання Last.fm</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="371" />
+        <location filename="../ui/main_window.py" line="383" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation>Оновлено {artist} - {title}: {status}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="484" />
+        <location filename="../ui/main_window.py" line="497" />
         <source>Fetch loved tracks</source>
         <translation>Отримайте улюблені треки</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="485" />
+        <location filename="../ui/main_window.py" line="498" />
         <source>Preferences</source>
         <translation>Уподобання</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="486" />
+        <location filename="../ui/main_window.py" line="499" />
         <source>Quit</source>
         <translation>Вийти</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="487" />
+        <location filename="../ui/main_window.py" line="500" />
         <source>Main</source>
         <translation>Головна</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="488" />
+        <location filename="../ui/main_window.py" line="501" />
         <source>Theme</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="489" />
+        <location filename="../ui/main_window.py" line="502" />
         <source>Light</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="490" />
+        <location filename="../ui/main_window.py" line="503" />
         <source>Dark</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="491" />
+        <location filename="../ui/main_window.py" line="504" />
+        <source>Lilac</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="505" />
+        <source>Mint</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="506" />
         <source>Language</source>
         <translation>Мова</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="492" />
+        <location filename="../ui/main_window.py" line="507" />
         <source>Last.fm username</source>
         <translation>Ім'я користувача Last.fm</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="493" />
+        <location filename="../ui/main_window.py" line="508" />
         <source>Enter username</source>
         <translation>Введіть ім'я користувача</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="494" />
+        <location filename="../ui/main_window.py" line="509" />
         <source>Fetch</source>
         <translation>Принести</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="495" />
+        <location filename="../ui/main_window.py" line="510" />
         <source>Playback</source>
         <translation>Відтворення</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="496" />
+        <location filename="../ui/main_window.py" line="511" />
         <source>Play</source>
         <translation>грати</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="498" />
+        <location filename="../ui/main_window.py" line="513" />
         <source>Stop</source>
         <translation>СТІЙ</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="499" />
+        <location filename="../ui/main_window.py" line="514" />
         <source>Playback position</source>
         <translation>Позиція відтворення</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="500" />
+        <location filename="../ui/main_window.py" line="515" />
         <source>Downloads</source>
         <translation>Завантаження</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="501" />
+        <location filename="../ui/main_window.py" line="516" />
         <source>Download Queued</source>
         <translation>Завантаження в черзі</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="502" />
+        <location filename="../ui/main_window.py" line="517" />
         <source>Concurrency</source>
         <translation>Паралелізм</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="504" />
+        <location filename="../ui/main_window.py" line="519" />
         <source>Status updates and errors will appear here.</source>
         <translation>Тут відображатимуться оновлення статусу та помилки.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="508" />
+        <location filename="../ui/main_window.py" line="523" />
         <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
         <translation>Залежності: yt-dlp і ffmpeg ще не перевірено</translation>
     </message>

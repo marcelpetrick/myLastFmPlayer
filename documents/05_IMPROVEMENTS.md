@@ -53,7 +53,7 @@ zsh: IOT instruction (core dumped)  .venv/bin/my-lastfm-player
 
 ## UI design
 * 8. switch to use qml isntead of a widget based app? benefits
-* 9. themes, color schemes? dark light mode at least
+* fixed: 9. themes, color schemes? dark light mode at least
 * fixed: 10. the app has Qt translation support, translation file generation commands, and a live language-selection menu.
 
 -----

@@ -87,10 +87,20 @@ class MainWindow(QMainWindow):
         self.theme_light_action.setChecked(True)
         self.theme_dark_action = QAction(self)
         self.theme_dark_action.setCheckable(True)
+        self.theme_lilac_action = QAction(self)
+        self.theme_lilac_action.setCheckable(True)
+        self.theme_mint_action = QAction(self)
+        self.theme_mint_action.setCheckable(True)
+        self.theme_light_action.setData("light")
+        self.theme_dark_action.setData("dark")
+        self.theme_lilac_action.setData("lilac")
+        self.theme_mint_action.setData("mint")
         self._theme_group = QActionGroup(self)
         self._theme_group.setExclusive(True)
         self._theme_group.addAction(self.theme_light_action)
         self._theme_group.addAction(self.theme_dark_action)
+        self._theme_group.addAction(self.theme_lilac_action)
+        self._theme_group.addAction(self.theme_mint_action)
         self._theme_group.triggered.connect(self._on_theme_action_triggered)
 
         self.language_actions: dict[str, QAction] = {}
@@ -107,6 +117,8 @@ class MainWindow(QMainWindow):
         self.theme_menu = QMenu(self)
         self.theme_menu.addAction(self.theme_light_action)
         self.theme_menu.addAction(self.theme_dark_action)
+        self.theme_menu.addAction(self.theme_lilac_action)
+        self.theme_menu.addAction(self.theme_mint_action)
 
         self.main_menu = QMenu(self)
         self.main_menu.addAction(self.refresh_action)
@@ -465,8 +477,9 @@ class MainWindow(QMainWindow):
         return round(self._playback_duration_ms * bounded_position / slider_width)
 
     def _on_theme_action_triggered(self, action: QAction) -> None:
-        mode = "dark" if action is self.theme_dark_action else "light"
-        self.theme_requested.emit(mode)
+        mode = action.data()
+        if isinstance(mode, str):
+            self.theme_requested.emit(mode)
 
     def set_language(self, code: str) -> None:
         """Switch the active UI language and update visible widgets immediately."""
@@ -488,6 +501,8 @@ class MainWindow(QMainWindow):
         self.theme_menu.setTitle(self.tr("Theme"))
         self.theme_light_action.setText(self.tr("Light"))
         self.theme_dark_action.setText(self.tr("Dark"))
+        self.theme_lilac_action.setText(self.tr("Lilac"))
+        self.theme_mint_action.setText(self.tr("Mint"))
         self.language_menu.setTitle(self.tr("Language"))
         self.username_label.setText(self.tr("Last.fm username"))
         self.username_input.setPlaceholderText(self.tr("Enter username"))
