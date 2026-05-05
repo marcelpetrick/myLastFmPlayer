@@ -24,6 +24,7 @@ dev = [
     "build>=1.5.0",
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
+    "pylint>=4.0.4",
     "ruff>=0.15.12",
     "sphinx>=9.1.0",
 ]
@@ -69,3 +70,37 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pylint.main]
+py-version = "3.12"
+jobs = 0
+recursive = true
+
+[tool.pylint.messages_control]
+disable = [
+    "attribute-defined-outside-init",
+    "broad-exception-caught",
+    "duplicate-code",
+    "fixme",
+    "import-outside-toplevel",
+    "invalid-name",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "missing-module-docstring",
+    "no-name-in-module",
+    "protected-access",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-positional-arguments",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-statements",
+    "unnecessary-ellipsis",
+]
+
+[tool.pylint.format]
+max-line-length = 100

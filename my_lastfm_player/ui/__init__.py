@@ -1,2 +1,1 @@
 """PyQt user interface components."""
-

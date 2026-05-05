@@ -7,12 +7,15 @@ VENV_DIR="${ROOT_DIR}/.venv"
 PYTHON="${VENV_DIR}/bin/python"
 APP="${VENV_DIR}/bin/my-lastfm-player"
 RUN_APP=true
+PIPELINE_LOG_DIR="${TMPDIR:-/tmp}/myLastFmPlayer-pipeline-$$"
+trap 'rm -rf "${PIPELINE_LOG_DIR}"' EXIT
 
 declare -a SUMMARY_LINES=()
 
 VENV_OK=0
 INSTALL_OK=0
 LINT_OK=0
+PYLINT_OK=0
 DOCS_OK=0
 TESTS_OK=0
 SPHINX_OK=0
@@ -25,6 +28,14 @@ OPEN_COVERAGE_OK=0
 OPEN_DOCS_OK=0
 LAUNCH_OK=0
 OPEN_REPORT_COMMAND=""
+RUFF_DETAILS=""
+PYLINT_DETAILS=""
+DOCS_DETAILS=""
+SPHINX_DETAILS=""
+TESTS_DETAILS=""
+PACKAGE_BUILD_DETAILS=""
+WHEEL_DETAILS=""
+IMPORT_DETAILS=""
 
 print_usage() {
     cat <<EOF
@@ -34,17 +45,18 @@ Local project pipeline:
   1. Create or reuse .venv
   2. Install the project with development dependencies
   3. Run Ruff linting
-  4. Check required documentation
-  5. Build Sphinx documentation with warnings treated as errors
-  6. Run pytest with coverage and generate htmlcov/index.html
-  7. Open generated HTML reports when possible
-  8. Remove stale package build artifacts
-  9. Build source and wheel distributions
-  10. Install the freshly built wheel
-  11. Verify that the installed package imports and exposes its version
-  12. Launch the installed application once by default
+  4. Run Pylint static analysis
+  5. Check required documentation
+  6. Build Sphinx documentation with warnings treated as errors
+  7. Run pytest with coverage and generate htmlcov/index.html
+  8. Open generated HTML reports when possible
+  9. Remove stale package build artifacts
+  10. Build source and wheel distributions
+  11. Install the freshly built wheel
+  12. Verify that the installed package imports and exposes its version
+  13. Launch the installed application once by default
       Use --noRun to suppress application launch
-  13. Print a final stage-by-stage summary
+  14. Print a final stage-by-stage summary with useful stage details
 
 Generated HTML reports are opened with MY_LASTFM_PLAYER_REPORT_BROWSER when set,
 then firefox, then xdg-open, then open.
@@ -68,6 +80,89 @@ mark_result() {
     local status="$2"
     local details="$3"
     SUMMARY_LINES+=("$(printf '%-16s : %-4s %s' "${label}" "${status}" "${details}")")
+}
+
+run_with_log() {
+    local log_path="$1"
+    shift
+
+    mkdir -p "${PIPELINE_LOG_DIR}"
+    "$@" 2>&1 | tee "${log_path}"
+    return "${PIPESTATUS[0]}"
+}
+
+extract_ruff_details() {
+    local log_path="$1"
+
+    if grep -q "All checks passed" "${log_path}"; then
+        printf '%s\n' "0 violations"
+        return
+    fi
+
+    local found_line
+    found_line="$(grep -E "Found [0-9]+ error" "${log_path}" | tail -n 1 || true)"
+    if [[ -n "${found_line}" ]]; then
+        printf '%s\n' "${found_line}"
+        return
+    fi
+
+    printf '%s\n' "see Ruff output"
+}
+
+extract_pylint_details() {
+    local log_path="$1"
+    local score_line
+    local score
+
+    score_line="$(grep -E "rated at [-0-9.]+/10" "${log_path}" | tail -n 1 || true)"
+    if [[ -n "${score_line}" ]]; then
+        score="${score_line#*rated at }"
+        score="${score%% *}"
+        awk -v score="${score}" 'BEGIN { split(score, parts, "/"); printf "%s (%.0f%%)\n", score, parts[1] / parts[2] * 100 }'
+        return
+    fi
+
+    printf '%s\n' "see Pylint output"
+}
+
+extract_test_details() {
+    local log_path="$1"
+    local coverage_line
+    local result_line
+
+    coverage_line="$(grep -E "Total coverage: [0-9.]+%" "${log_path}" | tail -n 1 || true)"
+    result_line="$(grep -E "=+ .*(passed|failed|skipped).*=+" "${log_path}" | tail -n 1 || true)"
+    result_line="${result_line//=/}"
+    result_line="${result_line#"${result_line%%[![:space:]]*}"}"
+    result_line="${result_line%"${result_line##*[![:space:]]}"}"
+
+    if [[ -n "${coverage_line}" && -n "${result_line}" ]]; then
+        printf '%s; %s\n' "${coverage_line#*Total coverage: }" "${result_line}"
+        return
+    fi
+    if [[ -n "${coverage_line}" ]]; then
+        printf '%s coverage\n' "${coverage_line#*Total coverage: }"
+        return
+    fi
+    if [[ -n "${result_line}" ]]; then
+        printf '%s\n' "${result_line}"
+        return
+    fi
+
+    printf '%s\n' "see pytest output"
+}
+
+extract_package_build_details() {
+    local log_path="$1"
+    local built_line
+
+    built_line="$(grep -E "Successfully built " "${log_path}" | tail -n 1 || true)"
+    if [[ -n "${built_line}" ]]; then
+        printf '%s\n' "${built_line}"
+        return
+    fi
+
+    printf '%s\n' "source and wheel distributions built"
 }
 
 print_summary() {
@@ -166,22 +261,69 @@ install_development_dependencies() {
 
 run_lint() {
     log "Running Ruff lint check."
-    "${PYTHON}" -m ruff check .
+    local log_path="${PIPELINE_LOG_DIR}/ruff.log"
+
+    if run_with_log "${log_path}" "${PYTHON}" -m ruff check .; then
+        RUFF_DETAILS="$(extract_ruff_details "${log_path}")"
+        return 0
+    fi
+
+    RUFF_DETAILS="$(extract_ruff_details "${log_path}")"
+    return 1
+}
+
+run_pylint() {
+    log "Running Pylint static analysis."
+    local log_path="${PIPELINE_LOG_DIR}/pylint.log"
+
+    if run_with_log "${log_path}" "${PYTHON}" -m pylint my_lastfm_player; then
+        PYLINT_DETAILS="$(extract_pylint_details "${log_path}")"
+        return 0
+    fi
+
+    PYLINT_DETAILS="$(extract_pylint_details "${log_path}")"
+    return 1
 }
 
 run_documentation_check() {
     log "Checking required documentation."
-    "${PYTHON}" tools/check_docs.py
+    local log_path="${PIPELINE_LOG_DIR}/docs.log"
+
+    if run_with_log "${log_path}" "${PYTHON}" tools/check_docs.py; then
+        DOCS_DETAILS="required docs present"
+        return 0
+    fi
+
+    DOCS_DETAILS="see documentation check output"
+    return 1
 }
 
 build_sphinx_documentation() {
     log "Building Sphinx documentation."
-    "${PYTHON}" -m sphinx -W --keep-going -b html "${ROOT_DIR}/docs" "${ROOT_DIR}/build/sphinx/html"
+    local log_path="${PIPELINE_LOG_DIR}/sphinx.log"
+
+    if run_with_log \
+        "${log_path}" \
+        "${PYTHON}" -m sphinx -W --keep-going -b html "${ROOT_DIR}/docs" "${ROOT_DIR}/build/sphinx/html"; then
+        SPHINX_DETAILS="HTML built with 0 warnings"
+        return 0
+    fi
+
+    SPHINX_DETAILS="warnings-as-errors failed"
+    return 1
 }
 
 run_tests_with_coverage() {
     log "Running pytest with coverage."
-    "${PYTHON}" -m pytest
+    local log_path="${PIPELINE_LOG_DIR}/pytest.log"
+
+    if run_with_log "${log_path}" "${PYTHON}" -m pytest; then
+        TESTS_DETAILS="$(extract_test_details "${log_path}")"
+        return 0
+    fi
+
+    TESTS_DETAILS="$(extract_test_details "${log_path}")"
+    return 1
 }
 
 open_coverage_report() {
@@ -201,7 +343,15 @@ clean_package_artifacts() {
 
 build_package() {
     log "Building source and wheel distributions."
-    "${PYTHON}" -m build
+    local log_path="${PIPELINE_LOG_DIR}/build.log"
+
+    if run_with_log "${log_path}" "${PYTHON}" -m build; then
+        PACKAGE_BUILD_DETAILS="$(extract_package_build_details "${log_path}")"
+        return 0
+    fi
+
+    PACKAGE_BUILD_DETAILS="package build failed"
+    return 1
 }
 
 find_built_wheel() {
@@ -222,10 +372,14 @@ install_built_wheel() {
 
 verify_package_import() {
     log "Verifying package import and version."
-    (
+    local import_output
+
+    import_output="$(
         cd "${ROOT_DIR}/dist"
         "${PYTHON}" -c "import my_lastfm_player; print(f'Package import ok: {my_lastfm_player.__display_version__}')"
-    )
+    )"
+    printf '%s\n' "${import_output}"
+    IMPORT_DETAILS="${import_output#Package import ok: }"
 }
 
 launch_application() {
@@ -280,33 +434,41 @@ main() {
     if [[ "${INSTALL_OK}" -eq 1 ]]; then
         if run_lint; then
             LINT_OK=1
-            mark_result "Ruff" "PASS" "Lint check completed"
+            mark_result "Ruff" "PASS" "${RUFF_DETAILS}"
         else
-            mark_result "Ruff" "FAIL" "Lint check failed"
+            mark_result "Ruff" "FAIL" "${RUFF_DETAILS}"
+        fi
+
+        if run_pylint; then
+            PYLINT_OK=1
+            mark_result "Pylint" "PASS" "${PYLINT_DETAILS}"
+        else
+            mark_result "Pylint" "FAIL" "${PYLINT_DETAILS}"
         fi
 
         if run_documentation_check; then
             DOCS_OK=1
-            mark_result "Docs" "PASS" "Required documentation checks completed"
+            mark_result "Docs" "PASS" "${DOCS_DETAILS}"
         else
-            mark_result "Docs" "FAIL" "Documentation checks failed"
+            mark_result "Docs" "FAIL" "${DOCS_DETAILS}"
         fi
 
         if build_sphinx_documentation; then
             SPHINX_OK=1
-            mark_result "Sphinx" "PASS" "HTML documentation built with warnings as errors"
+            mark_result "Sphinx" "PASS" "${SPHINX_DETAILS}"
         else
-            mark_result "Sphinx" "FAIL" "Sphinx documentation build failed"
+            mark_result "Sphinx" "FAIL" "${SPHINX_DETAILS}"
         fi
 
         if run_tests_with_coverage; then
             TESTS_OK=1
-            mark_result "Tests+Coverage" "PASS" "pytest completed and generated htmlcov"
+            mark_result "Tests+Coverage" "PASS" "${TESTS_DETAILS}"
         else
-            mark_result "Tests+Coverage" "FAIL" "pytest or coverage failed"
+            mark_result "Tests+Coverage" "FAIL" "${TESTS_DETAILS}"
         fi
     else
         mark_result "Ruff" "SKIP" "Skipped because dependencies are unavailable"
+        mark_result "Pylint" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Docs" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Sphinx" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Tests+Coverage" "SKIP" "Skipped because dependencies are unavailable"
@@ -336,7 +498,7 @@ main() {
         mark_result "Open Coverage" "SKIP" "Skipped because coverage was not generated"
     fi
 
-    if [[ "${LINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 ]]; then
+    if [[ "${LINT_OK}" -eq 1 && "${PYLINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 ]]; then
         if clean_package_artifacts; then
             CLEAN_OK=1
             mark_result "Clean Build" "PASS" "Stale package artifacts removed"
@@ -350,9 +512,9 @@ main() {
     if [[ "${CLEAN_OK}" -eq 1 ]]; then
         if build_package; then
             BUILD_OK=1
-            mark_result "Package Build" "PASS" "Source and wheel distributions built"
+            mark_result "Package Build" "PASS" "${PACKAGE_BUILD_DETAILS}"
         else
-            mark_result "Package Build" "FAIL" "Package build failed"
+            mark_result "Package Build" "FAIL" "${PACKAGE_BUILD_DETAILS}"
         fi
     else
         mark_result "Package Build" "SKIP" "Skipped because clean step failed"
@@ -362,7 +524,8 @@ main() {
         wheel_path="$(find_built_wheel)"
         if [[ -n "${wheel_path}" ]]; then
             WHEEL_OK=1
-            mark_result "Wheel" "PASS" "Found built wheel in dist/"
+            WHEEL_DETAILS="$(basename "${wheel_path}")"
+            mark_result "Wheel" "PASS" "${WHEEL_DETAILS}"
         else
             mark_result "Wheel" "FAIL" "No wheel was found in dist/"
         fi
@@ -384,7 +547,7 @@ main() {
     if [[ "${PACKAGE_INSTALL_OK}" -eq 1 ]]; then
         if verify_package_import; then
             IMPORT_OK=1
-            mark_result "Import Check" "PASS" "Installed package imports successfully"
+            mark_result "Import Check" "PASS" "${IMPORT_DETAILS}"
         else
             mark_result "Import Check" "FAIL" "Installed package import failed"
         fi
@@ -392,7 +555,7 @@ main() {
         mark_result "Import Check" "SKIP" "Skipped because wheel install failed"
     fi
 
-    if [[ "${VENV_OK}" -eq 1 && "${INSTALL_OK}" -eq 1 && "${LINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 && "${CLEAN_OK}" -eq 1 && "${BUILD_OK}" -eq 1 && "${WHEEL_OK}" -eq 1 && "${PACKAGE_INSTALL_OK}" -eq 1 && "${IMPORT_OK}" -eq 1 ]]; then
+    if [[ "${VENV_OK}" -eq 1 && "${INSTALL_OK}" -eq 1 && "${LINT_OK}" -eq 1 && "${PYLINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 && "${CLEAN_OK}" -eq 1 && "${BUILD_OK}" -eq 1 && "${WHEEL_OK}" -eq 1 && "${PACKAGE_INSTALL_OK}" -eq 1 && "${IMPORT_OK}" -eq 1 ]]; then
         exit_code=0
     fi
 
