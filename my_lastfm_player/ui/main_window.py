@@ -46,6 +46,7 @@ class MainWindow(QMainWindow):
     pause_requested = pyqtSignal()
     stop_requested = pyqtSignal()
     seek_requested = pyqtSignal(int)
+    language_changed = pyqtSignal()
 
     def __init__(self, translation_manager: TranslationManager | None = None) -> None:
         super().__init__()
@@ -457,6 +458,7 @@ class MainWindow(QMainWindow):
         for language_code, action in self.language_actions.items():
             action.setChecked(language_code == code)
         self.retranslate_ui()
+        self.language_changed.emit()
 
     def retranslate_ui(self) -> None:
         """Apply current translations to all static widgets."""

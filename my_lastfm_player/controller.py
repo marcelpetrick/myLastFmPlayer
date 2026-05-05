@@ -98,6 +98,7 @@ class ApplicationController(QObject):
         self.window.pause_requested.connect(self.pause_playback)
         self.window.stop_requested.connect(self.stop_playback)
         self.window.seek_requested.connect(self.seek_playback)
+        self.window.language_changed.connect(self.check_dependencies)
         self.check_dependencies()
 
     def load_cached_tracks_for_entered_username(self) -> bool:

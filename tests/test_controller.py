@@ -65,7 +65,7 @@ def test_controller_start_connects_fetch_signal_and_checks_dependencies(qapp) ->
     controller.start()
 
     assert controller.check_dependencies().is_ok
-    assert window.dependency_label.text() == "Dependencies installed: ffmpeg"
+    assert window.dependency_label.text() == "🟢 Dependencies installed: ffmpeg"
 
 
 def test_controller_reports_missing_dependencies(qapp) -> None:
@@ -78,8 +78,25 @@ def test_controller_reports_missing_dependencies(qapp) -> None:
     result = controller.check_dependencies()
 
     assert not result.is_ok
-    assert window.dependency_label.text() == "Missing dependencies: yt-dlp"
-    assert "Missing dependencies: yt-dlp" in window.feedback_log.toPlainText()
+    assert window.dependency_label.text() == "🔴 Missing dependencies: yt-dlp"
+    assert "🔴 Missing dependencies: yt-dlp" in window.feedback_log.toPlainText()
+
+
+def test_controller_retranslates_dependency_label_on_language_change(qapp) -> None:
+    call_count = 0
+
+    def counting_checker() -> DependencyCheckResult:
+        nonlocal call_count
+        call_count += 1
+        return DependencyCheckResult(installed=("ffmpeg",), missing=())
+
+    window = MainWindow()
+    ApplicationController(window, dependency_checker=counting_checker).start()
+    calls_after_start = call_count
+
+    window.language_changed.emit()
+
+    assert call_count == calls_after_start + 1
 
 
 def test_controller_rejects_empty_username(qapp) -> None:

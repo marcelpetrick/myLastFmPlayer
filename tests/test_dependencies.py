@@ -11,11 +11,11 @@ def test_dependency_check_reports_installed_and_missing_tools() -> None:
 
     assert result == DependencyCheckResult(installed=("ffmpeg",), missing=("yt-dlp",))
     assert not result.is_ok
-    assert result.user_message() == "Missing dependencies: yt-dlp"
+    assert result.user_message() == "🔴 Missing dependencies: yt-dlp"
 
 
 def test_dependency_check_reports_success_message() -> None:
     result = check_external_dependencies(("ffmpeg",), which=lambda tool: f"/usr/bin/{tool}")
 
     assert result.is_ok
-    assert result.user_message() == "Dependencies installed: ffmpeg"
+    assert result.user_message() == "🟢 Dependencies installed: ffmpeg"

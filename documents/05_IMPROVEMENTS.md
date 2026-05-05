@@ -45,7 +45,7 @@ zsh: IOT instruction (core dumped)  .venv/bin/my-lastfm-player
 * 21. bug: setting progress first, the pressing play does not start at this position insid the track
 * fixed: 22. bug: ui, when a song is playing, the pause and stop shall be enabled. pause stops (so pressing pause again continues to play), stop really stops playing. play shall be disabled when pause and stop are active. before anything is played, only play is enabled, stop and pause are disabled.
 * fixed: 23. remove the separator at the top of the ui.
-* 24. bug: "dependencies installed"" is not translated; mark when available this with a green emoji-circle (ball), else when one at least is missing, red emoji ball - so that the user immeidately gets whats wrong
+* fixed: 24. bug: "dependencies installed" is not translated; mark when available this with a green emoji-circle (ball), else when one at least is missing, red emoji ball - so that the user immediately gets what's wrong
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.

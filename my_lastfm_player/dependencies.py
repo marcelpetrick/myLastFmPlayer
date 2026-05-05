@@ -27,12 +27,14 @@ class DependencyCheckResult:
 
         tools = ", ".join(self.installed if self.is_ok else self.missing)
         if self.is_ok:
-            return translate(
+            return "🟢 " + translate(
                 "DependencyCheckResult",
                 "Dependencies installed: {tools}",
                 tools=tools,
             )
-        return translate("DependencyCheckResult", "Missing dependencies: {tools}", tools=tools)
+        return "🔴 " + translate(
+            "DependencyCheckResult", "Missing dependencies: {tools}", tools=tools
+        )
 
 
 def check_external_dependencies(
