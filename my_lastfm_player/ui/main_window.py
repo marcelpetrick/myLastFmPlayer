@@ -125,10 +125,9 @@ class MainWindow(QMainWindow):
         self.theme_menu.addAction(self.theme_mint_action)
 
         self.main_menu = QMenu(self)
-        self.main_menu.addAction(self.refresh_action)
+        self.main_menu.addMenu(self.theme_menu)
         self.main_menu.addAction(self.preferences_action)
         self.main_menu.addAction(self.file_cache_action)
-        self.main_menu.addMenu(self.theme_menu)
         self.main_menu.addAction(self.quit_action)
         self.menuBar().addMenu(self.main_menu)
 
@@ -501,7 +500,7 @@ class MainWindow(QMainWindow):
 
         self.refresh_action.setText(self.tr("Fetch loved tracks"))
         self.preferences_action.setText(self.tr("Preferences"))
-        self.file_cache_action.setText(self.tr("Go to file cache"))
+        self.file_cache_action.setText(self.tr("Cached songs storage location"))
         self.quit_action.setText(self.tr("Quit"))
         self.main_menu.setTitle(self.tr("Main"))
         self.theme_menu.setTitle(self.tr("Theme"))
