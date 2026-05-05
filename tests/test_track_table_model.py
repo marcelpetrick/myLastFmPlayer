@@ -25,6 +25,47 @@ def test_track_table_model_exposes_artist_title_and_status() -> None:
     assert model.data(model.index(0, 2)) == "Searching"
 
 
+def test_track_table_model_returns_user_role_cache_key_and_edit_value() -> None:
+    track = Track(artist="Artist", title="Title", status=TrackStatus.QUEUED)
+    model = TrackTableModel([track])
+
+    assert model.data(model.index(0, 0), Qt.ItemDataRole.EditRole) == "Artist"
+    assert model.data(model.index(0, 0), Qt.ItemDataRole.UserRole) == track.cache_key
+    assert model.data(model.index(0, 99)) is None
+
+
+def test_track_table_model_ignores_invalid_indexes_and_parent_rows() -> None:
+    model = TrackTableModel([Track(artist="Artist", title="Title")])
+    parent = model.index(0, 0)
+
+    assert model.rowCount(parent) == 0
+    assert model.columnCount(parent) == 0
+    assert model.data(model.index(99, 0)) is None
+    assert model.headerData(0, Qt.Orientation.Vertical) is None
+    assert model.headerData(0, Qt.Orientation.Horizontal, Qt.ItemDataRole.UserRole) is None
+    assert model.flags(model.index(-1, -1)) == Qt.ItemFlag.NoItemFlags
+
+
+def test_track_table_model_displays_all_known_statuses() -> None:
+    statuses = {
+        TrackStatus.FETCHED: "Fetched",
+        TrackStatus.QUEUED: "Queued",
+        TrackStatus.SEARCHING: "Searching",
+        TrackStatus.DOWNLOADING: "Downloading",
+        TrackStatus.DOWNLOADED: "Downloaded",
+        TrackStatus.FAILED: "Failed",
+        TrackStatus.NOT_FOUND: "Not found",
+    }
+    model = TrackTableModel(
+        [Track(artist="Artist", title=status.value, status=status) for status in statuses]
+    )
+
+    assert [
+        model.data(model.index(row, 2))
+        for row in range(model.rowCount())
+    ] == list(statuses.values())
+
+
 def test_track_table_model_replaces_and_returns_tracks() -> None:
     model = TrackTableModel()
     tracks = [Track(artist="Artist", title="Title")]
@@ -85,3 +126,20 @@ def test_track_table_model_bolds_currently_playing_row() -> None:
 
     assert model.playing_cache_key() is None
     assert model.data(model.index(1, 0), Qt.ItemDataRole.FontRole) is None
+
+
+def test_track_table_model_retranslate_emits_header_and_data_changes() -> None:
+    model = TrackTableModel([Track(artist="Artist", title="Title")])
+    headers: list[tuple[int, int]] = []
+    data_roles: list[list[int]] = []
+    model.headerDataChanged.connect(
+        lambda _orientation, first, last: headers.append((first, last))
+    )
+    model.dataChanged.connect(
+        lambda _top_left, _bottom_right, roles: data_roles.append(list(roles))
+    )
+
+    model.retranslate()
+
+    assert headers == [(0, 2)]
+    assert [int(Qt.ItemDataRole.DisplayRole)] in data_roles

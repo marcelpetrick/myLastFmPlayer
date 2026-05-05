@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt
 
+from my_lastfm_player import controller as controller_module
+from my_lastfm_player.app_credentials import LastFmApiCredentials
 from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.dependencies import DependencyCheckResult
 from my_lastfm_player.models import Track, TrackStatus
@@ -97,6 +99,38 @@ def test_controller_retranslates_dependency_label_on_language_change(qapp) -> No
     window.language_changed.emit()
 
     assert call_count == calls_after_start + 1
+
+
+def test_controller_initializes_scrobbling_with_bundled_credentials(qapp, tmp_path) -> None:
+    window = MainWindow()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+    )
+
+    controller._init_scrobbling()
+
+    assert controller._scrobbling_service is not None
+    assert controller._scrobbling_service.has_api_credentials
+
+
+def test_controller_skips_scrobbling_when_credentials_are_empty(
+    qapp, tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        controller_module,
+        "lastfm_api_credentials",
+        lambda: LastFmApiCredentials(api_key="", api_secret=""),
+    )
+    window = MainWindow()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+    )
+
+    controller._init_scrobbling()
+
+    assert controller._scrobbling_service is None
 
 
 def test_controller_rejects_empty_username(qapp) -> None:

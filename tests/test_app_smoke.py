@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import runpy
+import sys
+import types
+
+import pytest
 from PyQt6.QtCore import QEvent, QPointF, Qt
 from PyQt6.QtGui import QMouseEvent
 
@@ -19,6 +24,31 @@ def test_package_version_is_defined() -> None:
 def test_display_version_adds_build_commit_suffix() -> None:
     assert display_version("1.2.3", "abcdef123") == "1.2.3+abcdef"
     assert display_version("1.2.3", "") == "1.2.3"
+
+
+def test_display_version_loads_generated_build_info(monkeypatch) -> None:
+    fake_build_info = types.SimpleNamespace(__commit__="123456789")
+    monkeypatch.setitem(sys.modules, "my_lastfm_player._build_info", fake_build_info)
+
+    assert display_version("1.2.3") == "1.2.3+123456"
+
+
+def test_display_version_ignores_non_string_build_commit(monkeypatch) -> None:
+    fake_build_info = types.SimpleNamespace(__commit__=123456)
+    monkeypatch.setitem(sys.modules, "my_lastfm_player._build_info", fake_build_info)
+
+    assert display_version("1.2.3") == "1.2.3"
+
+
+def test_python_module_entrypoint_exits_with_main_return_code(monkeypatch) -> None:
+    fake_main_module = types.ModuleType("my_lastfm_player.main")
+    fake_main_module.main = lambda: 7
+    monkeypatch.setitem(sys.modules, "my_lastfm_player.main", fake_main_module)
+
+    with pytest.raises(SystemExit) as exc_info:
+        runpy.run_module("my_lastfm_player.__main__", run_name="__main__")
+
+    assert exc_info.value.code == 7
 
 
 def test_main_window_builds_mvp_shell(qapp) -> None:

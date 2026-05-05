@@ -30,6 +30,16 @@ def test_lastfm_api_credentials_prefer_environment_overrides() -> None:
     assert credentials.api_secret == "custom-secret"
 
 
+def test_lastfm_api_credentials_read_process_environment(monkeypatch) -> None:
+    monkeypatch.setenv(LASTFM_API_KEY_ENV, "env-key")
+    monkeypatch.setenv(LASTFM_API_SECRET_ENV, "env-secret")
+
+    credentials = lastfm_api_credentials()
+
+    assert credentials.api_key == "env-key"
+    assert credentials.api_secret == "env-secret"
+
+
 def test_lastfm_api_credentials_report_missing_secret() -> None:
     credentials = LastFmApiCredentials(api_key="key", api_secret="")
 

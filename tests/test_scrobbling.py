@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from my_lastfm_player.scrobbling import SCROBBLE_THRESHOLD, ScrobblingService
+import sys
+import types
+
+from my_lastfm_player.scrobbling import (
+    SCROBBLE_THRESHOLD,
+    ScrobblingService,
+    _pylast_network_factory,
+    _pylast_sg_factory,
+)
 
 
 class FakeUser:
@@ -251,3 +259,25 @@ def test_credentials_dict_contains_required_keys() -> None:
     assert d["username"] == "user"
     assert "session_key" in d
     assert "scrobbling_enabled" in d
+
+
+def test_pylast_factories_delegate_to_pylast(monkeypatch) -> None:
+    class FakeLastFMNetwork:
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+
+    class FakeSessionKeyGenerator:
+        def __init__(self, network) -> None:
+            self.network = network
+
+    fake_pylast = types.SimpleNamespace(
+        LastFMNetwork=FakeLastFMNetwork,
+        SessionKeyGenerator=FakeSessionKeyGenerator,
+    )
+    monkeypatch.setitem(sys.modules, "pylast", fake_pylast)
+
+    network = _pylast_network_factory(api_key="key")
+    generator = _pylast_sg_factory(network)
+
+    assert network.kwargs == {"api_key": "key"}
+    assert generator.network is network

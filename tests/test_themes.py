@@ -6,6 +6,15 @@ from PyQt6.QtGui import QColor, QPalette
 from my_lastfm_player.themes import ThemeMode, apply_theme
 
 
+def test_apply_theme_returns_when_fusion_style_is_unavailable(qapp, monkeypatch) -> None:
+    original_style_name = qapp.style().objectName()
+    monkeypatch.setattr("my_lastfm_player.themes.QStyleFactory.create", lambda _name: None)
+
+    apply_theme(qapp, ThemeMode.DARK)
+
+    assert qapp.style().objectName() == original_style_name
+
+
 def test_apply_light_theme_sets_fusion_style(qapp) -> None:
     apply_theme(qapp, ThemeMode.LIGHT)
 
