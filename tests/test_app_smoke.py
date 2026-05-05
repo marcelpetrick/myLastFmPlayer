@@ -17,8 +17,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.50"
-    assert __display_version__ == "0.0.50"
+    assert __version__ == "0.0.51"
+    assert __display_version__ == "0.0.51"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -55,12 +55,14 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.50"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.51"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
     assert window.concurrency_input.value() == 2
     assert window.progress_bar.format() == "Idle"
+    assert window.fetch_pause_button.text() == "Pause"
+    assert window.fetch_stop_button.text() == "Stop"
     assert not window.fetch_pause_button.isEnabled()
     assert not window.fetch_stop_button.isEnabled()
     assert window.fetch_pause_button.toolTip()
@@ -110,7 +112,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.50\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.51\n"
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:

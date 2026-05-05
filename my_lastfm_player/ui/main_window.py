@@ -306,6 +306,7 @@ class MainWindow(QMainWindow):
         self.fetch_stop_button.setEnabled(active)
         self._fetch_paused = paused
         self.fetch_pause_button.setText(self.tr("Resume") if paused else self.tr("Pause"))
+        self.fetch_stop_button.setText(self.tr("Stop"))
         if paused:
             self.fetch_pause_button.setToolTip(self.tr("Resume the paused Last.fm fetch"))
         else:
