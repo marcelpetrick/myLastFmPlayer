@@ -181,6 +181,8 @@ class MainWindow(QMainWindow):
         self.play_button.clicked.connect(self.play_requested.emit)
         self.pause_button.clicked.connect(self.pause_requested.emit)
         self.stop_button.clicked.connect(self.stop_requested.emit)
+        self.pause_button.setEnabled(False)
+        self.stop_button.setEnabled(False)
         for button in (self.play_button, self.pause_button, self.stop_button):
             playback_button_layout.addWidget(button)
 
@@ -405,6 +407,17 @@ class MainWindow(QMainWindow):
         """Reset the playback timeline to an idle state."""
 
         self.set_playback_timeline(0, 0)
+
+    def set_playback_controls(self, *, active: bool) -> None:
+        """Update playback button states.
+
+        When ``active`` is ``True`` (playing or paused) Play is disabled and
+        Pause/Stop are enabled.  When ``False`` (idle) only Play is enabled.
+        """
+
+        self.play_button.setEnabled(not active)
+        self.pause_button.setEnabled(active)
+        self.stop_button.setEnabled(active)
 
     def _emit_timeline_seek(self) -> None:
         if self._playback_duration_ms <= 0:

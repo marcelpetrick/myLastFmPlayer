@@ -286,14 +286,22 @@ class ApplicationController(QObject):
         self._play_track(selected_track)
 
     def pause_playback(self) -> None:
-        """Pause active playback and show the result in the feedback log."""
+        """Toggle between pause and resume for active playback."""
 
-        try:
-            self.playback_service.pause()
-        except PlaybackError as error:
-            self.window.append_feedback(str(error))
-            return
-        self.window.append_feedback(translate("ApplicationController", "Playback paused."))
+        if self.playback_service.is_paused():
+            try:
+                self.playback_service.resume()
+            except PlaybackError as error:
+                self.window.append_feedback(str(error))
+                return
+            self.window.append_feedback(translate("ApplicationController", "Playback resumed."))
+        else:
+            try:
+                self.playback_service.pause()
+            except PlaybackError as error:
+                self.window.append_feedback(str(error))
+                return
+            self.window.append_feedback(translate("ApplicationController", "Playback paused."))
 
     def stop_playback(self) -> None:
         """Stop active playback and clear the playing-row indicator."""
@@ -307,6 +315,7 @@ class ApplicationController(QObject):
 
         self.window.set_playing_track(None)
         self.window.reset_playback_timeline()
+        self.window.set_playback_controls(active=False)
         self.window.append_feedback(translate("ApplicationController", "Playback stopped."))
 
     def seek_playback(self, position_ms: int) -> None:
@@ -542,6 +551,7 @@ class ApplicationController(QObject):
             return
 
         self.window.set_playing_track(track.cache_key)
+        self.window.set_playback_controls(active=True)
         self.window.set_playback_timeline(
             self.playback_service.position_ms(),
             self.playback_service.duration_ms(),
@@ -666,6 +676,7 @@ class ApplicationController(QObject):
 
         self.window.set_playing_track(None)
         self.window.reset_playback_timeline()
+        self.window.set_playback_controls(active=False)
         next_track = self.window.next_track_after(finished_track.cache_key)
         if next_track is None:
             self.window.append_feedback(

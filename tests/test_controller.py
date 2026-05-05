@@ -407,11 +407,16 @@ class FakePlaybackService:
         self.finished_callback = None
         self.fail_pause = False
         self.fail_seek = False
+        self._paused = False
 
     def play(self, track: Track) -> Track:
         self.events.append(f"play:{track.title}")
         self.current_track = track
+        self._paused = False
         return track
+
+    def is_paused(self) -> bool:
+        return self._paused
 
     def pause(self) -> None:
         if self.fail_pause:
@@ -419,6 +424,11 @@ class FakePlaybackService:
 
             raise PlaybackError("pause failed")
         self.events.append("pause")
+        self._paused = True
+
+    def resume(self) -> None:
+        self.events.append("resume")
+        self._paused = False
 
     def stop(self) -> Track | None:
         self.events.append("stop")
@@ -595,6 +605,58 @@ def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
     assert window.playback_slider.maximum() == 0
     assert "Playback paused." in window.feedback_log.toPlainText()
     assert "Playback stopped." in window.feedback_log.toPlainText()
+
+
+def test_controller_pause_toggles_to_resume(qapp, tmp_path) -> None:
+    window = MainWindow()
+    track = Track(
+        artist="Artist",
+        title="Title",
+        local_path=str(tmp_path / "track.mp3"),
+        status=TrackStatus.DOWNLOADED,
+    )
+    playback = FakePlaybackService()
+    playback.current_track = track
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+
+    controller.pause_playback()
+    assert playback.events == ["pause"]
+    assert "Playback paused." in window.feedback_log.toPlainText()
+
+    controller.pause_playback()
+    assert playback.events == ["pause", "resume"]
+    assert "Playback resumed." in window.feedback_log.toPlainText()
+
+
+def test_playback_button_states(qapp, tmp_path) -> None:
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
+    window = MainWindow()
+    track = Track(
+        artist="Artist",
+        title="Title",
+        local_path=str(audio_path),
+        status=TrackStatus.DOWNLOADED,
+    )
+    window.set_tracks([track])
+    playback = FakePlaybackService()
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+
+    assert window.play_button.isEnabled()
+    assert not window.pause_button.isEnabled()
+    assert not window.stop_button.isEnabled()
+
+    controller._play_track(track)
+
+    assert not window.play_button.isEnabled()
+    assert window.pause_button.isEnabled()
+    assert window.stop_button.isEnabled()
+
+    controller.stop_playback()
+
+    assert window.play_button.isEnabled()
+    assert not window.pause_button.isEnabled()
+    assert not window.stop_button.isEnabled()
 
 
 def test_controller_seeks_active_playback(qapp) -> None:

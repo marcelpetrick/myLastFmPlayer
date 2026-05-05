@@ -25,6 +25,9 @@ class FakePlaybackBackend:
     def pause(self) -> None:
         self.events.append(("pause", None))
 
+    def resume(self) -> None:
+        self.events.append(("resume", None))
+
     def stop(self) -> None:
         self.events.append(("stop", None))
 

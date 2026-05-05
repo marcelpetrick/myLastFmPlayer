@@ -31,6 +31,11 @@ class PlaybackBackend(Protocol):
 
         ...
 
+    def resume(self) -> None:
+        """Resume paused playback."""
+
+        ...
+
     def stop(self) -> None:
         """Stop current playback."""
 
@@ -92,6 +97,11 @@ class QtPlaybackBackend:
 
         self.player.pause()
 
+    def resume(self) -> None:
+        """Resume the Qt media player from a paused state."""
+
+        self.player.play()
+
     def stop(self) -> None:
         """Stop the Qt media player."""
 
@@ -148,6 +158,12 @@ class PlaybackService:
     def __init__(self, backend: PlaybackBackend | None = None) -> None:
         self.backend = backend or QtPlaybackBackend()
         self.current_track: Track | None = None
+        self._paused = False
+
+    def is_paused(self) -> bool:
+        """Return ``True`` when a track is loaded and playback is paused."""
+
+        return self._paused
 
     def play(self, track: Track) -> Track:
         """Play ``track`` and return it. Track status is not modified."""
@@ -160,6 +176,7 @@ class PlaybackService:
         print(f"[myLastFmPlayer] Starting playback: {track.artist} - {track.title}", flush=True)
         self.backend.play(path)
         self.current_track = track
+        self._paused = False
         return track
 
     def pause(self) -> None:
@@ -174,6 +191,21 @@ class PlaybackService:
         )
         print("[myLastFmPlayer] Pausing playback", flush=True)
         self.backend.pause()
+        self._paused = True
+
+    def resume(self) -> None:
+        """Resume paused playback or raise ``PlaybackError`` when not paused."""
+
+        if self.current_track is None or not self._paused:
+            raise PlaybackError("No paused track to resume")
+        LOGGER.info(
+            "Resuming playback for %s - %s",
+            self.current_track.artist,
+            self.current_track.title,
+        )
+        print("[myLastFmPlayer] Resuming playback", flush=True)
+        self.backend.resume()
+        self._paused = False
 
     def stop(self) -> Track | None:
         """Stop playback and return the previously playing track."""
@@ -189,6 +221,7 @@ class PlaybackService:
         self.backend.stop()
         stopped_track = self.current_track
         self.current_track = None
+        self._paused = False
         return stopped_track
 
     def finish_current(self) -> Track | None:
@@ -198,6 +231,7 @@ class PlaybackService:
             return None
         finished_track = self.current_track
         self.current_track = None
+        self._paused = False
         return finished_track
 
     def seek(self, position_ms: int) -> None:

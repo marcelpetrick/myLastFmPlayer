@@ -196,6 +196,7 @@ def test_main_window_playback_controls_emit_signals(qapp) -> None:
     window.stop_requested.connect(lambda: events.append("stop"))
 
     window.play_button.click()
+    window.set_playback_controls(active=True)
     window.pause_button.click()
     window.stop_button.click()
 
