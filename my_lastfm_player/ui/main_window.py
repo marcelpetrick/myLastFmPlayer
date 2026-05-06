@@ -486,6 +486,12 @@ class MainWindow(QMainWindow):
         if isinstance(mode, str):
             self.theme_requested.emit(mode)
 
+    def set_theme_mode(self, mode: str) -> None:
+        """Mark ``mode`` as selected in the theme menu without emitting a change request."""
+
+        for action in self._theme_group.actions():
+            action.setChecked(action.data() == mode)
+
     def set_language(self, code: str) -> None:
         """Switch the active UI language and update visible widgets immediately."""
 

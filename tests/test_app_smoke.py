@@ -12,13 +12,14 @@ from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
 from my_lastfm_player.i18n import SUPPORTED_LANGUAGES
 from my_lastfm_player.models import Track, TrackStatus
+from my_lastfm_player.themes import ThemeMode
 from my_lastfm_player.ui.main_window import MainWindow, application_title, format_playback_time
 from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.51"
-    assert __display_version__ == "0.0.51"
+    assert __version__ == "0.0.52"
+    assert __display_version__ == "0.0.52"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -55,7 +56,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.51"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.52"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -74,6 +75,11 @@ def test_application_title_includes_version_suffix() -> None:
 
 
 def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
+    saved_languages: list[str] = []
+    saved_themes: list[ThemeMode] = []
+    applied_themes: list[ThemeMode] = []
+    selected_themes: list[str] = []
+
     class FakeApplication:
         def __init__(self, _args: list[str]) -> None:
             self.application_name = ""
@@ -89,12 +95,23 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
             return 0
 
     class _FakeSignal:
+        def __init__(self) -> None:
+            self.callbacks: list[object] = []
+
         def connect(self, _slot) -> None:
-            pass
+            self.callbacks.append(_slot)
+
+        def emit(self, *args) -> None:
+            for callback in self.callbacks:
+                callback(*args)
 
     class FakeMainWindow:
         def __init__(self, **_kwargs) -> None:
             self.theme_requested = _FakeSignal()
+            self.language_changed = _FakeSignal()
+
+        def set_theme_mode(self, mode: str) -> None:
+            selected_themes.append(mode)
 
         def show(self) -> None:
             return None
@@ -106,13 +123,53 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
         def start(self) -> None:
             self.started = True
 
+    class FakeSettings:
+        def language_code(self) -> str:
+            return "de"
+
+        def theme_mode(self) -> ThemeMode:
+            return ThemeMode.MINT
+
+        def set_language_code(self, code: str) -> None:
+            saved_languages.append(code)
+
+        def set_theme_mode(self, mode: ThemeMode) -> None:
+            saved_themes.append(mode)
+
+    class FakeTranslationManager:
+        def __init__(self, _app: FakeApplication) -> None:
+            self.current_language = "en"
+
+        def set_language(self, code: str) -> bool:
+            self.current_language = code
+            return True
+
     monkeypatch.setattr(main_module, "QApplication", FakeApplication)
     monkeypatch.setattr(main_module, "MainWindow", FakeMainWindow)
     monkeypatch.setattr(main_module, "ApplicationController", FakeController)
+    monkeypatch.setattr(main_module, "TranslationManager", FakeTranslationManager)
+    monkeypatch.setattr(main_module, "apply_theme", lambda _app, mode: applied_themes.append(mode))
+    monkeypatch.setattr(main_module, "AppSettings", FakeSettings)
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.51\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.52\n"
+    assert applied_themes == [ThemeMode.MINT]
+    assert selected_themes == ["mint"]
+    assert saved_languages == []
+    assert saved_themes == []
+
+
+def test_main_theme_handler_applies_and_persists_theme(monkeypatch) -> None:
+    applied_themes: list[ThemeMode] = []
+    saved_themes: list[ThemeMode] = []
+    settings = types.SimpleNamespace(set_theme_mode=saved_themes.append)
+    monkeypatch.setattr(main_module, "apply_theme", lambda _app, mode: applied_themes.append(mode))
+
+    main_module._apply_and_save_theme(object(), settings, "lilac")  # type: ignore[arg-type]
+
+    assert applied_themes == [ThemeMode.LILAC]
+    assert saved_themes == [ThemeMode.LILAC]
 
 
 def test_main_window_binds_track_data_and_selection(qapp) -> None:
@@ -351,3 +408,15 @@ def test_main_window_theme_actions_are_exclusive(qapp) -> None:
     assert not window.theme_dark_action.isChecked()
     assert not window.theme_lilac_action.isChecked()
     assert window.theme_mint_action.isChecked()
+
+
+def test_main_window_can_mark_persisted_theme_without_emitting_request(qapp) -> None:
+    window = MainWindow()
+    themes: list[str] = []
+    window.theme_requested.connect(themes.append)
+
+    window.set_theme_mode("lilac")
+
+    assert not window.theme_light_action.isChecked()
+    assert window.theme_lilac_action.isChecked()
+    assert themes == []
