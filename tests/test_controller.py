@@ -317,7 +317,9 @@ def test_controller_handles_resolved_tracks(qapp) -> None:
     controller._handle_tracks_resolved("example", [])
 
     assert window.track_model.rowCount() == 0
-    assert "Resolved YouTube URLs for 0 tracks." in window.feedback_log.toPlainText()
+    assert "Resolved YouTube URLs for 0/0 tracks; 0 were not found." in (
+        window.feedback_log.toPlainText()
+    )
     assert "No queued tracks are ready for download." in window.feedback_log.toPlainText()
 
 
@@ -909,7 +911,9 @@ def test_controller_handles_downloaded_tracks_and_pending_play(qapp) -> None:
     controller._handle_tracks_downloaded("user", [track])
 
     assert calls == [track.cache_key]
-    assert "Downloaded 1 tracks for user." in window.feedback_log.toPlainText()
+    assert "Download run for user finished: 1/1 tracks downloaded, 0 failed." in (
+        window.feedback_log.toPlainText()
+    )
 
 
 def test_controller_starts_fetch_lookup_and_download_workers(qapp, tmp_path) -> None:
