@@ -321,6 +321,26 @@ class LastFmLovedTracksScraper:
         _log_info("Stored %s Last.fm loved tracks for user %s", len(tracks), username)
         return tracks
 
+    def fetch_loved_track_count(self, username: str) -> int | None:
+        """Fetch the first loved-track page and return Last.fm's total count if available."""
+
+        if not username:
+            raise ValueError("Last.fm username must not be empty")
+
+        loved_url = self.loved_tracks_url(username)
+        _log_info("Checking online Last.fm loved-track count for user %s", username)
+        fetched_page = self.fetcher.fetch_page(loved_url)
+        page = self.parser.parse(fetched_page.html, fetched_page.url)
+        if page.total_tracks is None:
+            _log_info("Last.fm loved-track count for user %s was not present in HTML", username)
+            return None
+        _log_info(
+            "Last.fm online loved-track count for user %s is %s",
+            username,
+            page.total_tracks,
+        )
+        return page.total_tracks
+
     def loved_tracks_url(self, username: str) -> str:
         """Return the loved-track URL for ``username``."""
 

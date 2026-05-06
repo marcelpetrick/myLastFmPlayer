@@ -15,7 +15,7 @@ from my_lastfm_player.app_credentials import (
 from my_lastfm_player.dependencies import DependencyCheckResult, check_external_dependencies
 from my_lastfm_player.download import DownloadManager
 from my_lastfm_player.i18n import translate
-from my_lastfm_player.lastfm import LastFmLovedTracksScraper
+from my_lastfm_player.lastfm import LastFmError, LastFmLovedTracksScraper
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.playback import PlaybackError, PlaybackService
 from my_lastfm_player.scrobbling import ScrobblingService
@@ -115,7 +115,7 @@ class ApplicationController(QObject):
         self._init_scrobbling()
         self.check_dependencies()
 
-    def load_cached_tracks_for_entered_username(self) -> bool:
+    def load_cached_tracks_for_entered_username(self, *, verify_online_count: bool = False) -> bool:
         """Load locally stored tracks for the entered username when available."""
 
         username = self.window.username()
@@ -124,6 +124,13 @@ class ApplicationController(QObject):
 
         tracks = self.repository.load_tracks(username)
         if not tracks:
+            return False
+
+        cached_count = len(tracks)
+        if verify_online_count and not self._cached_track_count_matches_lastfm(
+            username,
+            cached_count,
+        ):
             return False
 
         tracks = self.repository.mark_cached_downloads(
@@ -140,6 +147,63 @@ class ApplicationController(QObject):
             )
         )
         return True
+
+    def _cached_track_count_matches_lastfm(self, username: str, cached_count: int) -> bool:
+        try:
+            online_count = self.scraper.fetch_loved_track_count(username)
+        except LastFmError as error:
+            self._report_cache_status(
+                translate(
+                    "ApplicationController",
+                    "Could not verify Last.fm loved-track count for {username}; "
+                    "using {count} cached tracks: {error}",
+                    username=username,
+                    count=cached_count,
+                    error=error,
+                )
+            )
+            return True
+
+        if online_count is None:
+            self._report_cache_status(
+                translate(
+                    "ApplicationController",
+                    "Could not read Last.fm loved-track count for {username}; "
+                    "fetching fresh data instead of trusting {count} cached tracks.",
+                    username=username,
+                    count=cached_count,
+                )
+            )
+            return False
+
+        if online_count == cached_count:
+            self._report_cache_status(
+                translate(
+                    "ApplicationController",
+                    "Last.fm reports {online_count} loved tracks for {username}; "
+                    "cached track count matches.",
+                    username=username,
+                    online_count=online_count,
+                )
+            )
+            return True
+
+        self._report_cache_status(
+            translate(
+                "ApplicationController",
+                "Last.fm reports {online_count} loved tracks for {username}, "
+                "but the cache has {cached_count}; fetching fresh data.",
+                username=username,
+                online_count=online_count,
+                cached_count=cached_count,
+            )
+        )
+        return False
+
+    def _report_cache_status(self, message: str) -> None:
+        LOGGER.info(message)
+        print(f"[myLastFmPlayer] {message}", flush=True)
+        self.window.append_feedback(message)
 
     def check_dependencies(self) -> DependencyCheckResult:
         """Check external tools and update dependency status in the window."""
@@ -236,7 +300,7 @@ class ApplicationController(QObject):
             )
             return
 
-        if self.load_cached_tracks_for_entered_username():
+        if self.load_cached_tracks_for_entered_username(verify_online_count=True):
             self.window.set_fetch_control_state(active=False, paused=False)
             self.window.set_progress(
                 100,

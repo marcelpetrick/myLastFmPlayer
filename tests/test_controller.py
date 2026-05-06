@@ -38,6 +38,18 @@ class GenericWorker:
         self.deleted = True
 
 
+class CountCheckingScraper:
+    def __init__(self, online_count: int | None | Exception) -> None:
+        self.online_count = online_count
+        self.checked_usernames: list[str] = []
+
+    def fetch_loved_track_count(self, username: str) -> int | None:
+        self.checked_usernames.append(username)
+        if isinstance(self.online_count, Exception):
+            raise self.online_count
+        return self.online_count
+
+
 class FakeThread:
     def __init__(self, parent: object) -> None:
         self.parent = parent
@@ -202,6 +214,7 @@ def test_controller_loads_cached_tracks_without_fetching(qapp, tmp_path) -> None
     controller = ApplicationController(
         window,
         repository=repository,
+        scraper=CountCheckingScraper(1),  # type: ignore[arg-type]
         fetch_worker_factory=fail_fetch_factory,  # type: ignore[arg-type]
     )
 
@@ -210,6 +223,70 @@ def test_controller_loads_cached_tracks_without_fetching(qapp, tmp_path) -> None
     assert fetch_calls == []
     assert window.tracks() == [cached_track]
     assert "Loaded 1 cached tracks for example" in window.feedback_log.toPlainText()
+    assert "cached track count matches" in window.feedback_log.toPlainText()
+
+
+def test_controller_fetches_fresh_tracks_when_online_count_differs(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("example")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks("example", [Track(artist="Cached", title="Track")])
+    scraper = CountCheckingScraper(2)
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        scraper=scraper,  # type: ignore[arg-type]
+    )
+    workers: list[object] = []
+    controller._run_worker = workers.append  # type: ignore[method-assign]
+
+    controller.fetch_loved_tracks()
+
+    assert scraper.checked_usernames == ["example"]
+    assert len(workers) == 1
+    assert controller._active_fetch_worker is workers[0]
+    assert "cache has 1" in window.feedback_log.toPlainText()
+    assert "fetching fresh data" in window.feedback_log.toPlainText()
+
+
+def test_controller_fetches_fresh_tracks_when_online_count_is_unknown(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("example")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks("example", [Track(artist="Cached", title="Track")])
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        scraper=CountCheckingScraper(None),  # type: ignore[arg-type]
+    )
+    workers: list[object] = []
+    controller._run_worker = workers.append  # type: ignore[method-assign]
+
+    controller.fetch_loved_tracks()
+
+    assert len(workers) == 1
+    assert "Could not read Last.fm loved-track count" in window.feedback_log.toPlainText()
+
+
+def test_controller_uses_cache_when_online_count_check_fails(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("example")
+    cached_track = Track(artist="Cached", title="Track")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks("example", [cached_track])
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        scraper=CountCheckingScraper(controller_module.LastFmError("network down")),  # type: ignore[arg-type]
+    )
+    workers: list[object] = []
+    controller._run_worker = workers.append  # type: ignore[method-assign]
+
+    controller.fetch_loved_tracks()
+
+    assert workers == []
+    assert window.tracks() == [cached_track]
+    assert "using 1 cached tracks" in window.feedback_log.toPlainText()
 
 
 def test_controller_rejects_empty_username_for_lookup(qapp) -> None:

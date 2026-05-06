@@ -330,6 +330,37 @@ def test_scraper_reports_fetch_progress() -> None:
     ]
 
 
+def test_scraper_fetches_loved_track_count_from_first_page() -> None:
+    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
+    session = FakeSession(
+        {
+            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
+        }
+    )
+
+    count = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_track_count(
+        "example"
+    )
+
+    assert count == 3
+    assert session.requested_urls == [first_url]
+
+
+def test_scraper_returns_none_when_loved_track_count_is_missing() -> None:
+    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
+    session = FakeSession(
+        {
+            first_url: FakeResponse("<html><body>No total here</body></html>", first_url),
+        }
+    )
+
+    count = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_track_count(
+        "example"
+    )
+
+    assert count is None
+
+
 def test_scraper_reports_cumulative_tracks_after_each_page() -> None:
     first_url = f"{LASTFM_BASE_URL}/user/example/loved"
     second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
