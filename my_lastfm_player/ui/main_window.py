@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6.QtCore import QEvent, QSortFilterProxyModel, Qt, pyqtSignal
+from PyQt6.QtCore import QEvent, QSortFilterProxyModel, Qt, QTime, pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup, QMouseEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -423,7 +423,7 @@ class MainWindow(QMainWindow):
     def append_feedback(self, message: str) -> None:
         """Append ``message`` to the feedback log and status bar."""
 
-        self.feedback_log.appendPlainText(message)
+        self.feedback_log.appendPlainText(format_feedback_message(message))
         self.show_status(message)
 
     def clear_feedback_log(self) -> None:
@@ -576,6 +576,13 @@ def application_title(version: str) -> str:
     """Return the application title with ``version`` as a suffix."""
 
     return f"myLastFmPlayer v{version}"
+
+
+def format_feedback_message(message: str, time: QTime | None = None) -> str:
+    """Return ``message`` with a user-readable timestamp prefix."""
+
+    timestamp = (time or QTime.currentTime()).toString("HH:mm:ss")
+    return f"{timestamp}: {message}"
 
 
 def format_playback_time(milliseconds: int) -> str:
