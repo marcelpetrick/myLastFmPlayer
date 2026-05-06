@@ -48,6 +48,8 @@ zsh: IOT instruction (core dumped)  .venv/bin/my-lastfm-player
 * fixed: 24. bug: "dependencies installed" is not translated; mark when available this with a green emoji-circle (ball), else when one at least is missing, red emoji ball - so that the user immediately gets what's wrong
 * 25. bug: somehow for a fresh start with zero downloaded tracks the fetching of the tracks from youtube does not work. it says 150 tracks downlodaed, but nothing moves. what is wrong. would it not be easy to cross check "entry in the model of the tracks" versus - is the file existing?
 * 26. bug: when the scraping from last.fm is aborted early, then the next fetch-try will just check if there is a cached version. but not if the currently cached content is identical with the last.fm-content. for this you have to fetch the "oveall amount" from last.fm and in case this is different from the currently locally stored version, refretch it. put this into unit-testing. refactor code. so that there is clear "fetching is atomic"-logic.
+* bug: 27 sphinx docu has 404 behind each link - what is wrong there
+* feature 28: add a github action pipeline: for merges and releases: do all the steps of the local pipeline; or maybe as first iteration just for building the wheel as package
 
 ## Documentation
 * fixed: 3. Sphinx is configured for Python API documentation and runs in the local pipeline with warnings treated as errors.
