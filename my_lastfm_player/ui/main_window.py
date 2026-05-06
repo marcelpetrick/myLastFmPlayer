@@ -266,15 +266,24 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
+        feedback_header_layout = QHBoxLayout()
+        feedback_header_layout.setContentsMargins(0, 0, 0, 0)
+
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
         self.progress_bar.setFormat(self.tr("Idle"))
 
+        self.clear_feedback_button = QPushButton()
+        self.clear_feedback_button.clicked.connect(self.clear_feedback_log)
+
         self.feedback_log = QPlainTextEdit()
         self.feedback_log.setReadOnly(True)
         self.feedback_log.setMaximumBlockCount(500)
-        layout.addWidget(self.progress_bar)
+
+        feedback_header_layout.addWidget(self.progress_bar, stretch=1)
+        feedback_header_layout.addWidget(self.clear_feedback_button)
+        layout.addLayout(feedback_header_layout)
         layout.addWidget(self.feedback_log)
 
         return panel
@@ -417,6 +426,17 @@ class MainWindow(QMainWindow):
         self.feedback_log.appendPlainText(message)
         self.show_status(message)
 
+    def clear_feedback_log(self) -> None:
+        """Clear the feedback log and reset its scroll bars."""
+
+        self.feedback_log.clear()
+        self.feedback_log.verticalScrollBar().setValue(
+            self.feedback_log.verticalScrollBar().minimum()
+        )
+        self.feedback_log.horizontalScrollBar().setValue(
+            self.feedback_log.horizontalScrollBar().minimum()
+        )
+
     def show_status(self, message: str) -> None:
         """Show ``message`` in the status bar and terminal log."""
 
@@ -527,6 +547,8 @@ class MainWindow(QMainWindow):
         self.downloads_group.setTitle(self.tr("Downloads"))
         self.download_toggle_button.setText(self.tr("Download Queued"))
         self.concurrency_label.setText(self.tr("Concurrency"))
+        self.clear_feedback_button.setText(self.tr("Clear log"))
+        self.clear_feedback_button.setToolTip(self.tr("Clear status updates and errors"))
         self.feedback_log.setPlaceholderText(
             self.tr("Status updates and errors will appear here.")
         )

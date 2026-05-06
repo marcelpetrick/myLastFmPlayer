@@ -18,8 +18,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.55"
-    assert __display_version__ == "0.0.55"
+    assert __version__ == "0.0.56"
+    assert __display_version__ == "0.0.56"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -56,7 +56,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.55"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.56"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 3
     assert window.track_model.rowCount() == 2
@@ -153,7 +153,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.55\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.56\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert saved_languages == []
@@ -230,6 +230,31 @@ def test_main_window_updates_progress_and_feedback(qapp) -> None:
     assert window.progress_bar.value() == 100
     assert window.progress_bar.format() == "Downloading"
     assert "Network error" in window.feedback_log.toPlainText()
+
+
+def test_main_window_clear_feedback_button_clears_log_and_resets_scrollbars(qapp) -> None:
+    window = MainWindow()
+    window.resize(360, 260)
+    window.show()
+    for index in range(80):
+        window.append_feedback(f"Network error {index} {'x' * 120}")
+    qapp.processEvents()
+    window.feedback_log.verticalScrollBar().setValue(
+        window.feedback_log.verticalScrollBar().maximum()
+    )
+    window.feedback_log.horizontalScrollBar().setValue(
+        window.feedback_log.horizontalScrollBar().maximum()
+    )
+
+    window.clear_feedback_button.click()
+
+    assert window.feedback_log.toPlainText() == ""
+    assert window.feedback_log.verticalScrollBar().value() == (
+        window.feedback_log.verticalScrollBar().minimum()
+    )
+    assert window.feedback_log.horizontalScrollBar().value() == (
+        window.feedback_log.horizontalScrollBar().minimum()
+    )
 
 
 def test_main_window_fetch_controls_emit_fetch_signal(qapp) -> None:
