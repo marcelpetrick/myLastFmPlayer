@@ -346,7 +346,7 @@ build_sphinx_documentation() {
 
     if run_with_log \
         "${log_path}" \
-        "${PYTHON}" -m sphinx -W --keep-going -b html "${ROOT_DIR}/docs" "${ROOT_DIR}/build/sphinx/html"; then
+        "${PYTHON}" -m sphinx -W --keep-going -b html "${ROOT_DIR}/docs" "${ROOT_DIR}/docs/_build/html"; then
         SPHINX_DETAILS="HTML built with 0 warnings"
         return 0
     fi
@@ -374,7 +374,7 @@ open_coverage_report() {
 }
 
 open_sphinx_documentation() {
-    local docs_index="${ROOT_DIR}/build/sphinx/html/index.html"
+    local docs_index="${ROOT_DIR}/docs/_build/html/index.html"
     open_html_report "Sphinx documentation" "${docs_index}"
 }
 

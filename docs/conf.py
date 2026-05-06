@@ -17,6 +17,8 @@ version = __version__
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.graphviz",
+    "sphinx.ext.inheritance_diagram",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
 ]
@@ -36,4 +38,8 @@ autodoc_default_options = {
 autodoc_typehints = "description"
 autodoc_typehints_format = "short"
 html_theme = "alabaster"
+html_theme_options = {
+    "description": "Desktop Last.fm fetch, lookup, download, playback, and scrobbling internals",
+    "fixed_sidebar": True,
+}
 nitpicky = False

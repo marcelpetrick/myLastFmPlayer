@@ -6,6 +6,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+docs/_build/
 build/
 dist/
 my_lastfm_player/_build_info.py

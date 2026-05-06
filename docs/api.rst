@@ -1,6 +1,32 @@
 API Reference
 =============
 
+The API reference is generated from the package source with links to rendered
+source code. The inheritance diagram below gives a quick map of the main
+classes before the module-level details.
+
+Class Overview
+--------------
+
+.. inheritance-diagram::
+   my_lastfm_player.controller.ApplicationController
+   my_lastfm_player.download.DownloadManager
+   my_lastfm_player.i18n.TranslationManager
+   my_lastfm_player.lastfm.LastFmLovedTracksScraper
+   my_lastfm_player.models.Track
+   my_lastfm_player.playback.PlaybackService
+   my_lastfm_player.scrobbling.ScrobblingService
+   my_lastfm_player.settings.AppSettings
+   my_lastfm_player.storage.JsonTrackRepository
+   my_lastfm_player.ui.main_window.MainWindow
+   my_lastfm_player.ui.preferences_dialog.PreferencesDialog
+   my_lastfm_player.ui.track_table_model.TrackTableModel
+   my_lastfm_player.workers.FetchLovedTracksWorker
+   my_lastfm_player.workers.LookupTracksWorker
+   my_lastfm_player.workers.DownloadTracksWorker
+   my_lastfm_player.youtube.YouTubeResolver
+   :parts: 2
+
 App Credentials
 ---------------
 
@@ -31,6 +57,12 @@ Last.fm
 .. automodule:: my_lastfm_player.lastfm
    :members:
 
+Internationalization
+--------------------
+
+.. automodule:: my_lastfm_player.i18n
+   :members:
+
 Models
 ------
 
@@ -53,6 +85,12 @@ Scrobbling
 ----------
 
 .. automodule:: my_lastfm_player.scrobbling
+   :members:
+
+Settings
+--------
+
+.. automodule:: my_lastfm_player.settings
    :members:
 
 Themes

@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.52` - work in progress; tons of features are not implemented
+Current version: `0.0.53` - work in progress; tons of features are not implemented
 
 ## Current state
 
@@ -218,7 +218,7 @@ Install development dependencies and run the full local build, lint, documentati
 ./localPipeline.sh
 ```
 
-The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, builds Sphinx documentation, runs pytest with coverage, opens the generated HTML reports when possible, builds the package, installs the built wheel, verifies the package can be imported, and then starts `my-lastfm-player` like a user would. Without `--noRun`, the app is started once and the launch stage is marked successful after the process is handed off.
+The pipeline uses `.venv`, creates it when missing, installs the project with development dependencies, runs Ruff, checks required documentation, builds Sphinx documentation into `docs/_build/html`, runs pytest with coverage, opens the generated HTML reports when possible, builds the package, installs the built wheel, verifies the package can be imported, and then starts `my-lastfm-player` like a user would. Without `--noRun`, the app is started once and the launch stage is marked successful after the process is handed off.
 
 ### Build Workflow
 
@@ -259,7 +259,7 @@ The workflow phases are:
 3. Dependency installation: runs `python -m pip install -e ".[dev]"` so the app and development tools come from the same environment.
 4. Quality gates: runs Ruff, required documentation checks, Sphinx documentation with warnings as errors, and pytest with configured coverage reporting.
 5. Report opening: prints the Sphinx and coverage HTML paths and tries to open them with `MY_LASTFM_PLAYER_REPORT_BROWSER` when set, otherwise `firefox`, otherwise `xdg-open`, otherwise `open`; a failed auto-open is reported as `WARN`, not as a failed build.
-6. Package build: removes stale `build/`, `dist/`, and egg-info output before running `python -m build`.
+6. Package build: removes stale package `build/`, `dist/`, and egg-info output before running `python -m build`; generated Sphinx HTML in `docs/_build/html` is kept usable after the package build.
 7. Install verification: installs the freshly built wheel and imports `my_lastfm_player` to confirm the packaged application exposes its version.
 8. Runtime launch: starts `my-lastfm-player` once unless `--noRun` was provided; quitting the app does not make the pipeline reopen it.
 9. Final summary: prints a stage-by-stage table so the developer can see which parts passed, failed, were skipped, or only produced warnings.
@@ -274,6 +274,12 @@ After the pipeline completes, open the HTML coverage report at:
 
 ```sh
 htmlcov/index.html
+```
+
+After the pipeline completes, open the Sphinx documentation at:
+
+```sh
+docs/_build/html/index.html
 ```
 
 The normal pipeline does not require internet access. To include the live Last.fm end-to-end test for the hardwired user `first`, run:
