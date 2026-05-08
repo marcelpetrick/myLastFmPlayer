@@ -58,6 +58,7 @@ class MainWindow(QMainWindow):
         self._last_progress_label = "Idle"
         self._last_status_message = "Ready"
         self._playback_duration_ms = 0
+        self._track_count = 0
         self.set_application_title(__display_version__)
         self.resize(1120, 720)
 
@@ -167,6 +168,8 @@ class MainWindow(QMainWindow):
         self.fetch_stop_button.clicked.connect(self.fetch_stop_requested.emit)
         self.set_fetch_control_state(active=False, paused=False)
 
+        self.track_count_label = QLabel()
+
         self.dependency_label = QLabel()
         self.dependency_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
@@ -177,7 +180,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.fetch_button, 0, 2)
         layout.addWidget(self.fetch_pause_button, 0, 3)
         layout.addWidget(self.fetch_stop_button, 0, 4)
-        layout.addWidget(self.dependency_label, 1, 0, 1, 5)
+        layout.addWidget(self.track_count_label, 1, 0)
+        layout.addWidget(self.dependency_label, 1, 1, 1, 4)
 
         return frame
 
@@ -293,8 +297,15 @@ class MainWindow(QMainWindow):
 
         self.track_model.set_tracks(tracks)
         self.track_table.resizeRowsToContents()
+        self._track_count = len(tracks)
+        self._update_track_count_label()
         print(f"[myLastFmPlayer] Table now contains {len(tracks)} tracks", flush=True)
         self.show_status(self.tr("Loaded {count} tracks").format(count=len(tracks)))
+
+    def _update_track_count_label(self) -> None:
+        self.track_count_label.setText(
+            self.tr("Playlist: {count} titles").format(count=self._track_count)
+        )
 
     def username(self) -> str:
         """Return the trimmed Last.fm username currently entered by the user."""
@@ -552,6 +563,7 @@ class MainWindow(QMainWindow):
         self.feedback_log.setPlaceholderText(
             self.tr("Status updates and errors will appear here.")
         )
+        self._update_track_count_label()
         if not self.dependency_label.text():
             self.dependency_label.setText(
                 self.tr("Dependencies: yt-dlp and ffmpeg not checked yet")
