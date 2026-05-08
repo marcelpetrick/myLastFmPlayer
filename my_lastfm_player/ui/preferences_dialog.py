@@ -85,7 +85,7 @@ class PreferencesDialog(QDialog):
         self.scrobbling_group.setTitle(self.tr("Scrobbling"))
         self.scrobbling_checkbox.setText(self.tr("Enable scrobbling"))
         self.scrobbling_hint.setText(
-            self.tr("Submits to Last.fm after 10 % of each track has been played.")
+            self.tr("Submits to Last.fm after 33% of each track has been played.")
         )
 
     def _refresh(self) -> None:
