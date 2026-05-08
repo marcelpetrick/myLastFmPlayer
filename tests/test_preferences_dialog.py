@@ -5,7 +5,7 @@ from my_lastfm_player.ui.preferences_dialog import PreferencesDialog
 
 
 class FakeUser:
-    def get_name(self) -> str:
+    def get_name(self, properly_capitalized: bool = False) -> str:
         return "testuser"
 
 

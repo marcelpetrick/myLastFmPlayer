@@ -52,7 +52,7 @@ zsh: IOT instruction (core dumped)  .venv/bin/my-lastfm-player
 * feature 28: add a github action pipeline: for merges and releases: do all the steps of the local pipeline; or maybe as first iteration just for building the wheel as package
 * feature 29: when a song is downloaded, then we could also show information like the bitrate and which type (mpe, m4a, ..) in a next column after the state column?
 * fixed: 30. preferences scrobbling hint now reports the correct 33% threshold and drops the space between number and percent sign.
-* bug: 31: preferences dialog: i am connected with last.fm, but it does not show the used username. is there something wrong? does this have to be fetched while doing the auth? check and fix this.
+* fixed: 31. ScrobblingService now requests the properly-capitalized username from Last.fm (`get_name(properly_capitalized=True)`) so the preferences dialog and persisted credentials show the actual user instead of an empty string.
 
 
 ## Documentation

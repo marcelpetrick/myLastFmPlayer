@@ -1041,7 +1041,7 @@ def test_controller_scrobbles_at_33_percent(qapp, tmp_path) -> None:
     class FakeNetwork:
         def get_authenticated_user(self):
             class U:
-                def get_name(self):
+                def get_name(self, properly_capitalized=False):
                     return "user"
             return U()
 
@@ -1092,7 +1092,7 @@ def test_controller_scrobble_resets_on_seek(qapp, tmp_path) -> None:
     class FakeNetwork:
         def get_authenticated_user(self):
             class U:
-                def get_name(self):
+                def get_name(self, properly_capitalized=False):
                     return "user"
             return U()
 
@@ -1142,7 +1142,7 @@ def test_controller_scrobble_resets_on_new_track(qapp, tmp_path) -> None:
     class FakeNetwork:
         def get_authenticated_user(self):
             class U:
-                def get_name(self):
+                def get_name(self, properly_capitalized=False):
                     return "user"
             return U()
 

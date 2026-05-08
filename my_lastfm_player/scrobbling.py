@@ -76,7 +76,9 @@ class ScrobblingService:
                 api_secret=self._api_secret,
                 session_key=self._session_key,
             )
-            self._username = network.get_authenticated_user().get_name()
+            self._username = network.get_authenticated_user().get_name(
+                properly_capitalized=True
+            )
             self._network = network
             self._authenticated = True
             LOGGER.info("Last.fm connected as %s", self._username)
@@ -116,7 +118,9 @@ class ScrobblingService:
                 api_secret=self._api_secret,
                 session_key=session_key,
             )
-            self._username = network.get_authenticated_user().get_name()
+            self._username = network.get_authenticated_user().get_name(
+                properly_capitalized=True
+            )
             self._session_key = session_key
             self._network = network
             self._authenticated = True

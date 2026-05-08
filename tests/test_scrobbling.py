@@ -12,7 +12,7 @@ from my_lastfm_player.scrobbling import (
 
 
 class FakeUser:
-    def get_name(self) -> str:
+    def get_name(self, properly_capitalized: bool = False) -> str:
         return "testuser"
 
 
