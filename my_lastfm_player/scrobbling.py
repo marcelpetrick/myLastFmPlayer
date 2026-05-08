@@ -8,7 +8,7 @@ from typing import Any
 
 LOGGER = logging.getLogger(__name__)
 
-SCROBBLE_THRESHOLD = 0.10
+SCROBBLE_THRESHOLD = 0.33
 
 
 class ScrobblingService:

@@ -18,7 +18,7 @@ from my_lastfm_player.i18n import translate
 from my_lastfm_player.lastfm import LastFmError, LastFmLovedTracksScraper
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.playback import PlaybackError, PlaybackService
-from my_lastfm_player.scrobbling import ScrobblingService
+from my_lastfm_player.scrobbling import SCROBBLE_THRESHOLD, ScrobblingService
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import (
@@ -82,6 +82,7 @@ class ApplicationController(QObject):
         self._playback_callbacks_connected = False
         self._scrobbling_service: ScrobblingService | None = None
         self._scrobble_submitted = False
+        self._scrobble_seek_start_ms: int = 0
         self._playback_start_time: int | None = None
 
     @property
@@ -589,6 +590,8 @@ class ApplicationController(QObject):
         except PlaybackError as error:
             self.window.append_feedback(str(error))
             return
+        self._scrobble_submitted = False
+        self._scrobble_seek_start_ms = position_ms
         self.window.set_playback_timeline(
             self.playback_service.position_ms(),
             self.playback_service.duration_ms(),
@@ -869,6 +872,7 @@ class ApplicationController(QObject):
             self.playback_service.duration_ms(),
         )
         self._scrobble_submitted = False
+        self._scrobble_seek_start_ms = 0
         self._playback_start_time = int(time.time())
         if self._scrobbling_service is not None:
             duration_s = self.playback_service.duration_ms() // 1000
@@ -985,12 +989,13 @@ class ApplicationController(QObject):
         self._maybe_scrobble(position_ms, duration_ms)
 
     def _maybe_scrobble(self, position_ms: int, duration_ms: int) -> None:
+        elapsed_ms = position_ms - self._scrobble_seek_start_ms
         if (
             self._scrobbling_service is None
             or self._scrobble_submitted
             or self._playback_start_time is None
             or duration_ms <= 0
-            or position_ms < duration_ms // 10
+            or elapsed_ms < SCROBBLE_THRESHOLD * duration_ms
         ):
             return
         current_track = self.playback_service.current_track

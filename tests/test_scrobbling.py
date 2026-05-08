@@ -82,7 +82,7 @@ def test_has_api_credentials_false_when_empty() -> None:
 
 
 def test_scrobble_threshold_constant() -> None:
-    assert SCROBBLE_THRESHOLD == 0.10
+    assert SCROBBLE_THRESHOLD == 0.33
 
 
 # ── try_connect ───────────────────────────────────────────────────────────────
