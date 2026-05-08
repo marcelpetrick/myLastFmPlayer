@@ -26,6 +26,10 @@ class FakeRunner:
             raise self.error
         return_code = self.return_codes.pop(0) if self.return_codes else 0
         stderr = "download failed" if return_code else ""
+        if return_code == 0 and "--output" in command:
+            output_idx = list(command).index("--output") + 1
+            template = command[output_idx]
+            Path(template.replace("%(ext)s", "webm")).touch()
         return subprocess.CompletedProcess(command, return_code, stdout="", stderr=stderr)
 
 
@@ -57,16 +61,15 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
             artist="Artist",
             title="Title",
             youtube_url="https://youtu.be/example",
-            local_path=str(tmp_path / "Artist - Title.mp3"),
+            local_path=str(tmp_path / "Artist - Title.webm"),
             status=TrackStatus.DOWNLOADED,
         )
     ]
     assert runner.commands == [
         [
             "yt-dlp",
-            "--extract-audio",
-            "--audio-format",
-            "mp3",
+            "-f",
+            "bestaudio",
             "--no-playlist",
             "--output",
             str(tmp_path / "Artist - Title.%(ext)s"),

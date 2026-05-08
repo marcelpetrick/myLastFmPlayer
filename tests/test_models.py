@@ -5,7 +5,7 @@ import pytest
 from my_lastfm_player.models import (
     Track,
     TrackStatus,
-    build_mp3_filename,
+    build_audio_base_name,
     build_track_cache_key,
     sanitize_filename_part,
 )
@@ -130,9 +130,9 @@ def test_cache_key_uses_exact_artist_and_title() -> None:
     assert Track(artist="Artist", title="Title").cache_key == original
 
 
-def test_mp3_filename_uses_artist_title_and_sanitizes_invalid_characters() -> None:
-    assert build_mp3_filename('AC/DC', 'Track: "Live"?') == "AC_DC - Track_ _Live__.mp3"
-    assert Track(artist="Artist", title="Title").mp3_filename == "Artist - Title.mp3"
+def test_audio_base_name_uses_artist_title_and_sanitizes_invalid_characters() -> None:
+    assert build_audio_base_name('AC/DC', 'Track: "Live"?') == "AC_DC - Track_ _Live__"
+    assert Track(artist="Artist", title="Title").audio_base_name == "Artist - Title"
 
 
 def test_filename_sanitizer_handles_blank_or_unsafe_values() -> None:
@@ -140,8 +140,7 @@ def test_filename_sanitizer_handles_blank_or_unsafe_values() -> None:
     assert sanitize_filename_part(" Artist\tName  -  Title\nName ") == "Artist Name - Title Name"
 
 
-def test_mp3_filename_is_limited_to_safe_length() -> None:
-    filename = build_mp3_filename("A" * 300, "B" * 300)
+def test_audio_base_name_is_limited_to_safe_length() -> None:
+    base = build_audio_base_name("A" * 300, "B" * 300)
 
-    assert len(filename) <= 240
-    assert filename.endswith(".mp3")
+    assert len(base) <= 235

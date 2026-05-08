@@ -191,12 +191,11 @@ class DownloadManager:
         if not track.youtube_url:
             raise DownloadError("Track has no YouTube URL")
 
-        output_template = str(downloads_dir / f"{track.mp3_filename[:-4]}.%(ext)s")
+        output_template = str(downloads_dir / f"{track.audio_base_name}.%(ext)s")
         command = [
             self.executable,
-            "--extract-audio",
-            "--audio-format",
-            "mp3",
+            "-f",
+            "bestaudio",
             "--no-playlist",
             "--output",
             output_template,
@@ -205,7 +204,15 @@ class DownloadManager:
         completed = self._run(command)
         if completed.returncode != 0:
             raise DownloadError(completed.stderr.strip() or "yt-dlp download failed")
-        return downloads_dir / track.mp3_filename
+
+        candidates = sorted(
+            [p for p in downloads_dir.iterdir() if p.stem == track.audio_base_name],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not candidates:
+            raise DownloadError("Downloaded file not found after yt-dlp succeeded")
+        return candidates[0]
 
     def _run(self, command: Sequence[str]) -> subprocess.CompletedProcess[str]:
         try:

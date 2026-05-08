@@ -52,10 +52,10 @@ class Track:
         return build_track_cache_key(self.artist, self.title)
 
     @property
-    def mp3_filename(self) -> str:
-        """Return the sanitized MP3 filename used for downloads."""
+    def audio_base_name(self) -> str:
+        """Return the sanitized base filename (no extension) used for downloads."""
 
-        return build_mp3_filename(self.artist, self.title)
+        return build_audio_base_name(self.artist, self.title)
 
     def with_status(self, status: TrackStatus, error: str | None = None) -> Track:
         """Return a copy with ``status`` and an optional error message applied."""
@@ -104,16 +104,15 @@ def build_track_cache_key(artist: str, title: str) -> str:
     return f"{artist}{CACHE_KEY_SEPARATOR}{title}"
 
 
-def build_mp3_filename(artist: str, title: str) -> str:
-    """Build a safe MP3 filename for ``artist`` and ``title``."""
+def build_audio_base_name(artist: str, title: str) -> str:
+    """Build a safe base filename (no extension) for ``artist`` and ``title``."""
 
     base_name = sanitize_filename_part(f"{artist} - {title}")
-    filename = f"{base_name}.mp3"
-    if len(filename) <= MAX_FILENAME_LENGTH:
-        return filename
-
-    suffix = ".mp3"
-    return f"{base_name[: MAX_FILENAME_LENGTH - len(suffix)].rstrip()}{suffix}"
+    # Reserve 5 chars for the longest common audio extension (e.g. .webm, .opus).
+    max_base = MAX_FILENAME_LENGTH - 5
+    if len(base_name) <= max_base:
+        return base_name
+    return base_name[:max_base].rstrip()
 
 
 def sanitize_filename_part(value: str) -> str:
