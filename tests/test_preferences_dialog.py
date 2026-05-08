@@ -34,6 +34,9 @@ class FakeSG:
     def get_web_auth_session_key(self, url: str) -> str:
         return "new_session_key"
 
+    def get_web_auth_session_key_username(self, url: str) -> tuple[str, str]:
+        return "new_session_key", "testuser"
+
 
 def _make_svc(**kwargs) -> ScrobblingService:
     return ScrobblingService(
@@ -57,7 +60,7 @@ def test_preferences_dialog_shows_not_connected(qapp) -> None:
 
 
 def test_preferences_dialog_shows_connected(qapp) -> None:
-    svc = _make_svc(session_key="k")
+    svc = _make_svc(session_key="k", username="testuser")
     svc.try_connect()
     dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
 
@@ -121,7 +124,7 @@ def test_preferences_dialog_authorize_without_start_shows_error(qapp) -> None:
 
 
 def test_preferences_dialog_disconnect_clears_session(qapp) -> None:
-    svc = _make_svc(session_key="k")
+    svc = _make_svc(session_key="k", username="testuser")
     svc.try_connect()
     dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
 

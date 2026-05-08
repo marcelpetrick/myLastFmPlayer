@@ -1052,7 +1052,7 @@ def test_controller_scrobbles_at_33_percent(qapp, tmp_path) -> None:
             pass
 
     svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="sess",
+        api_key="k", api_secret="s", session_key="sess", username="user",
         network_factory=lambda **kw: FakeNetwork(),
     )
     svc.try_connect()
@@ -1103,7 +1103,7 @@ def test_controller_scrobble_resets_on_seek(qapp, tmp_path) -> None:
             pass
 
     svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="sess",
+        api_key="k", api_secret="s", session_key="sess", username="user",
         network_factory=lambda **kw: FakeNetwork(),
     )
     svc.try_connect()
@@ -1153,7 +1153,7 @@ def test_controller_scrobble_resets_on_new_track(qapp, tmp_path) -> None:
             pass
 
     svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="sess",
+        api_key="k", api_secret="s", session_key="sess", username="user",
         network_factory=lambda **kw: FakeNetwork(),
     )
     svc.try_connect()

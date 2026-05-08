@@ -70,11 +70,18 @@ class ScrobblingService:
         """Verify stored session key against Last.fm.  Returns ``True`` on success."""
         if not self._session_key or not self.has_api_credentials:
             return False
+        if not self._username:
+            # Legacy credentials may have lost the username; without it pylast
+            # cannot issue user.getInfo to verify the session.  Force re-auth.
+            LOGGER.warning("Stored Last.fm session has no username; please re-authenticate")
+            self._authenticated = False
+            return False
         try:
             network = self._network_factory(
                 api_key=self._api_key,
                 api_secret=self._api_secret,
                 session_key=self._session_key,
+                username=self._username,
             )
             self._username = network.get_authenticated_user().get_name(
                 properly_capitalized=True
@@ -112,15 +119,19 @@ class ScrobblingService:
         if self._sg is None or self._pending_auth_url is None:
             return False
         try:
-            session_key = self._sg.get_web_auth_session_key(self._pending_auth_url)
+            # auth.getSession returns both session key and username; use the
+            # combined call so we don't need a follow-up user.getInfo (which
+            # would fail with 400 because the network has no username yet).
+            session_key, username = self._sg.get_web_auth_session_key_username(
+                self._pending_auth_url
+            )
             network = self._network_factory(
                 api_key=self._api_key,
                 api_secret=self._api_secret,
                 session_key=session_key,
+                username=username,
             )
-            self._username = network.get_authenticated_user().get_name(
-                properly_capitalized=True
-            )
+            self._username = username
             self._session_key = session_key
             self._network = network
             self._authenticated = True

@@ -42,6 +42,9 @@ class FakeSG:
     def get_web_auth_session_key(self, url: str) -> str:
         return "test_session_key_123"
 
+    def get_web_auth_session_key_username(self, url: str) -> tuple[str, str]:
+        return "test_session_key_123", "testuser"
+
 
 def _make_service(**kwargs) -> tuple[ScrobblingService, list[FakeNetwork]]:
     created: list[FakeNetwork] = []
@@ -88,7 +91,7 @@ def test_scrobble_threshold_constant() -> None:
 # ── try_connect ───────────────────────────────────────────────────────────────
 
 def test_try_connect_with_valid_session_key() -> None:
-    svc, networks = _make_service(session_key="stored_key")
+    svc, networks = _make_service(session_key="stored_key", username="storeduser")
 
     result = svc.try_connect()
 
@@ -96,10 +99,17 @@ def test_try_connect_with_valid_session_key() -> None:
     assert svc.is_authenticated
     assert svc.username == "testuser"
     assert networks[0].kwargs["session_key"] == "stored_key"
+    assert networks[0].kwargs["username"] == "storeduser"
 
 
 def test_try_connect_without_session_key_returns_false() -> None:
     svc, _ = _make_service()
+    assert not svc.try_connect()
+    assert not svc.is_authenticated
+
+
+def test_try_connect_without_username_returns_false() -> None:
+    svc, _ = _make_service(session_key="stored_key")
     assert not svc.try_connect()
     assert not svc.is_authenticated
 
@@ -109,7 +119,11 @@ def test_try_connect_handles_network_error() -> None:
         raise RuntimeError("network error")
 
     svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="key", network_factory=failing_network
+        api_key="k",
+        api_secret="s",
+        session_key="key",
+        username="someone",
+        network_factory=failing_network,
     )
     assert not svc.try_connect()
     assert not svc.is_authenticated
@@ -169,6 +183,9 @@ def test_complete_web_auth_handles_error() -> None:
         def get_web_auth_session_key(self, url: str) -> str:
             raise RuntimeError("not yet authorized")
 
+        def get_web_auth_session_key_username(self, url: str) -> tuple[str, str]:
+            raise RuntimeError("not yet authorized")
+
     svc = ScrobblingService(
         api_key="k", api_secret="s",
         network_factory=lambda **kw: FakeNetwork(**kw),
@@ -182,7 +199,7 @@ def test_complete_web_auth_handles_error() -> None:
 # ── disconnect ────────────────────────────────────────────────────────────────
 
 def test_disconnect_clears_session() -> None:
-    svc, _ = _make_service(session_key="k")
+    svc, _ = _make_service(session_key="k", username="user")
     svc.try_connect()
     assert svc.is_authenticated
 
@@ -196,7 +213,7 @@ def test_disconnect_clears_session() -> None:
 # ── scrobble ──────────────────────────────────────────────────────────────────
 
 def test_scrobble_submits_when_authenticated() -> None:
-    svc, networks = _make_service(session_key="k")
+    svc, networks = _make_service(session_key="k", username="user")
     svc.try_connect()
 
     svc.scrobble("Artist", "Title", timestamp=1_700_000_000, duration_seconds=240)
@@ -216,14 +233,14 @@ def test_scrobble_skipped_when_not_authenticated() -> None:
 
 
 def test_scrobble_skipped_when_disabled() -> None:
-    svc, networks = _make_service(session_key="k", scrobbling_enabled=False)
+    svc, networks = _make_service(session_key="k", username="user", scrobbling_enabled=False)
     svc.try_connect()
     svc.scrobble("Artist", "Title", timestamp=1_700_000_000)
     assert networks[-1].scrobbles == []
 
 
 def test_scrobble_duration_none_when_zero() -> None:
-    svc, networks = _make_service(session_key="k")
+    svc, networks = _make_service(session_key="k", username="user")
     svc.try_connect()
     svc.scrobble("A", "T", timestamp=123, duration_seconds=0)
     assert networks[-1].scrobbles[0]["duration"] is None
@@ -240,7 +257,11 @@ def test_scrobble_handles_network_error_gracefully() -> None:
         return net
 
     svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="key", network_factory=erroring_network
+        api_key="k",
+        api_secret="s",
+        session_key="key",
+        username="user",
+        network_factory=erroring_network,
     )
     svc.try_connect()
     svc.scrobble("A", "T", timestamp=123)  # must not raise
@@ -249,7 +270,7 @@ def test_scrobble_handles_network_error_gracefully() -> None:
 # ── update_now_playing ────────────────────────────────────────────────────────
 
 def test_update_now_playing_submits_when_authenticated() -> None:
-    svc, networks = _make_service(session_key="k")
+    svc, networks = _make_service(session_key="k", username="user")
     svc.try_connect()
     svc.update_now_playing("Artist", "Title", duration_seconds=180)
     assert networks[-1].now_playing[0]["artist"] == "Artist"
@@ -272,7 +293,11 @@ def test_update_now_playing_handles_network_error_gracefully() -> None:
         return net
 
     svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="key", network_factory=erroring_network
+        api_key="k",
+        api_secret="s",
+        session_key="key",
+        username="user",
+        network_factory=erroring_network,
     )
     svc.try_connect()
     svc.update_now_playing("A", "T")  # must not raise
