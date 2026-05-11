@@ -9,7 +9,6 @@ but they should be revisited before the MVP is considered finished.
 - 15. Playlist feature: support dragging and dropping songs into a playlist, then play them one after another.
 - 19. Bug with the download state: cached track files are downloaded again when double-clicked. Should cached files already exist? Also check whether the queued-download mechanism really triggers downloads for the remaining tracks.
 - 21. Bug: after seeking first, pressing Play does not start playback at the selected position.
-- Feature 28: add a GitHub Actions pipeline for merges and releases. It should run all local-pipeline steps, or, as a first iteration, build the wheel package.
 
 ## UI Design
 
