@@ -275,13 +275,15 @@ def test_resolve_and_store_tracks_uses_lookup_cache(tmp_path: Path) -> None:
 
 def test_resolve_and_store_tracks_keeps_existing_download_state(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
+    audio_path = tmp_path / "Artist - Title.mp3"
+    audio_path.touch()
     repository.save_tracks(
         "example",
         [
             Track(
                 artist="Artist",
                 title="Title",
-                local_path="/music/Artist - Title.mp3",
+                local_path=str(audio_path),
                 status=TrackStatus.DOWNLOADED,
             )
         ],
@@ -291,7 +293,7 @@ def test_resolve_and_store_tracks_keeps_existing_download_state(tmp_path: Path) 
     tracks = YouTubeResolver(command_runner=runner).resolve_and_store_tracks("example", repository)
 
     assert tracks[0].status == TrackStatus.DOWNLOADED
-    assert tracks[0].local_path == "/music/Artist - Title.mp3"
+    assert tracks[0].local_path == str(audio_path)
     assert tracks[0].youtube_url == "https://youtube.example/watch?v=abc"
 
 
