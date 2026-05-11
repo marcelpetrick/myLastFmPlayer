@@ -1,3 +1,29 @@
+# tl;dr
+
+```
+
+• In GitHub:
+
+  1. Open the repo: marcelpetrick/myLastFmPlayer
+  2. Go to Actions
+  3. In the left sidebar, click Manual Release
+  4. Click Run workflow
+  5. Fill the fields:
+      - version: 0.0.61
+      - publish_release: checked / true
+      - draft: checked / true
+      - prerelease: unchecked / false
+  6. Click the green Run workflow button.
+
+  Those fields come from .github/workflows/manual-release.yml. Specifically, they are defined under:
+
+  on:
+    workflow_dispatch:
+      inputs:
+
+  After the workflow succeeds, GitHub creates a draft release under Releases. You can inspect it there and manually publish it when ready.
+```
+
 # GitHub Actions and Releases
 
 This document describes the repository automation added for CI builds and manual
