@@ -177,11 +177,13 @@ def test_download_manager_handles_missing_url_and_command_error(tmp_path: Path) 
 def test_download_manager_skips_cached_downloads(tmp_path: Path) -> None:
     runner = FakeRunner()
     repository = JsonTrackRepository(data_dir=tmp_path)
+    audio_path = tmp_path / "Artist - Title.mp3"
+    audio_path.touch()
     cached_track = Track(
         artist="Artist",
         title="Title",
         youtube_url="https://youtu.be/cached",
-        local_path="/music/Artist - Title.mp3",
+        local_path=str(audio_path),
         status=TrackStatus.DOWNLOADED,
     )
     repository.save_download_cache([cached_track])
@@ -202,8 +204,31 @@ def test_download_manager_skips_cached_downloads(tmp_path: Path) -> None:
     assert runner.commands == []
     assert tracks[0].status == TrackStatus.DOWNLOADED
     assert tracks[0].youtube_url == "https://youtu.be/current"
-    assert tracks[0].local_path == "/music/Artist - Title.mp3"
+    assert tracks[0].local_path == str(audio_path)
     assert repository.load_tracks("user") == tracks
+
+
+def test_download_manager_redownloads_stale_download_paths(tmp_path: Path) -> None:
+    runner = FakeRunner()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks(
+        "user",
+        [
+            Track(
+                artist="Artist",
+                title="Title",
+                youtube_url="https://youtu.be/current",
+                local_path=str(tmp_path / "missing.mp3"),
+                status=TrackStatus.DOWNLOADED,
+            )
+        ],
+    )
+
+    tracks = DownloadManager(command_runner=runner).download_and_store_tracks("user", repository)
+
+    assert len(runner.commands) == 1
+    assert tracks[0].status == TrackStatus.DOWNLOADED
+    assert tracks[0].local_path == str(tmp_path / "downloads" / "Artist - Title.webm")
 
 
 def test_download_manager_validates_concurrency(tmp_path: Path) -> None:

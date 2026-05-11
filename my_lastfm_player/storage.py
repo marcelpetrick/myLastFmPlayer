@@ -43,7 +43,7 @@ class JsonTrackRepository:
         if not isinstance(data, list):
             raise StorageError(f"{path} must contain a JSON array of tracks")
 
-        return [Track.from_dict(item) for item in data]
+        return [_normalize_download_file_state(Track.from_dict(item)) for item in data]
 
     def save_tracks(self, username: str, tracks: list[Track]) -> None:
         """Atomically save ``tracks`` for ``username``."""
@@ -73,13 +73,21 @@ class JsonTrackRepository:
         if not isinstance(data, list):
             raise StorageError(f"{self.cache_path} must contain a JSON array of cached tracks")
 
-        tracks = [Track.from_dict(item) for item in data]
+        tracks = [
+            track
+            for item in data
+            if (track := _normalize_download_file_state(Track.from_dict(item))).local_path
+        ]
         return {track.cache_key: track for track in tracks}
 
     def save_download_cache(self, tracks: list[Track]) -> None:
         """Persist downloaded tracks that have a local file path."""
 
-        cached_tracks = [track for track in tracks if track.local_path]
+        cached_tracks = [
+            track
+            for track in (_normalize_download_file_state(track) for track in tracks)
+            if track.local_path
+        ]
         deduplicated = {track.cache_key: track for track in cached_tracks}
         sorted_tracks = sorted(deduplicated.values(), key=lambda item: item.cache_key)
         _atomic_write_json(
@@ -227,6 +235,29 @@ def _read_json_file(path: Path) -> Any:
         raise StorageError(f"{path} contains invalid JSON: {error}") from error
     except OSError as error:
         raise StorageError(f"Could not read {path}: {error}") from error
+
+
+def _normalize_download_file_state(track: Track) -> Track:
+    if not track.local_path:
+        if track.status is TrackStatus.DOWNLOADED:
+            return _track_needing_download(track)
+        return track
+
+    if Path(track.local_path).is_file():
+        return track
+
+    return _track_needing_download(track)
+
+
+def _track_needing_download(track: Track) -> Track:
+    return replace(
+        track,
+        local_path=None,
+        status=TrackStatus.QUEUED if track.youtube_url else TrackStatus.FETCHED,
+        file_type=None,
+        bitrate_kbps=None,
+        error=None,
+    )
 
 
 def _atomic_write_json(path: Path, data: Any) -> None:
