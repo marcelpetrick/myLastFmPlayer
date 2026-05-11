@@ -123,6 +123,8 @@ def test_mark_cached_downloads_updates_matching_tracks_only(tmp_path: Path) -> N
                 youtube_url="https://youtube.example/watch?v=abc",
                 local_path="/music/Artist - Title.mp3",
                 status=TrackStatus.DOWNLOADED,
+                file_type="MP3",
+                bitrate_kbps=192,
             )
         ]
     )
@@ -137,6 +139,8 @@ def test_mark_cached_downloads_updates_matching_tracks_only(tmp_path: Path) -> N
     assert marked_tracks[0].status == TrackStatus.DOWNLOADED
     assert marked_tracks[0].youtube_url == "https://youtube.example/watch?v=abc"
     assert marked_tracks[0].local_path == "/music/Artist - Title.mp3"
+    assert marked_tracks[0].file_type == "MP3"
+    assert marked_tracks[0].bitrate_kbps == 192
     assert marked_tracks[1].status == TrackStatus.FETCHED
     assert marked_tracks[1].local_path is None
 

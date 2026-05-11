@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import random
 import subprocess
@@ -165,11 +166,14 @@ class DownloadManager:
             self._resume_event.wait()
             try:
                 local_path = self._download_track(current_track, downloads_dir)
+                file_type, bitrate_kbps = _probe_audio_file(local_path)
                 return replace(
                     current_track,
                     local_path=str(local_path),
                     status=TrackStatus.DOWNLOADED,
                     error=None,
+                    file_type=file_type,
+                    bitrate_kbps=bitrate_kbps,
                 )
             except DownloadError as error:
                 last_error = str(error)
@@ -255,3 +259,66 @@ def _report_track_update(
 ) -> None:
     if track_update_callback is not None:
         track_update_callback(track)
+
+
+def _probe_audio_file(path: Path) -> tuple[str | None, int | None]:
+    file_type = _file_type_from_path(path)
+    try:
+        completed = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=format_name,bit_rate",
+                "-of",
+                "json",
+                str(path),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return file_type, None
+
+    if completed.returncode != 0:
+        return file_type, None
+
+    try:
+        data = json.loads(completed.stdout or "{}")
+    except json.JSONDecodeError:
+        return file_type, None
+
+    format_data = data.get("format")
+    if not isinstance(format_data, dict):
+        return file_type, None
+
+    probed_type = _format_name_to_file_type(format_data.get("format_name")) or file_type
+    return probed_type, _bit_rate_to_kbps(format_data.get("bit_rate"))
+
+
+def _file_type_from_path(path: Path) -> str | None:
+    suffix = path.suffix.lstrip(".")
+    return suffix.upper() if suffix else None
+
+
+def _format_name_to_file_type(value: object) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    formats = [item.strip().lower() for item in value.split(",") if item.strip()]
+    for preferred_format in ("mp3", "m4a", "webm", "opus", "ogg", "flac", "wav"):
+        if preferred_format in formats:
+            return preferred_format.upper()
+    first_format = formats[0] if formats else ""
+    return first_format.upper() if first_format else None
+
+
+def _bit_rate_to_kbps(value: object) -> int | None:
+    try:
+        bits_per_second = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    if bits_per_second <= 0:
+        return None
+    return round(bits_per_second / 1000)

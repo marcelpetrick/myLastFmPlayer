@@ -104,6 +104,8 @@ class JsonTrackRepository:
                     local_path=cached_track.local_path,
                     status=TrackStatus.DOWNLOADED,
                     error=None,
+                    file_type=track.file_type or cached_track.file_type,
+                    bitrate_kbps=track.bitrate_kbps or cached_track.bitrate_kbps,
                 )
             )
         return marked_tracks
