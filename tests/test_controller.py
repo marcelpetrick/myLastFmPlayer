@@ -638,10 +638,12 @@ class FakePlaybackService:
 def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("user")
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
     track = Track(
         artist="Artist",
         title="Title",
-        local_path=str(tmp_path / "track.mp3"),
+        local_path=str(audio_path),
         status=TrackStatus.DOWNLOADED,
     )
     window.set_tracks([track])
@@ -669,23 +671,30 @@ def test_controller_auto_plays_next_track_after_finished_in_sort_order(
 ) -> None:
     window = MainWindow()
     window.username_input.setText("user")
+    audio_paths = {
+        "last": tmp_path / "last.mp3",
+        "first": tmp_path / "first.mp3",
+        "second": tmp_path / "second.mp3",
+    }
+    for audio_path in audio_paths.values():
+        audio_path.write_bytes(b"fake mp3")
     tracks = [
         Track(
             artist="Zed",
             title="Last",
-            local_path=str(tmp_path / "last.mp3"),
+            local_path=str(audio_paths["last"]),
             status=TrackStatus.DOWNLOADED,
         ),
         Track(
             artist="Alpha",
             title="First",
-            local_path=str(tmp_path / "first.mp3"),
+            local_path=str(audio_paths["first"]),
             status=TrackStatus.DOWNLOADED,
         ),
         Track(
             artist="Middle",
             title="Second",
-            local_path=str(tmp_path / "second.mp3"),
+            local_path=str(audio_paths["second"]),
             status=TrackStatus.DOWNLOADED,
         ),
     ]
@@ -717,17 +726,21 @@ def test_controller_wraps_to_first_sorted_track_after_last_track_finishes(
 ) -> None:
     window = MainWindow()
     window.username_input.setText("user")
+    last_path = tmp_path / "last.mp3"
+    first_path = tmp_path / "first.mp3"
+    last_path.write_bytes(b"fake mp3")
+    first_path.write_bytes(b"fake mp3")
     tracks = [
         Track(
             artist="Zed",
             title="Last",
-            local_path=str(tmp_path / "last.mp3"),
+            local_path=str(last_path),
             status=TrackStatus.DOWNLOADED,
         ),
         Track(
             artist="Alpha",
             title="First",
-            local_path=str(tmp_path / "first.mp3"),
+            local_path=str(first_path),
             status=TrackStatus.DOWNLOADED,
         ),
     ]
@@ -754,10 +767,12 @@ def test_controller_wraps_to_first_sorted_track_after_last_track_finishes(
 
 def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
     window = MainWindow()
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
     track = Track(
         artist="Artist",
         title="Title",
-        local_path=str(tmp_path / "track.mp3"),
+        local_path=str(audio_path),
         status=TrackStatus.DOWNLOADED,
     )
     window.set_tracks([track])
@@ -779,10 +794,12 @@ def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
 
 def test_controller_pause_toggles_to_resume(qapp, tmp_path) -> None:
     window = MainWindow()
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
     track = Track(
         artist="Artist",
         title="Title",
-        local_path=str(tmp_path / "track.mp3"),
+        local_path=str(audio_path),
         status=TrackStatus.DOWNLOADED,
     )
     playback = FakePlaybackService()
@@ -843,11 +860,13 @@ def test_controller_seeks_active_playback(qapp) -> None:
     assert window.total_time_label.text() == "4:00"
 
 
-def test_controller_reports_playback_errors(qapp) -> None:
+def test_controller_reports_playback_errors(qapp, tmp_path) -> None:
     from my_lastfm_player.playback import PlaybackError
 
     window = MainWindow()
     playback = FakePlaybackService()
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
 
     def fail_play(_track: Track) -> Track:
         raise PlaybackError("play failed")
@@ -855,7 +874,12 @@ def test_controller_reports_playback_errors(qapp) -> None:
     playback.play = fail_play  # type: ignore[method-assign]
     playback.fail_seek = True
     playback.fail_pause = True
-    track = Track(artist="Artist", title="Title", status=TrackStatus.DOWNLOADED, local_path="x")
+    track = Track(
+        artist="Artist",
+        title="Title",
+        status=TrackStatus.DOWNLOADED,
+        local_path=str(audio_path),
+    )
     controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
 
     controller._play_track(track)
@@ -940,6 +964,31 @@ def test_controller_starts_fetch_lookup_and_download_workers(qapp, tmp_path) -> 
     assert not window.fetch_button.isEnabled()
 
 
+def test_controller_starts_lookup_from_first_partial_fetch_update(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    track = Track(artist="Artist", title="Title")
+    lookup_calls: list[tuple[str | None, str | None, int | None]] = []
+
+    def fake_resolve_youtube_urls(
+        username: str | None = None,
+        priority_cache_key: str | None = None,
+        max_tracks: int | None = None,
+    ) -> None:
+        lookup_calls.append((username, priority_cache_key, max_tracks))
+
+    controller.resolve_youtube_urls = fake_resolve_youtube_urls  # type: ignore[method-assign]
+    controller._active_fetch_worker = object()  # type: ignore[assignment]
+
+    controller._handle_tracks_updated("user", [track])
+    controller._handle_tracks_updated("user", [track, Track(artist="Later", title="Track")])
+
+    assert lookup_calls == [("user", None, None)]
+    assert repository.load_tracks("user") == [track]
+
+
 def test_controller_playback_callbacks_update_timeline_once(qapp) -> None:
     window = MainWindow()
     playback = FakePlaybackService()
@@ -1019,6 +1068,28 @@ def test_controller_prepare_and_play_prepared_edge_cases(qapp) -> None:
         in window.feedback_log.toPlainText()
     )
     assert controller._pending_play_cache_key is None
+
+
+def test_controller_prepares_stale_downloaded_track_again(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/example",
+        local_path=str(tmp_path / "missing.mp3"),
+        status=TrackStatus.DOWNLOADED,
+    )
+    controller = ApplicationController(window)
+    calls: list[tuple[str, str]] = []
+    controller._start_priority_download = lambda username, cache_key: calls.append(  # type: ignore[method-assign]
+        (username, cache_key)
+    )
+
+    controller._play_track(track)
+
+    assert calls == [("user", track.cache_key)]
+    assert controller._pending_play_cache_key == track.cache_key
 
 
 def test_controller_scrobbles_at_33_percent(qapp, tmp_path) -> None:
@@ -1125,10 +1196,12 @@ def test_controller_scrobble_resets_on_seek(qapp, tmp_path) -> None:
 
 def test_controller_scrobble_resets_on_new_track(qapp, tmp_path) -> None:
     window = MainWindow()
+    audio_path = tmp_path / "t.mp3"
+    audio_path.write_bytes(b"fake mp3")
     track = Track(
         artist="Artist",
         title="Title",
-        local_path=str(tmp_path / "t.mp3"),
+        local_path=str(audio_path),
         status=TrackStatus.DOWNLOADED,
     )
     window.set_tracks([track])

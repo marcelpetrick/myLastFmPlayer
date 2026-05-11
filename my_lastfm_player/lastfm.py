@@ -317,6 +317,7 @@ class LastFmLovedTracksScraper:
             tracks_callback=tracks_callback,
             control_callback=control_callback,
         )
+        tracks = repository.mark_cached_downloads(repository.mark_cached_lookups(tracks))
         repository.save_tracks(username, tracks)
         _log_info("Stored %s Last.fm loved tracks for user %s", len(tracks), username)
         return tracks

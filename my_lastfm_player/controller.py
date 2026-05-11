@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 from PyQt6.QtCore import QObject, QThread, QUrl
 from PyQt6.QtGui import QDesktopServices
@@ -79,6 +80,7 @@ class ApplicationController(QObject):
         self._pending_play_cache_key: str | None = None
         self._active_fetch_worker: FetchLovedTracksWorker | None = None
         self._fetch_paused = False
+        self._started_incremental_lookup_for_fetch = False
         self._playback_callbacks_connected = False
         self._scrobbling_service: ScrobblingService | None = None
         self._scrobble_submitted = False
@@ -395,6 +397,7 @@ class ApplicationController(QObject):
         self.window.set_progress(0, translate("ApplicationController", "Starting fetch"))
         worker = self.fetch_worker_factory(username, self.scraper, self.repository)
         self._active_fetch_worker = worker
+        self._started_incremental_lookup_for_fetch = False
         self._run_worker(worker)
 
     def toggle_fetch_pause(self) -> None:
@@ -671,6 +674,7 @@ class ApplicationController(QObject):
         )
         self._active_fetch_worker = None
         self._fetch_paused = False
+        self._started_incremental_lookup_for_fetch = False
         self.window.set_fetch_control_state(active=False, paused=False)
         LOGGER.info("Loaded %s fetched tracks into UI for %s", len(tracks), username)
         print(
@@ -683,6 +687,7 @@ class ApplicationController(QObject):
     def _handle_fetch_stopped(self, username: str, tracks: object) -> None:
         self._active_fetch_worker = None
         self._fetch_paused = False
+        self._started_incremental_lookup_for_fetch = False
         self.window.set_fetch_control_state(active=False, paused=False)
         if not isinstance(tracks, list):
             self.window.append_feedback(
@@ -733,6 +738,14 @@ class ApplicationController(QObject):
                 username=username,
             )
         )
+        if (
+            tracks
+            and self._active_fetch_worker is not None
+            and not self._started_incremental_lookup_for_fetch
+        ):
+            self._started_incremental_lookup_for_fetch = True
+            self.repository.merge_tracks(username, tracks)
+            self._start_automatic_lookup(username, len(tracks))
 
     def _handle_track_updated(self, username: str, track: object) -> None:
         if not isinstance(track, Track):
@@ -895,7 +908,11 @@ class ApplicationController(QObject):
         )
 
     def _can_prepare_for_playback(self, track: Track) -> bool:
-        return track.status is not TrackStatus.DOWNLOADED or not track.local_path
+        return (
+            track.status is not TrackStatus.DOWNLOADED
+            or not track.local_path
+            or not Path(track.local_path).is_file()
+        )
 
     def _prepare_selected_track_for_playback(self, track: Track) -> None:
         username = self.window.username()

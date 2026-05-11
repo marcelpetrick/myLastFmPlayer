@@ -231,6 +231,33 @@ def test_download_manager_redownloads_stale_download_paths(tmp_path: Path) -> No
     assert tracks[0].local_path == str(tmp_path / "downloads" / "Artist - Title.webm")
 
 
+def test_download_manager_preserves_tracks_added_while_download_runs(tmp_path: Path) -> None:
+    runner = FakeRunner()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    first = Track(
+        artist="First",
+        title="Track",
+        youtube_url="https://youtu.be/first",
+        status=TrackStatus.QUEUED,
+    )
+    later = Track(artist="Later", title="Track")
+    repository.save_tracks("user", [first])
+
+    def add_later_track(_value: int, _message: str) -> None:
+        repository.save_tracks("user", [first, later])
+
+    tracks = DownloadManager(command_runner=runner).download_and_store_tracks(
+        "user",
+        repository,
+        progress_callback=add_later_track,
+    )
+
+    assert [track.artist for track in tracks] == ["First", "Later"]
+    assert tracks[0].status == TrackStatus.DOWNLOADED
+    assert tracks[1] == later
+    assert repository.load_tracks("user") == tracks
+
+
 def test_download_manager_validates_concurrency(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="concurrency"):
         DownloadManager().download_tracks([], tmp_path, concurrency=0)

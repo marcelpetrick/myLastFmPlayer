@@ -51,6 +51,13 @@ class JsonTrackRepository:
         path = self.user_tracks_path(username)
         _atomic_write_json(path, [track.to_dict() for track in tracks])
 
+    def merge_tracks(self, username: str, updates: list[Track]) -> list[Track]:
+        """Merge ``updates`` into the stored tracks for ``username`` and save them."""
+
+        merged_tracks = merge_track_updates(self.load_tracks(username), updates)
+        self.save_tracks(username, merged_tracks)
+        return merged_tracks
+
     def delete_tracks(self, username: str) -> None:
         """Delete the stored track list for ``username`` if it exists."""
 
@@ -258,6 +265,20 @@ def _track_needing_download(track: Track) -> Track:
         bitrate_kbps=None,
         error=None,
     )
+
+
+def merge_track_updates(existing_tracks: list[Track], updates: list[Track]) -> list[Track]:
+    """Return ``existing_tracks`` with matching ``updates`` applied, appending new tracks."""
+
+    updates_by_key = {track.cache_key: track for track in updates}
+    merged_tracks: list[Track] = []
+    seen_keys: set[str] = set()
+    for track in existing_tracks:
+        updated_track = updates_by_key.get(track.cache_key, track)
+        merged_tracks.append(updated_track)
+        seen_keys.add(track.cache_key)
+    merged_tracks.extend(track for track in updates if track.cache_key not in seen_keys)
+    return merged_tracks
 
 
 def _atomic_write_json(path: Path, data: Any) -> None:

@@ -13,6 +13,7 @@ from my_lastfm_player.storage import (
     JsonTrackRepository,
     StorageError,
     default_data_dir,
+    merge_track_updates,
     sanitize_path_component,
 )
 
@@ -221,6 +222,24 @@ def test_download_cache_ignores_missing_files(tmp_path: Path) -> None:
     )
 
     assert repository.load_download_cache() == {}
+
+
+def test_merge_track_updates_preserves_existing_order_and_appends_new_tracks() -> None:
+    first = Track(artist="First", title="Track")
+    second = Track(artist="Second", title="Track")
+    updated_first = Track(
+        artist="First",
+        title="Track",
+        youtube_url="https://youtu.be/first",
+        status=TrackStatus.QUEUED,
+    )
+    new_track = Track(artist="New", title="Track")
+
+    assert merge_track_updates([first, second], [updated_first, new_track]) == [
+        updated_first,
+        second,
+        new_track,
+    ]
 
 
 def test_lookup_cache_raises_storage_error_for_wrong_shape(tmp_path: Path) -> None:

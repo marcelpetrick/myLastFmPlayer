@@ -87,9 +87,9 @@ class DownloadManager:
             priority_cache_key=priority_cache_key,
             max_downloads=max_downloads,
         )
-        repository.save_tracks(username, downloaded_tracks)
-        repository.save_download_cache(downloaded_tracks)
-        return downloaded_tracks
+        merged_tracks = repository.merge_tracks(username, downloaded_tracks)
+        repository.save_download_cache(merged_tracks)
+        return merged_tracks
 
     def download_tracks(
         self,

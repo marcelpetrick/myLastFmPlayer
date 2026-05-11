@@ -7,12 +7,13 @@ but they should be revisited before the MVP is considered finished.
 ## Workflow
 
 - 15. Playlist feature: support dragging and dropping songs into a playlist, then play them one after another.
-- 19. Bug with the download state: cached track files are downloaded again when double-clicked. Should cached files already exist? Also check whether the queued-download mechanism really triggers downloads for the remaining tracks.
+- fixed: 19. Bug with the download state: cached track files are downloaded again when double-clicked. Cached files should only be shown when they exist. Do a file-system check if we have a result; otherwise, download them. Also check whether the queued-download mechanism really triggers downloads for the remaining tracks.
+- fixed: bug 22: in general, when the playlist of a user is available, immediately start to download the tracks. Given the download-in-parallel feature, which defaults to two, do not wait for user input. Start from the top. This can happen as soon as the very first track is in the list.
 - 21. Bug: after seeking first, pressing Play does not start playback at the selected position.
 
 ## UI Design
 
-- 8. Consider switching from the widget-based UI to QML. Reassess whether this still has benefits after the theme work.
+- 8. Consider switching from the widget-based UI to QML. Reassess whether this still has benefits after the theme work. #lowprio
 
 ## Packaging and Versioning
 

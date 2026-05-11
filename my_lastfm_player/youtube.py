@@ -127,9 +127,9 @@ class YouTubeResolver:
             resolved_tracks,
             repository.load_tracks(username),
         )
-        repository.save_tracks(username, resolved_tracks)
-        repository.save_lookup_cache(resolved_tracks)
-        return resolved_tracks
+        merged_tracks = repository.merge_tracks(username, resolved_tracks)
+        repository.save_lookup_cache(merged_tracks)
+        return merged_tracks
 
     def search_first_result(self, query: str) -> str | None:
         """Return the first YouTube URL for ``query`` or ``None`` when no result exists."""
