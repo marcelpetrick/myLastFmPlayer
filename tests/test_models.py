@@ -33,6 +33,8 @@ def test_track_serializes_to_json_ready_dict() -> None:
         status=TrackStatus.DOWNLOADED,
         retry_count=2,
         error=None,
+        file_type="MP3",
+        bitrate_kbps=192,
     )
 
     assert track.to_dict() == {
@@ -44,6 +46,8 @@ def test_track_serializes_to_json_ready_dict() -> None:
         "status": "Downloaded",
         "retry_count": 2,
         "error": None,
+        "file_type": "MP3",
+        "bitrate_kbps": 192,
     }
 
 
@@ -58,6 +62,8 @@ def test_track_deserializes_from_json_ready_dict() -> None:
             "status": "Searching",
             "retry_count": 1,
             "error": "temporary failure",
+            "file_type": "WEBM",
+            "bitrate_kbps": 128,
         }
     )
 
@@ -67,6 +73,8 @@ def test_track_deserializes_from_json_ready_dict() -> None:
         status=TrackStatus.SEARCHING,
         retry_count=1,
         error="temporary failure",
+        file_type="WEBM",
+        bitrate_kbps=128,
     )
 
 
@@ -75,6 +83,8 @@ def test_track_deserialization_defaults_status_and_retry_count() -> None:
 
     assert track.status == TrackStatus.FETCHED
     assert track.retry_count == 0
+    assert track.file_type is None
+    assert track.bitrate_kbps is None
 
 
 def test_track_rejects_invalid_serialized_values() -> None:
@@ -87,6 +97,9 @@ def test_track_rejects_invalid_serialized_values() -> None:
     with pytest.raises(ValueError, match="lastfm_url"):
         Track.from_dict({"artist": "Artist", "title": "Title", "lastfm_url": 123})
 
+    with pytest.raises(ValueError, match="bitrate_kbps"):
+        Track.from_dict({"artist": "Artist", "title": "Title", "bitrate_kbps": "128"})
+
 
 def test_track_constructor_rejects_invalid_core_values() -> None:
     with pytest.raises(ValueError, match="artist"):
@@ -97,6 +110,9 @@ def test_track_constructor_rejects_invalid_core_values() -> None:
 
     with pytest.raises(ValueError, match="retry_count"):
         Track(artist="Artist", title="Title", retry_count=-1)
+
+    with pytest.raises(ValueError, match="bitrate_kbps"):
+        Track(artist="Artist", title="Title", bitrate_kbps=-1)
 
 
 def test_track_status_transition_returns_updated_copy() -> None:

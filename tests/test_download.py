@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from my_lastfm_player.download import DownloadManager
+from my_lastfm_player.download import DownloadManager, _probe_audio_file
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 
@@ -63,6 +63,7 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
             youtube_url="https://youtu.be/example",
             local_path=str(tmp_path / "Artist - Title.webm"),
             status=TrackStatus.DOWNLOADED,
+            file_type="WEBM",
         )
     ]
     assert runner.commands == [
@@ -81,6 +82,25 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
         TrackStatus.DOWNLOADING,
         TrackStatus.DOWNLOADED,
     ]
+    assert track_updates[-1].file_type == "WEBM"
+
+
+def test_probe_audio_file_reads_ffprobe_metadata(monkeypatch, tmp_path: Path) -> None:
+    audio_path = tmp_path / "Artist - Title.m4a"
+    audio_path.touch()
+
+    def fake_run(command, **_kwargs) -> subprocess.CompletedProcess[str]:
+        assert command[-1] == str(audio_path)
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout='{"format": {"format_name": "mov,mp4,m4a", "bit_rate": "191500"}}',
+            stderr="",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    assert _probe_audio_file(audio_path) == ("M4A", 192)
 
 
 def test_download_manager_retries_and_marks_failed(tmp_path: Path) -> None:

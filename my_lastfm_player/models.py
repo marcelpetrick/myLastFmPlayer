@@ -36,6 +36,8 @@ class Track:
     status: TrackStatus = TrackStatus.FETCHED
     retry_count: int = 0
     error: str | None = None
+    file_type: str | None = None
+    bitrate_kbps: int | None = None
 
     def __post_init__(self) -> None:
         if not self.artist:
@@ -44,6 +46,8 @@ class Track:
             raise ValueError("Track title must not be empty")
         if self.retry_count < 0:
             raise ValueError("Track retry_count must not be negative")
+        if self.bitrate_kbps is not None and self.bitrate_kbps < 0:
+            raise ValueError("Track bitrate_kbps must not be negative")
 
     @property
     def cache_key(self) -> str:
@@ -79,6 +83,8 @@ class Track:
             "status": self.status.value,
             "retry_count": self.retry_count,
             "error": self.error,
+            "file_type": self.file_type,
+            "bitrate_kbps": self.bitrate_kbps,
         }
 
     @classmethod
@@ -95,6 +101,8 @@ class Track:
             status=status,
             retry_count=int(data.get("retry_count", 0)),
             error=_optional_string(data, "error"),
+            file_type=_optional_string(data, "file_type"),
+            bitrate_kbps=_optional_int(data, "bitrate_kbps"),
         )
 
 
@@ -136,6 +144,15 @@ def _optional_string(data: dict[str, Any], key: str) -> str | None:
     if value is None or isinstance(value, str):
         return value
     raise ValueError(f"Track field {key!r} must be a string or null")
+
+
+def _optional_int(data: dict[str, Any], key: str) -> int | None:
+    value = data.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"Track field {key!r} must be an integer or null")
+    return value
 
 
 def _parse_status(value: Any) -> TrackStatus:

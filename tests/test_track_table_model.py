@@ -16,13 +16,15 @@ def test_track_table_model_exposes_artist_title_and_status() -> None:
     )
 
     assert model.rowCount() == 1
-    assert model.columnCount() == 3
+    assert model.columnCount() == 4
     assert model.headerData(0, Qt.Orientation.Horizontal) == "Artist"
     assert model.headerData(1, Qt.Orientation.Horizontal) == "Title"
     assert model.headerData(2, Qt.Orientation.Horizontal) == "Status"
+    assert model.headerData(3, Qt.Orientation.Horizontal) == "File"
     assert model.data(model.index(0, 0)) == "Artist"
     assert model.data(model.index(0, 1)) == "Title"
     assert model.data(model.index(0, 2)) == "Searching"
+    assert model.data(model.index(0, 3)) == ""
 
 
 def test_track_table_model_returns_user_role_cache_key_and_edit_value() -> None:
@@ -64,6 +66,36 @@ def test_track_table_model_displays_all_known_statuses() -> None:
         model.data(model.index(row, 2))
         for row in range(model.rowCount())
     ] == list(statuses.values())
+
+
+def test_track_table_model_displays_downloaded_file_details_only() -> None:
+    downloaded = Track(
+        artist="Artist",
+        title="Title",
+        local_path="/music/Artist - Title.mp3",
+        status=TrackStatus.DOWNLOADED,
+        file_type="mp3",
+        bitrate_kbps=192,
+    )
+    extension_fallback = Track(
+        artist="Other",
+        title="Title",
+        local_path="/music/Other - Title.m4a",
+        status=TrackStatus.DOWNLOADED,
+    )
+    queued = Track(
+        artist="Queued",
+        title="Title",
+        local_path="/music/Queued - Title.webm",
+        status=TrackStatus.QUEUED,
+        file_type="WEBM",
+        bitrate_kbps=128,
+    )
+    model = TrackTableModel([downloaded, extension_fallback, queued])
+
+    assert model.data(model.index(0, 3)) == "MP3, 192 kbps"
+    assert model.data(model.index(1, 3)) == "M4A"
+    assert model.data(model.index(2, 3)) == ""
 
 
 def test_track_table_model_replaces_and_returns_tracks() -> None:
@@ -141,5 +173,5 @@ def test_track_table_model_retranslate_emits_header_and_data_changes() -> None:
 
     model.retranslate()
 
-    assert headers == [(0, 2)]
+    assert headers == [(0, 3)]
     assert [int(Qt.ItemDataRole.DisplayRole)] in data_roles

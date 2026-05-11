@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from PyQt6.QtCore import QAbstractTableModel, QCoreApplication, QModelIndex, Qt
 from PyQt6.QtGui import QFont
 
@@ -7,9 +9,9 @@ from my_lastfm_player.models import Track, TrackStatus
 
 
 class TrackTableModel(QAbstractTableModel):
-    """Qt table model exposing track artist, title, and status columns."""
+    """Qt table model exposing track metadata and download state columns."""
 
-    HEADERS = ("Artist", "Title", "Status")
+    HEADERS = ("Artist", "Title", "Status", "File")
 
     def __init__(self, tracks: list[Track] | None = None) -> None:
         super().__init__()
@@ -65,6 +67,8 @@ class TrackTableModel(QAbstractTableModel):
                     return self.tr("Title")
                 case 2:
                     return self.tr("Status")
+                case 3:
+                    return self.tr("File")
         return None
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
@@ -146,6 +150,8 @@ class TrackTableModel(QAbstractTableModel):
                         return self.tr("Not found")
                     case _:
                         return track.status.value
+            case 3:
+                return _download_file_details(track)
             case _:
                 return None
 
@@ -179,3 +185,21 @@ def example_tracks() -> list[Track]:
             status=TrackStatus.QUEUED,
         ),
     ]
+
+
+def _download_file_details(track: Track) -> str:
+    if track.status is not TrackStatus.DOWNLOADED or not track.local_path:
+        return ""
+
+    details = []
+    file_type = track.file_type or Path(track.local_path).suffix.lstrip(".")
+    if file_type:
+        details.append(file_type.upper())
+    if track.bitrate_kbps is not None:
+        details.append(
+            QCoreApplication.translate(
+                "TrackTableModel",
+                "{bitrate} kbps",
+            ).format(bitrate=track.bitrate_kbps)
+        )
+    return ", ".join(details)
