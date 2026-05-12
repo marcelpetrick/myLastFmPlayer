@@ -81,6 +81,7 @@ class ApplicationController(QObject):
         self._active_fetch_worker: FetchLovedTracksWorker | None = None
         self._fetch_paused = False
         self._started_incremental_lookup_for_fetch = False
+        self._download_worker_active = False
         self._playback_callbacks_connected = False
         self._scrobbling_service: ScrobblingService | None = None
         self._scrobble_submitted = False
@@ -380,6 +381,9 @@ class ApplicationController(QObject):
                 100,
                 translate("ApplicationController", "Loaded cached tracks"),
             )
+            tracks = self.window.tracks()
+            if tracks:
+                self._start_automatic_lookup(username, len(tracks))
             return
 
         LOGGER.info("Fetch requested for Last.fm user %s", username)
@@ -672,6 +676,7 @@ class ApplicationController(QObject):
                 username=username,
             )
         )
+        already_started_lookup = self._started_incremental_lookup_for_fetch
         self._active_fetch_worker = None
         self._fetch_paused = False
         self._started_incremental_lookup_for_fetch = False
@@ -681,7 +686,7 @@ class ApplicationController(QObject):
             f"[myLastFmPlayer] UI loaded {len(tracks)} fetched tracks for {username}",
             flush=True,
         )
-        if tracks:
+        if tracks and not already_started_lookup:
             self._start_automatic_lookup(username, len(tracks))
 
     def _handle_fetch_stopped(self, username: str, tracks: object) -> None:
@@ -806,14 +811,15 @@ class ApplicationController(QObject):
             self._pending_play_cache_key,
         ):
             self._start_priority_download(username, self._pending_play_cache_key)
-        elif self._has_download_candidates(tracks):
+        elif self._has_download_candidates(tracks) and not self._download_worker_active:
             self._start_automatic_download(username)
-        else:
+        elif not self._has_download_candidates(tracks):
             self._report_user_action(
                 translate("ApplicationController", "No queued tracks are ready for download.")
             )
 
     def _handle_tracks_downloaded(self, username: str, tracks: object) -> None:
+        self._download_worker_active = False
         if not isinstance(tracks, list):
             self.window.append_feedback(
                 translate(
@@ -849,6 +855,9 @@ class ApplicationController(QObject):
         LOGGER.info("Loaded %s downloaded tracks into UI for %s", len(tracks), username)
         if self._pending_play_cache_key:
             self._play_prepared_track(self._pending_play_cache_key)
+            return
+        if self._has_download_candidates([t for t in tracks if isinstance(t, Track)]):
+            self._start_automatic_download(username)
 
     def _handle_worker_error(self, message: str) -> None:
         LOGGER.error("Worker error: %s", message)
@@ -958,6 +967,7 @@ class ApplicationController(QObject):
             "Starting automatic download queue for resolved tracks.",
         )
         self._report_user_action(message)
+        self._download_worker_active = True
         self.download_tracks(username)
 
     def _start_priority_download(self, username: str, cache_key: str) -> None:

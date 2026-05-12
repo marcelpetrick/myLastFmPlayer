@@ -217,11 +217,14 @@ def test_controller_loads_cached_tracks_without_fetching(qapp, tmp_path) -> None
         scraper=CountCheckingScraper(1),  # type: ignore[arg-type]
         fetch_worker_factory=fail_fetch_factory,  # type: ignore[arg-type]
     )
+    workers: list[object] = []
+    controller._run_worker = workers.append  # type: ignore[method-assign]
 
     controller.fetch_loved_tracks()
 
     assert fetch_calls == []
     assert window.tracks() == [cached_track]
+    assert len(workers) == 1
     assert "Loaded 1 cached tracks for example" in window.feedback_log.toPlainText()
     assert "cached track count matches" in window.feedback_log.toPlainText()
 
@@ -284,7 +287,7 @@ def test_controller_uses_cache_when_online_count_check_fails(qapp, tmp_path) -> 
 
     controller.fetch_loved_tracks()
 
-    assert workers == []
+    assert len(workers) == 1
     assert window.tracks() == [cached_track]
     assert "using 1 cached tracks" in window.feedback_log.toPlainText()
 
