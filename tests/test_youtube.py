@@ -183,6 +183,35 @@ def test_resolve_tracks_reports_no_result_progress() -> None:
     ]
 
 
+def test_resolve_tracks_marks_not_found_on_per_track_lookup_error() -> None:
+    call_count = 0
+
+    def runner_that_fails_once(command, **_kwargs) -> subprocess.CompletedProcess[str]:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return subprocess.CompletedProcess(
+                args=command, returncode=1, stdout="", stderr="Sign in to confirm your age"
+            )
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=ok"}),
+            stderr="",
+        )
+
+    resolver = YouTubeResolver(command_runner=runner_that_fails_once)
+    first = Track(artist="Age", title="Restricted")
+    second = Track(artist="Fine", title="Track")
+
+    tracks = resolver.resolve_tracks([first, second])
+
+    assert tracks[0].status == TrackStatus.NOT_FOUND
+    assert tracks[0].error is not None
+    assert tracks[1].status == TrackStatus.QUEUED
+    assert tracks[1].youtube_url == "https://youtube.example/watch?v=ok"
+
+
 def test_resolve_tracks_skips_tracks_that_already_have_youtube_urls() -> None:
     runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=new"}))
     resolver = YouTubeResolver(command_runner=runner)

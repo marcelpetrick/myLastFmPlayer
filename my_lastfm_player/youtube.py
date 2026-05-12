@@ -94,7 +94,15 @@ class YouTubeResolver:
             )
             searching_track = replace(track, status=TrackStatus.SEARCHING)
             _report_track_update(track_update_callback, searching_track)
-            resolved_track = self.resolve_track(searching_track)
+            try:
+                resolved_track = self.resolve_track(searching_track)
+            except YouTubeLookupError as exc:
+                resolved_track = replace(
+                    searching_track,
+                    youtube_url=None,
+                    status=TrackStatus.NOT_FOUND,
+                    error=str(exc),
+                )
             _report_track_update(track_update_callback, resolved_track)
             resolved_tracks.append(resolved_track)
             _report(
