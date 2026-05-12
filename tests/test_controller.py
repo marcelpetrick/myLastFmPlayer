@@ -451,6 +451,29 @@ def test_controller_starts_download_after_successful_lookup(qapp) -> None:
     assert calls == ["example"]
 
 
+def test_controller_stop_downloads_pauses_manager_and_clears_ui(qapp) -> None:
+    window = MainWindow()
+    paused: list[bool] = []
+
+    class FakeManager:
+        def pause(self) -> None:
+            paused.append(True)
+
+        def resume(self) -> None:
+            pass
+
+    controller = ApplicationController(window, download_manager=FakeManager())  # type: ignore[arg-type]
+    window.set_download_active(True)
+    controller._download_worker_active = True
+
+    controller.stop_downloads()
+
+    assert paused == [True]
+    assert not controller._download_worker_active
+    assert controller._download_stop_requested
+    assert window.download_toggle_button.text() == "Start Downloads"
+
+
 def test_controller_starts_priority_download_after_lookup_for_pending_play(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)

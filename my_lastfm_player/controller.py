@@ -82,6 +82,7 @@ class ApplicationController(QObject):
         self._fetch_paused = False
         self._started_incremental_lookup_for_fetch = False
         self._download_worker_active = False
+        self._download_stop_requested = False
         self._playback_callbacks_connected = False
         self._scrobbling_service: ScrobblingService | None = None
         self._scrobble_submitted = False
@@ -109,6 +110,7 @@ class ApplicationController(QObject):
         self.window.fetch_pause_requested.connect(self.toggle_fetch_pause)
         self.window.fetch_stop_requested.connect(self.stop_fetch)
         self.window.download_requested.connect(self.download_tracks)
+        self.window.download_stop_requested.connect(self.stop_downloads)
         self.window.play_requested.connect(self.play_selected_track)
         self.window.pause_requested.connect(self.pause_playback)
         self.window.stop_requested.connect(self.stop_playback)
@@ -527,6 +529,7 @@ class ApplicationController(QObject):
                 ),
             )
         )
+        self.download_manager.resume()
         self.window.set_progress(0, translate("ApplicationController", "Starting downloads"))
         worker = self.download_worker_factory(
             username,
@@ -537,6 +540,10 @@ class ApplicationController(QObject):
             max_downloads,
         )
         self._run_worker(worker)
+        if priority_cache_key is None:
+            self._download_worker_active = True
+            self._download_stop_requested = False
+            self.window.set_download_active(True)
 
     def play_selected_track(self) -> None:
         """Play the selected track or prepare it for playback when needed."""
@@ -819,7 +826,11 @@ class ApplicationController(QObject):
             )
 
     def _handle_tracks_downloaded(self, username: str, tracks: object) -> None:
+        was_bulk = self._download_worker_active
+        stop_was_requested = self._download_stop_requested
         self._download_worker_active = False
+        self._download_stop_requested = False
+        self.window.set_download_active(False)
         if not isinstance(tracks, list):
             self.window.append_feedback(
                 translate(
@@ -856,7 +867,11 @@ class ApplicationController(QObject):
         if self._pending_play_cache_key:
             self._play_prepared_track(self._pending_play_cache_key)
             return
-        if self._has_download_candidates([t for t in tracks if isinstance(t, Track)]):
+        if (
+            was_bulk
+            and not stop_was_requested
+            and self._has_download_candidates([t for t in tracks if isinstance(t, Track)])
+        ):
             self._start_automatic_download(username)
 
     def _handle_worker_error(self, message: str) -> None:
@@ -961,13 +976,23 @@ class ApplicationController(QObject):
         self._report_user_action(message)
         self.resolve_youtube_urls(username)
 
+    def stop_downloads(self) -> None:
+        """Pause the download manager and clear the active-download UI state."""
+
+        self._download_worker_active = False
+        self._download_stop_requested = True
+        self.download_manager.pause()
+        self.window.set_download_active(False)
+        self._report_user_action(
+            translate("ApplicationController", "Downloads stopped by user.")
+        )
+
     def _start_automatic_download(self, username: str) -> None:
         message = translate(
             "ApplicationController",
             "Starting automatic download queue for resolved tracks.",
         )
         self._report_user_action(message)
-        self._download_worker_active = True
         self.download_tracks(username)
 
     def _start_priority_download(self, username: str, cache_key: str) -> None:

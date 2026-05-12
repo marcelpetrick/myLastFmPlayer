@@ -42,6 +42,7 @@ class MainWindow(QMainWindow):
     fetch_pause_requested = pyqtSignal()
     fetch_stop_requested = pyqtSignal()
     download_requested = pyqtSignal()
+    download_stop_requested = pyqtSignal()
     play_requested = pyqtSignal()
     pause_requested = pyqtSignal()
     stop_requested = pyqtSignal()
@@ -55,6 +56,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.translation_manager = translation_manager
         self._fetch_paused = False
+        self._download_active = False
         self._last_progress_label = "Idle"
         self._last_status_message = "Ready"
         self._playback_duration_ms = 0
@@ -334,11 +336,27 @@ class MainWindow(QMainWindow):
             self.fetch_pause_button.setToolTip(self.tr("Pause the active Last.fm fetch"))
         self.fetch_stop_button.setToolTip(self.tr("Stop the active Last.fm fetch"))
 
+    def set_download_active(self, active: bool) -> None:
+        """Switch the download button between Start and Stop state."""
+
+        if self._download_active == active:
+            return
+        self._download_active = active
+        self.download_toggle_button.clicked.disconnect()
+        if active:
+            self.download_toggle_button.setText(self.tr("Stop Downloads"))
+            self.download_toggle_button.clicked.connect(self.download_stop_requested.emit)
+            self.download_toggle_button.setEnabled(True)
+        else:
+            self.download_toggle_button.setText(self.tr("Start Downloads"))
+            self.download_toggle_button.clicked.connect(self.download_requested.emit)
+
     def set_workflow_enabled(self, enabled: bool) -> None:
         """Enable or disable controls that start long-running workflows."""
 
         self.set_fetch_enabled(enabled)
-        self.download_toggle_button.setEnabled(enabled)
+        if not self._download_active:
+            self.download_toggle_button.setEnabled(enabled)
         self.concurrency_input.setEnabled(enabled)
 
     def set_dependency_status(self, is_ok: bool, message: str) -> None:
@@ -557,7 +575,9 @@ class MainWindow(QMainWindow):
         self.stop_button.setText(self.tr("Stop"))
         self.playback_slider.setToolTip(self.tr("Playback position"))
         self.downloads_group.setTitle(self.tr("Downloads"))
-        self.download_toggle_button.setText(self.tr("Download Queued"))
+        self.download_toggle_button.setText(
+            self.tr("Stop Downloads") if self._download_active else self.tr("Start Downloads")
+        )
         self.concurrency_label.setText(self.tr("Concurrency"))
         self.clear_feedback_button.setText(self.tr("Clear log"))
         self.clear_feedback_button.setToolTip(self.tr("Clear status updates and errors"))
