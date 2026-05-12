@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6.QtCore import QEvent, QSortFilterProxyModel, Qt, QTime, pyqtSignal
+from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup, QMouseEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -43,6 +43,7 @@ class MainWindow(QMainWindow):
     fetch_stop_requested = pyqtSignal()
     download_requested = pyqtSignal()
     download_stop_requested = pyqtSignal()
+    retry_download_requested = pyqtSignal(str)
     play_requested = pyqtSignal()
     pause_requested = pyqtSignal()
     stop_requested = pyqtSignal()
@@ -200,6 +201,8 @@ class MainWindow(QMainWindow):
         self.track_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.track_table.setSortingEnabled(True)
         self.track_table.doubleClicked.connect(lambda _index: self.play_requested.emit())
+        self.track_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.track_table.customContextMenuRequested.connect(self._show_track_context_menu)
         self.track_table.verticalHeader().setVisible(False)
         header = self.track_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -207,6 +210,20 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         return self.track_table
+
+    def _show_track_context_menu(self, pos: QPoint) -> None:
+        index = self.track_table.indexAt(pos)
+        if not index.isValid():
+            return
+        source_index = self.track_sort_model.mapToSource(index)
+        cache_key = self.track_model.data(source_index, Qt.ItemDataRole.UserRole)
+        if not isinstance(cache_key, str):
+            return
+        menu = QMenu(self)
+        retry_action = QAction(self.tr("Retry Download"), menu)
+        menu.addAction(retry_action)
+        if menu.exec(self.track_table.viewport().mapToGlobal(pos)) == retry_action:
+            self.retry_download_requested.emit(cache_key)
 
     def _build_controls_panel(self) -> QWidget:
         panel = QWidget()

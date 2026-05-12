@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QThread, QUrl
@@ -78,6 +79,7 @@ class ApplicationController(QObject):
         self._active_workers: list[WorkflowWorker] = []
         self._running_worker_count = 0
         self._pending_play_cache_key: str | None = None
+        self._pending_retry_cache_key: str | None = None
         self._active_fetch_worker: FetchLovedTracksWorker | None = None
         self._fetch_paused = False
         self._started_incremental_lookup_for_fetch = False
@@ -111,6 +113,7 @@ class ApplicationController(QObject):
         self.window.fetch_stop_requested.connect(self.stop_fetch)
         self.window.download_requested.connect(self.download_tracks)
         self.window.download_stop_requested.connect(self.stop_downloads)
+        self.window.retry_download_requested.connect(self.retry_track_download)
         self.window.play_requested.connect(self.play_selected_track)
         self.window.pause_requested.connect(self.pause_playback)
         self.window.stop_requested.connect(self.stop_playback)
@@ -818,6 +821,11 @@ class ApplicationController(QObject):
             self._pending_play_cache_key,
         ):
             self._start_priority_download(username, self._pending_play_cache_key)
+        elif self._pending_retry_cache_key and self._track_has_youtube_url(
+            tracks,
+            self._pending_retry_cache_key,
+        ):
+            self._start_priority_download(username, self._pending_retry_cache_key)
         elif self._has_download_candidates(tracks) and not self._download_worker_active:
             self._start_automatic_download(username)
         elif not self._has_download_candidates(tracks):
@@ -866,6 +874,9 @@ class ApplicationController(QObject):
         LOGGER.info("Loaded %s downloaded tracks into UI for %s", len(tracks), username)
         if self._pending_play_cache_key:
             self._play_prepared_track(self._pending_play_cache_key)
+            return
+        if self._pending_retry_cache_key:
+            self._pending_retry_cache_key = None
             return
         if (
             was_bulk
@@ -986,6 +997,42 @@ class ApplicationController(QObject):
         self._report_user_action(
             translate("ApplicationController", "Downloads stopped by user.")
         )
+
+    def retry_track_download(self, cache_key: str) -> None:
+        """Reset a track's state and trigger priority lookup + download for it."""
+
+        username = self.window.username()
+        if not username:
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Enter a Last.fm username before retrying a download.",
+                )
+            )
+            return
+        tracks = self.repository.load_tracks(username)
+        track = next((t for t in tracks if t.cache_key == cache_key), None)
+        if track is None:
+            return
+        if track.status in {TrackStatus.NOT_FOUND, TrackStatus.FAILED}:
+            reset_track = replace(track, status=TrackStatus.FETCHED, youtube_url=None, error=None)
+            updated = [reset_track if t.cache_key == cache_key else t for t in tracks]
+            self.repository.save_tracks(username, updated)
+            self.window.set_tracks(updated)
+            track = reset_track
+        self._pending_retry_cache_key = cache_key
+        self._report_user_action(
+            translate(
+                "ApplicationController",
+                "Retrying download for {artist} - {title}.",
+                artist=track.artist,
+                title=track.title,
+            )
+        )
+        if track.youtube_url:
+            self._start_priority_download(username, cache_key)
+        else:
+            self.resolve_youtube_urls(username, priority_cache_key=cache_key, max_tracks=1)
 
     def _start_automatic_download(self, username: str) -> None:
         message = translate(
