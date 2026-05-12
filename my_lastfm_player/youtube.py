@@ -28,9 +28,11 @@ class YouTubeResolver:
         self,
         command_runner: CommandRunner = subprocess.run,
         executable: str = "yt-dlp",
+        cookies_browser: str = "",
     ) -> None:
         self.command_runner = command_runner
         self.executable = executable
+        self.cookies_browser = cookies_browser
 
     def build_query(self, track: Track) -> str:
         """Return the search query used for ``track``."""
@@ -142,12 +144,10 @@ class YouTubeResolver:
     def search_first_result(self, query: str) -> str | None:
         """Return the first YouTube URL for ``query`` or ``None`` when no result exists."""
 
-        command = [
-            self.executable,
-            "--dump-single-json",
-            "--no-playlist",
-            f"{YTDLP_SEARCH_PREFIX}{query}",
-        ]
+        command = [self.executable, "--dump-single-json", "--no-playlist"]
+        if self.cookies_browser:
+            command += ["--cookies-from-browser", self.cookies_browser]
+        command.append(f"{YTDLP_SEARCH_PREFIX}{query}")
         completed = self._run(command)
         if completed.returncode != 0:
             if _looks_like_no_result(completed.stderr):

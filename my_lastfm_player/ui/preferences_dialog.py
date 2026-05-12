@@ -6,6 +6,7 @@ import webbrowser
 
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QGroupBox,
@@ -17,6 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 from my_lastfm_player.scrobbling import ScrobblingService
+from my_lastfm_player.settings import YTDLP_BROWSER_CHOICES, AppSettings
 
 
 class PreferencesDialog(QDialog):
@@ -63,6 +65,22 @@ class PreferencesDialog(QDialog):
         scrobbling_layout.addWidget(self.scrobbling_hint)
         layout.addWidget(self.scrobbling_group)
 
+        # ── YouTube group ───────────────────────────────────────────────
+        self.youtube_group = QGroupBox(self)
+        youtube_layout = QVBoxLayout(self.youtube_group)
+        browser_row = QHBoxLayout()
+        self.browser_label = QLabel(self)
+        self.browser_combo = QComboBox(self)
+        self._browser_values = YTDLP_BROWSER_CHOICES
+        browser_row.addWidget(self.browser_label)
+        browser_row.addWidget(self.browser_combo)
+        browser_row.addStretch()
+        self.youtube_hint = QLabel(self)
+        self.youtube_hint.setWordWrap(True)
+        youtube_layout.addLayout(browser_row)
+        youtube_layout.addWidget(self.youtube_hint)
+        layout.addWidget(self.youtube_group)
+
         # ── Close button ────────────────────────────────────────────────
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, self)
         buttons.rejected.connect(self.reject)
@@ -73,6 +91,19 @@ class PreferencesDialog(QDialog):
         self.authorize_button.clicked.connect(self._on_authorize)
         self.disconnect_button.clicked.connect(self._on_disconnect)
         self.scrobbling_checkbox.stateChanged.connect(self._on_scrobbling_toggled)
+        self.browser_combo.currentIndexChanged.connect(self._on_browser_changed)
+
+        # Populate and restore browser selection
+        settings = AppSettings()
+        current_browser = settings.ytdlp_cookies_browser()
+        for value in self._browser_values:
+            self.browser_combo.addItem(value or self.tr("None (disabled)"), value)
+        saved_index = (
+            self._browser_values.index(current_browser)
+            if current_browser in self._browser_values
+            else 0
+        )
+        self.browser_combo.setCurrentIndex(saved_index)
 
     def retranslate_ui(self) -> None:
         """Apply current translations to all static labels."""
@@ -87,6 +118,16 @@ class PreferencesDialog(QDialog):
         self.scrobbling_hint.setText(
             self.tr("Submits to Last.fm after 33% of each track has been played.")
         )
+        self.youtube_group.setTitle(self.tr("YouTube Downloads"))
+        self.browser_label.setText(self.tr("Browser cookies:"))
+        self.youtube_hint.setText(
+            self.tr(
+                "Select the browser whose YouTube login cookies yt-dlp should use. "
+                "Required for age-restricted videos. You must be signed into YouTube "
+                "in the selected browser."
+            )
+        )
+        self.browser_combo.setItemText(0, self.tr("None (disabled)"))
 
     def _refresh(self) -> None:
         if self._service is None or not self._service.has_api_credentials:
@@ -164,3 +205,7 @@ class PreferencesDialog(QDialog):
         if self._service is None:
             return
         self._service.scrobbling_enabled = bool(state)
+
+    def _on_browser_changed(self, index: int) -> None:
+        browser = self._browser_values[index] if 0 <= index < len(self._browser_values) else ""
+        AppSettings().set_ytdlp_cookies_browser(browser)

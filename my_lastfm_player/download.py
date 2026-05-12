@@ -42,9 +42,11 @@ class DownloadManager:
         max_retries: int = MAX_RETRIES,
         backoff_factory: BackoffFactory | None = None,
         sleeper: Sleeper = time.sleep,
+        cookies_browser: str = "",
     ) -> None:
         self.command_runner = command_runner
         self.executable = executable
+        self.cookies_browser = cookies_browser
         self.max_retries = max_retries
         self.backoff_factory = backoff_factory or (
             lambda: random.uniform(*BACKOFF_RANGE_SECONDS)
@@ -196,15 +198,10 @@ class DownloadManager:
             raise DownloadError("Track has no YouTube URL")
 
         output_template = str(downloads_dir / f"{track.audio_base_name}.%(ext)s")
-        command = [
-            self.executable,
-            "-f",
-            "bestaudio",
-            "--no-playlist",
-            "--output",
-            output_template,
-            track.youtube_url,
-        ]
+        command = [self.executable, "-f", "bestaudio", "--no-playlist"]
+        if self.cookies_browser:
+            command += ["--cookies-from-browser", self.cookies_browser]
+        command += ["--output", output_template, track.youtube_url]
         completed = self._run(command)
         if completed.returncode != 0:
             raise DownloadError(completed.stderr.strip() or "yt-dlp download failed")

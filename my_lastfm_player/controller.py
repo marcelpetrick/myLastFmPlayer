@@ -122,6 +122,7 @@ class ApplicationController(QObject):
         self.window.preferences_requested.connect(self._show_preferences)
         self.window.file_cache_requested.connect(self.open_file_cache)
         self._init_scrobbling()
+        self._apply_ytdlp_settings()
         self.check_dependencies()
 
     def _report_user_action(self, message: str) -> None:
@@ -346,6 +347,14 @@ class ApplicationController(QObject):
         dialog = PreferencesDialog(self.window, self._scrobbling_service)
         dialog.exec()
         self._save_scrobbling_credentials()
+        self._apply_ytdlp_settings()
+
+    def _apply_ytdlp_settings(self) -> None:
+        from my_lastfm_player.settings import AppSettings  # noqa: PLC0415
+
+        browser = AppSettings().ytdlp_cookies_browser()
+        self.youtube_resolver.cookies_browser = browser
+        self.download_manager.cookies_browser = browser
 
     def _save_scrobbling_credentials(self) -> None:
         if self._scrobbling_service is None:

@@ -9,7 +9,7 @@
   3. In the left sidebar, click Manual Release
   4. Click Run workflow
   5. Fill the fields:
-      - version: 0.0.67
+      - version: 0.0.68
       - publish_release: checked / true
       - draft: checked / true
       - prerelease: unchecked / false
@@ -81,7 +81,7 @@ needed by the current pipeline:
 `Manual Release` is triggered only by a human from the GitHub Actions tab. It has
 four inputs:
 
-- `version`: required version without the leading `v`, for example `0.0.67`.
+- `version`: required version without the leading `v`, for example `0.0.68`.
   This must match `my_lastfm_player/version.py`.
 - `publish_release`: safety flag. `false` builds and uploads artifacts only.
   `true` also creates the `v<version>` tag and GitHub Release.
@@ -103,7 +103,7 @@ the tag and GitHub Release.
 3. Push the branch and merge it to the default branch after review.
 4. Confirm `Local Pipeline` passes on the default branch.
 5. Open GitHub, go to **Actions** > **Manual Release** > **Run workflow**.
-6. Enter the exact version, for example `0.0.67`.
+6. Enter the exact version, for example `0.0.68`.
 7. First run with `publish_release=false` if you want a dry-run package build.
 8. Run again with `publish_release=true` when ready.
 9. Leave `draft=true` for normal releases, inspect the generated draft release,
@@ -117,7 +117,7 @@ as a draft for final review.
 
 - The workflow file must be present on the default branch before the manual
   **Run workflow** button appears.
-- The release tag is `v<version>`, for example `v0.0.67`.
+- The release tag is `v<version>`, for example `v0.0.68`.
 - If the requested version does not match package metadata, the release build
   fails before packaging.
 - If `publish_release=true` and the tag already exists, the release build fails
