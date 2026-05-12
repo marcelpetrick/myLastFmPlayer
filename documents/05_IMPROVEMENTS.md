@@ -12,14 +12,13 @@ but they should be revisited before the MVP is considered finished.
 - 21. Bug: after seeking first, pressing Play does not start playback at the selected position.
 - fixed: bug 22: problem with download; age verification. Preferences › YouTube Downloads › Browser cookies lets the user select the browser whose YouTube session cookies yt-dlp uses, enabling age-restricted video access.
 - fixed: feature 23: the button "download queued" has to be rename: "start downloads"; when downloading the text switches to "stop downloads". getting tracks which are not locally availalble trigger the download. unless user presses the button for stop. end when everything is downloaded. skip over non available songs.
+- change request 24: track titles which are longer than the space inside one cell of th table shal be truncated (at the end). not wrapped onto a two line cell which in the end has a double height
+- improvement 25: the URl-resolving of the tracks and the download can happen in parallel - not just resolve all of them first and THEN download. no. afte th first is resolved, start a download
+
 
 ## UI Design
 
 - 8. Consider switching from the widget-based UI to QML. Reassess whether this still has benefits after the theme work. #lowprio
-
-## Packaging and Versioning
-
-- The documented rule says every future commit should increase the patch number. This is easy to forget manually; a small pre-commit or release helper could enforce it.
 
 ## Pipeline
 
