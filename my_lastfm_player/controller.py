@@ -802,6 +802,8 @@ class ApplicationController(QObject):
                 status=track.status.value,
             )
         )
+        if track.status is TrackStatus.QUEUED and track.youtube_url:
+            self._handle_track_ready_for_download(username, track)
 
     def _handle_tracks_resolved(self, username: str, tracks: object) -> None:
         if not isinstance(tracks, list):
@@ -1073,12 +1075,27 @@ class ApplicationController(QObject):
             max_downloads=1,
         )
 
+    def _handle_track_ready_for_download(self, username: str, track: Track) -> None:
+        merged_tracks = self.repository.merge_tracks(username, [track])
+        self.repository.save_lookup_cache(merged_tracks)
+        if self._pending_play_cache_key == track.cache_key:
+            self._start_priority_download(username, track.cache_key)
+            return
+        if self._pending_retry_cache_key == track.cache_key:
+            self._start_priority_download(username, track.cache_key)
+            return
+        if not self._download_worker_active and not self._has_active_download_worker():
+            self._start_automatic_download(username)
+
     def _has_download_candidates(self, tracks: list[Track]) -> bool:
         return any(
             bool(track.youtube_url)
             and track.status not in {TrackStatus.DOWNLOADED, TrackStatus.NOT_FOUND}
             for track in tracks
         )
+
+    def _has_active_download_worker(self) -> bool:
+        return any(isinstance(worker, DownloadTracksWorker) for worker in self._active_workers)
 
     def _track_has_youtube_url(self, tracks: list[Track], cache_key: str) -> bool:
         return any(track.cache_key == cache_key and bool(track.youtube_url) for track in tracks)

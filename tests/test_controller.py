@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from PyQt6.QtCore import Qt
 
 from my_lastfm_player import controller as controller_module
@@ -445,6 +447,48 @@ def test_controller_updates_single_track_during_lookup_or_download(qapp) -> None
     )
 
     assert window.track_model.track_at(0).status == TrackStatus.SEARCHING
+
+
+def test_controller_starts_download_from_first_resolved_track_update(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(artist="Artist", title="Title")
+    repository.save_tracks("user", [track])
+    window.set_tracks([track])
+    controller = ApplicationController(window, repository=repository)
+    auto_calls: list[str] = []
+    controller._start_automatic_download = lambda username: auto_calls.append(username)  # type: ignore[method-assign]
+    resolved = track.with_status(TrackStatus.QUEUED)
+    resolved = replace(resolved, youtube_url="https://youtu.be/example")
+
+    controller._handle_track_updated("user", resolved)
+
+    assert auto_calls == ["user"]
+    assert repository.load_tracks("user")[0].youtube_url == "https://youtu.be/example"
+    assert repository.load_lookup_cache()[track.cache_key].youtube_url == "https://youtu.be/example"
+
+
+def test_controller_does_not_start_parallel_bulk_download_when_worker_active(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/example",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_tracks("user", [track])
+    controller = ApplicationController(window, repository=repository)
+    controller._download_worker_active = True
+    auto_calls: list[str] = []
+    controller._start_automatic_download = lambda username: auto_calls.append(username)  # type: ignore[method-assign]
+
+    controller._handle_track_updated("user", track)
+
+    assert auto_calls == []
 
 
 def test_controller_starts_download_after_successful_lookup(qapp) -> None:

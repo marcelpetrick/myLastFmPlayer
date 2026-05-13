@@ -5,6 +5,7 @@ import os
 import tempfile
 from dataclasses import replace
 from pathlib import Path
+from threading import RLock
 from typing import Any
 
 from my_lastfm_player.models import Track, TrackStatus
@@ -31,6 +32,7 @@ class JsonTrackRepository:
         self.cache_path = self.data_dir / CACHE_FILENAME
         self.lookup_cache_path = self.data_dir / LOOKUP_CACHE_FILENAME
         self.credentials_path = self.data_dir / CREDENTIALS_FILENAME
+        self._lock = RLock()
 
     def load_tracks(self, username: str) -> list[Track]:
         """Load all stored tracks for ``username``."""
@@ -49,14 +51,16 @@ class JsonTrackRepository:
         """Atomically save ``tracks`` for ``username``."""
 
         path = self.user_tracks_path(username)
-        _atomic_write_json(path, [track.to_dict() for track in tracks])
+        with self._lock:
+            _atomic_write_json(path, [track.to_dict() for track in tracks])
 
     def merge_tracks(self, username: str, updates: list[Track]) -> list[Track]:
         """Merge ``updates`` into the stored tracks for ``username`` and save them."""
 
-        merged_tracks = merge_track_updates(self.load_tracks(username), updates)
-        self.save_tracks(username, merged_tracks)
-        return merged_tracks
+        with self._lock:
+            merged_tracks = merge_track_updates(self.load_tracks(username), updates)
+            self.save_tracks(username, merged_tracks)
+            return merged_tracks
 
     def delete_tracks(self, username: str) -> None:
         """Delete the stored track list for ``username`` if it exists."""
@@ -114,10 +118,11 @@ class JsonTrackRepository:
         ]
         deduplicated = {track.cache_key: track for track in cached_tracks}
         sorted_tracks = sorted(deduplicated.values(), key=lambda item: item.cache_key)
-        _atomic_write_json(
-            self.cache_path,
-            [track.to_dict() for track in sorted_tracks],
-        )
+        with self._lock:
+            _atomic_write_json(
+                self.cache_path,
+                [track.to_dict() for track in sorted_tracks],
+            )
 
     def mark_cached_downloads(self, tracks: list[Track]) -> list[Track]:
         """Return ``tracks`` with cached local download paths restored."""
@@ -160,18 +165,19 @@ class JsonTrackRepository:
     def save_lookup_cache(self, tracks: list[Track]) -> None:
         """Persist tracks with resolved or known-missing YouTube lookup state."""
 
-        existing_cache = self.load_lookup_cache()
-        lookup_tracks = [
-            track
-            for track in tracks
-            if track.youtube_url or track.status is TrackStatus.NOT_FOUND
-        ]
-        merged_cache = {**existing_cache, **{track.cache_key: track for track in lookup_tracks}}
-        sorted_tracks = sorted(merged_cache.values(), key=lambda item: item.cache_key)
-        _atomic_write_json(
-            self.lookup_cache_path,
-            [track.to_dict() for track in sorted_tracks],
-        )
+        with self._lock:
+            existing_cache = self.load_lookup_cache()
+            lookup_tracks = [
+                track
+                for track in tracks
+                if track.youtube_url or track.status is TrackStatus.NOT_FOUND
+            ]
+            merged_cache = {**existing_cache, **{track.cache_key: track for track in lookup_tracks}}
+            sorted_tracks = sorted(merged_cache.values(), key=lambda item: item.cache_key)
+            _atomic_write_json(
+                self.lookup_cache_path,
+                [track.to_dict() for track in sorted_tracks],
+            )
 
     def mark_cached_lookups(self, tracks: list[Track]) -> list[Track]:
         """Return ``tracks`` with cached YouTube lookup results restored."""

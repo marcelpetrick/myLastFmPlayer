@@ -12,8 +12,8 @@ but they should be revisited before the MVP is considered finished.
 - 21. Bug: after seeking first, pressing Play does not start playback at the selected position.
 - fixed: bug 22: problem with download; age verification. Preferences › YouTube Downloads › Browser cookies lets the user select the browser whose YouTube session cookies yt-dlp uses, enabling age-restricted video access.
 - fixed: feature 23: the button "download queued" has to be rename: "start downloads"; when downloading the text switches to "stop downloads". getting tracks which are not locally availalble trigger the download. unless user presses the button for stop. end when everything is downloaded. skip over non available songs.
-- change request 24: Track titles that are longer than the available cell width shall be truncated with an ellipsis, not wrapped into a taller two-line cell.
-- improvement 25: URL resolving and downloading can run in parallel — as soon as the first track is resolved, start its download without waiting for all resolutions to finish.
+- fixed: change request 24: Track titles that are longer than the available cell width shall be truncated with an ellipsis, not wrapped into a taller two-line cell.
+- fixed: improvement 25: URL resolving and downloading can run in parallel — as soon as the first track is resolved, start its download without waiting for all resolutions to finish.
 - fixed: feature 26: Show the currently playing track (artist and title) above the playback duration controls. When the track list is long the playing row may scroll out of view; this label keeps that information always visible.
 - fixed: change 27: Move the download-thread-count setting to Preferences. Default to 2, maximum 10, minimum 1. The user can change it at any time; each time new work is picked up, check and spawn additional workers if the limit allows.
 - fixed: change 28: Rename the cached-songs menu action to "Open data folder in file manager" and point it at the full application data directory (credentials, track lists, and both caches).
