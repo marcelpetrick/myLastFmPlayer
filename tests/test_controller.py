@@ -1287,3 +1287,480 @@ def test_controller_forgets_threads_and_workers(qapp) -> None:
     assert controller._active_workers == []
     assert controller._active_fetch_worker is None
     assert not controller._fetch_paused
+
+
+def test_controller_forget_thread_and_worker_when_not_registered(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    unregistered_thread = object()
+    unregistered_worker = GenericWorker()
+
+    controller._forget_thread(unregistered_thread)  # type: ignore[arg-type]
+    controller._forget_worker(unregistered_worker)  # type: ignore[arg-type]
+
+    assert controller._active_threads == []
+    assert controller._active_workers == []
+
+
+def test_controller_handle_quit_wipes_when_keep_data_is_false(qapp, tmp_path, monkeypatch) -> None:
+    from my_lastfm_player import settings as settings_module
+
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_credentials({"key": "val"})
+    controller = ApplicationController(window, repository=repository)
+
+    monkeypatch.setattr(settings_module.AppSettings, "keep_data_on_quit", lambda self: False)
+    controller._handle_quit()
+
+    assert not repository.credentials_path.exists()
+
+
+def test_controller_handle_quit_skips_wipe_when_keep_data_is_true(
+    qapp, tmp_path, monkeypatch
+) -> None:
+    from my_lastfm_player import settings as settings_module
+
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_credentials({"key": "val"})
+    controller = ApplicationController(window, repository=repository)
+
+    monkeypatch.setattr(settings_module.AppSettings, "keep_data_on_quit", lambda self: True)
+    controller._handle_quit()
+
+    assert repository.credentials_path.exists()
+
+
+def test_controller_load_cached_tracks_returns_false_for_empty_username(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+
+    result = controller.load_cached_tracks_for_entered_username()
+
+    assert result is False
+
+
+def test_controller_load_cached_tracks_reports_when_no_cached_tracks_and_verify(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
+
+    result = controller.load_cached_tracks_for_entered_username(verify_online_count=True)
+
+    assert result is False
+    assert "No cached tracks found for user" in window.feedback_log.toPlainText()
+
+
+def test_controller_load_cached_tracks_reports_count_when_verify_and_tracks_present(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks("user", [Track(artist="A", title="T")])
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        scraper=CountCheckingScraper(1),  # type: ignore[arg-type]
+    )
+
+    result = controller.load_cached_tracks_for_entered_username(verify_online_count=True)
+
+    assert result is True
+    assert "Found 1 cached tracks for user" in window.feedback_log.toPlainText()
+
+
+def test_controller_open_file_cache_reports_mkdir_failure(qapp, tmp_path, monkeypatch) -> None:
+    from pathlib import Path
+
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path / "data")
+    controller = ApplicationController(window, repository=repository)
+
+    def _fail_mkdir(*_a, **_kw) -> None:
+        raise OSError("denied")
+
+    monkeypatch.setattr(Path, "mkdir", _fail_mkdir)
+    controller.open_file_cache()
+
+    assert "Could not open data folder:" in window.feedback_log.toPlainText()
+
+
+def test_controller_init_scrobbling_reports_session_key_not_verified(
+    qapp, tmp_path, monkeypatch
+) -> None:
+    from my_lastfm_player import controller as controller_module
+    from my_lastfm_player.scrobbling import ScrobblingService
+
+    class FailNetwork:
+        def get_authenticated_user(self):
+            raise RuntimeError("auth failed")
+
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_credentials({"session_key": "stale"})
+
+    monkeypatch.setattr(
+        controller_module,
+        "ScrobblingService",
+        lambda **kw: ScrobblingService(
+            **{**kw, "network_factory": lambda **_: FailNetwork()}
+        ),
+    )
+    controller = ApplicationController(window, repository=repository)
+    controller._init_scrobbling()
+
+    assert "could not be verified" in window.feedback_log.toPlainText()
+
+
+def test_controller_save_scrobbling_credentials_without_service(qapp, tmp_path) -> None:
+    window = MainWindow()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+    )
+    controller._scrobbling_service = None
+
+    controller._save_scrobbling_credentials()
+
+    assert "no Last.fm scrobbling service is active" in window.feedback_log.toPlainText()
+
+
+def test_controller_show_preferences_opens_dialog_and_saves(qapp, tmp_path, monkeypatch) -> None:
+    import my_lastfm_player.ui.preferences_dialog as prefs_module
+
+    exec_calls: list[int] = []
+
+    class FakeDialog:
+        def __init__(self, *_args, **_kwargs) -> None:
+            pass
+
+        def exec(self) -> None:
+            exec_calls.append(1)
+
+    monkeypatch.setattr(prefs_module, "PreferencesDialog", FakeDialog)
+
+    window = MainWindow()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+    )
+    controller._show_preferences()
+
+    assert exec_calls == [1]
+    assert "Opening preferences." in window.feedback_log.toPlainText()
+
+
+def test_controller_download_tracks_sets_active_flag_for_non_priority_run(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
+    controller._run_worker = lambda _w: None  # type: ignore[method-assign]
+
+    controller.download_tracks()
+
+    assert controller._download_worker_active
+    assert not controller._download_stop_requested
+
+
+def test_controller_pause_playback_reports_resume_failure(qapp) -> None:
+    from my_lastfm_player.playback import PlaybackError
+
+    window = MainWindow()
+    playback = FakePlaybackService()
+    playback._paused = True
+
+    def fail_resume() -> None:
+        raise PlaybackError("resume failed")
+
+    playback.resume = fail_resume  # type: ignore[method-assign]
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+
+    controller.pause_playback()
+
+    assert "resume failed" in window.feedback_log.toPlainText()
+
+
+def test_controller_handle_tracks_loaded_skips_lookup_when_already_started(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    controller._started_incremental_lookup_for_fetch = True
+    lookup_calls: list[int] = []
+    controller._start_automatic_lookup = lambda _username, _count: lookup_calls.append(1)  # type: ignore[method-assign]
+
+    controller._handle_tracks_loaded("user", [Track(artist="A", title="T")])
+
+    assert lookup_calls == []
+    assert window.track_model.rowCount() == 1
+
+
+def test_controller_handle_tracks_resolved_starts_priority_download_for_pending_retry(
+    qapp,
+) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/x",
+        status=TrackStatus.QUEUED,
+    )
+    controller._pending_retry_cache_key = track.cache_key
+    calls: list[tuple[str, str]] = []
+    controller._start_priority_download = lambda username, key: calls.append((username, key))  # type: ignore[method-assign]
+
+    controller._handle_tracks_resolved("user", [track])
+
+    assert calls == [("user", track.cache_key)]
+
+
+def test_controller_handle_tracks_resolved_reports_no_candidates_when_worker_active(
+    qapp,
+) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    queued = Track(
+        artist="A",
+        title="T",
+        youtube_url="https://youtu.be/y",
+        status=TrackStatus.QUEUED,
+    )
+    controller._download_worker_active = True
+
+    controller._handle_tracks_resolved("user", [queued])
+
+    log = window.feedback_log.toPlainText()
+    assert "Resolved YouTube URLs" in log
+    assert "No queued tracks are ready for download." not in log
+
+
+def test_controller_handle_tracks_downloaded_clears_pending_retry(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    controller._pending_retry_cache_key = "some_key"
+
+    controller._handle_tracks_downloaded("user", [])
+
+    assert controller._pending_retry_cache_key is None
+
+
+def test_controller_handle_tracks_downloaded_continues_bulk_download(qapp, tmp_path) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
+    queued = Track(
+        artist="A",
+        title="T",
+        youtube_url="https://youtu.be/z",
+        status=TrackStatus.QUEUED,
+    )
+    controller._download_worker_active = True
+    auto_calls: list[str] = []
+    controller._start_automatic_download = lambda username: auto_calls.append(username)  # type: ignore[method-assign]
+
+    controller._handle_tracks_downloaded("user", [queued])
+
+    assert auto_calls == ["user"]
+
+
+def test_controller_update_track_by_cache_key_does_nothing_on_miss(qapp) -> None:
+    window = MainWindow()
+    track = Track(artist="Artist", title="Title")
+    window.set_tracks([track])
+    controller = ApplicationController(window)
+
+    controller._update_track_by_cache_key(Track(artist="Other", title="Track"))
+
+    assert window.track_model.track_at(0).artist == "Artist"
+
+
+def test_controller_save_visible_tracks_does_nothing_without_username(qapp, tmp_path) -> None:
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    window.set_tracks([Track(artist="A", title="T")])
+
+    controller._save_visible_tracks()
+
+    assert not any(repository.tracks_dir.iterdir()) if repository.tracks_dir.exists() else True
+
+
+def test_controller_retry_track_download_requires_username(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+
+    controller.retry_track_download("some_key")
+
+    assert "Enter a Last.fm username before retrying" in window.feedback_log.toPlainText()
+
+
+def test_controller_retry_track_download_does_nothing_for_unknown_track(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+
+    controller.retry_track_download("nonexistent_key")
+
+    assert window.feedback_log.toPlainText() == ""
+
+
+def test_controller_retry_track_download_resets_not_found_and_starts_lookup(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(artist="A", title="T", status=TrackStatus.NOT_FOUND, error="not found")
+    repository.save_tracks("user", [track])
+    window.set_tracks([track])
+    controller = ApplicationController(window, repository=repository)
+    lookup_calls: list[dict] = []
+
+    def fake_resolve(username=None, priority_cache_key=None, max_tracks=None):
+        lookup_calls.append({"username": username, "key": priority_cache_key, "n": max_tracks})
+
+    controller.resolve_youtube_urls = fake_resolve  # type: ignore[method-assign]
+
+    controller.retry_track_download(track.cache_key)
+
+    assert controller._pending_retry_cache_key == track.cache_key
+    assert lookup_calls == [{"username": "user", "key": track.cache_key, "n": 1}]
+    reloaded = repository.load_tracks("user")
+    assert reloaded[0].status == TrackStatus.FETCHED
+
+
+def test_controller_retry_track_download_starts_priority_download_when_url_known(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    # QUEUED status keeps youtube_url intact (not in {NOT_FOUND, FAILED})
+    track = Track(
+        artist="A",
+        title="T",
+        youtube_url="https://youtu.be/x",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_tracks("user", [track])
+    window.set_tracks([track])
+    controller = ApplicationController(window, repository=repository)
+    download_calls: list[tuple] = []
+    def fake_priority_download(username, key):
+        download_calls.append((username, key))
+
+    controller._start_priority_download = fake_priority_download  # type: ignore[method-assign]
+
+    controller.retry_track_download(track.cache_key)
+
+    assert controller._pending_retry_cache_key == track.cache_key
+    assert download_calls == [("user", track.cache_key)]
+
+
+def test_controller_play_prepared_track_key_not_in_visible_tracks(qapp) -> None:
+    window = MainWindow()
+    window.set_tracks([Track(artist="A", title="T")])
+    controller = ApplicationController(window)
+
+    controller._play_prepared_track("nonexistent_key")
+
+
+def test_controller_play_prepared_track_not_yet_downloaded(qapp) -> None:
+    window = MainWindow()
+    track = Track(artist="A", title="T", status=TrackStatus.QUEUED)
+    window.set_tracks([track])
+    controller = ApplicationController(window, playback_service=FakePlaybackService())  # type: ignore[arg-type]
+
+    controller._play_prepared_track(track.cache_key)
+
+    assert controller._pending_play_cache_key is None
+
+
+def test_controller_play_prepared_track_plays_when_downloaded(qapp, tmp_path) -> None:
+    window = MainWindow()
+    audio_path = tmp_path / "song.mp3"
+    audio_path.write_bytes(b"fake")
+    track = Track(
+        artist="A",
+        title="T",
+        local_path=str(audio_path),
+        status=TrackStatus.DOWNLOADED,
+    )
+    window.set_tracks([track])
+    playback = FakePlaybackService()
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller._pending_play_cache_key = track.cache_key
+
+    controller._play_prepared_track(track.cache_key)
+
+    assert playback.events == [f"play:{track.title}"]
+    assert controller._pending_play_cache_key is None
+
+
+def test_controller_maybe_scrobble_does_nothing_when_no_current_track(qapp) -> None:
+    from my_lastfm_player.scrobbling import ScrobblingService
+
+    window = MainWindow()
+    playback = FakePlaybackService()
+
+    class FakeNetwork:
+        def get_authenticated_user(self):
+            class U:
+                def get_name(self, properly_capitalized=False):
+                    return "user"
+            return U()
+
+        def scrobble(self, **kwargs):
+            pass
+
+        def update_now_playing(self, **kwargs):
+            pass
+
+    svc = ScrobblingService(
+        api_key="k", api_secret="s", session_key="sess", username="user",
+        network_factory=lambda **kw: FakeNetwork(),
+    )
+    svc.try_connect()
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller._scrobbling_service = svc
+    controller._playback_start_time = 1000
+    playback.current_track = None
+
+    controller._maybe_scrobble(100_000, 200_000)
+
+    assert not controller._scrobble_submitted
+
+
+def test_controller_handle_playback_finished_does_nothing_when_no_track(qapp) -> None:
+    window = MainWindow()
+    playback = FakePlaybackService()
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+
+    controller._handle_playback_finished()
+
+    assert window.feedback_log.toPlainText() == ""
+
+
+def test_controller_handle_playback_finished_reports_done_when_no_next(qapp, tmp_path) -> None:
+    window = MainWindow()
+    track = Track(artist="Artist", title="Title", status=TrackStatus.DOWNLOADED)
+    playback = FakePlaybackService()
+    playback.current_track = track
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        playback_service=playback,  # type: ignore[arg-type]
+    )
+
+    controller._handle_playback_finished()
+
+    log = window.feedback_log.toPlainText()
+    assert "Finished playback for Artist - Title." in log
+    assert "Playback finished." in log
