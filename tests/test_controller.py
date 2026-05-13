@@ -132,9 +132,9 @@ def test_controller_start_connects_file_cache_menu_action(qapp, tmp_path, monkey
     controller.start()
     window.file_cache_action.trigger()
 
-    assert opened_paths == [str(repository.downloads_dir)]
-    assert repository.downloads_dir.is_dir()
-    assert "Opened file cache:" in window.feedback_log.toPlainText()
+    assert opened_paths == [str(repository.data_dir)]
+    assert repository.data_dir.is_dir()
+    assert "Opened data folder:" in window.feedback_log.toPlainText()
 
 
 def test_controller_reports_file_cache_open_failure(qapp, tmp_path, monkeypatch) -> None:
@@ -149,8 +149,8 @@ def test_controller_reports_file_cache_open_failure(qapp, tmp_path, monkeypatch)
 
     controller.open_file_cache()
 
-    assert repository.downloads_dir.is_dir()
-    assert "Could not open file cache:" in window.feedback_log.toPlainText()
+    assert repository.data_dir.is_dir()
+    assert "Could not open data folder:" in window.feedback_log.toPlainText()
 
 
 def test_controller_initializes_scrobbling_with_bundled_credentials(qapp, tmp_path) -> None:

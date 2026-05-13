@@ -594,7 +594,7 @@ class MainWindow(QMainWindow):
 
         self.refresh_action.setText(self.tr("Fetch loved tracks"))
         self.preferences_action.setText(self.tr("Preferences"))
-        self.file_cache_action.setText(self.tr("Cached songs storage location"))
+        self.file_cache_action.setText(self.tr("Open data folder in file manager"))
         self.quit_action.setText(self.tr("Quit"))
         self.main_menu.setTitle(self.tr("Main"))
         self.theme_menu.setTitle(self.tr("Theme"))

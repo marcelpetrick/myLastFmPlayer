@@ -255,28 +255,28 @@ class ApplicationController(QObject):
         return result
 
     def open_file_cache(self) -> None:
-        """Open the local downloaded-track cache with the system file manager."""
+        """Open the application data folder (tracks, cache, credentials) in the file manager."""
 
-        cache_dir = self.repository.downloads_dir
+        data_dir = self.repository.data_dir
         try:
-            cache_dir.mkdir(parents=True, exist_ok=True)
+            data_dir.mkdir(parents=True, exist_ok=True)
         except OSError as error:
-            LOGGER.exception("Could not create file cache directory %s", cache_dir)
+            LOGGER.exception("Could not create data directory %s", data_dir)
             self.window.append_feedback(
                 translate(
                     "ApplicationController",
-                    "Could not open file cache: {error}",
+                    "Could not open data folder: {error}",
                     error=error,
                 )
             )
             return
 
-        if QDesktopServices.openUrl(QUrl.fromLocalFile(str(cache_dir))):
+        if QDesktopServices.openUrl(QUrl.fromLocalFile(str(data_dir))):
             self._report_user_action(
                 translate(
                     "ApplicationController",
-                    "Opened file cache: {path}",
-                    path=cache_dir,
+                    "Opened data folder: {path}",
+                    path=data_dir,
                 )
             )
             return
@@ -284,8 +284,8 @@ class ApplicationController(QObject):
         self.window.append_feedback(
             translate(
                 "ApplicationController",
-                "Could not open file cache: {path}",
-                path=cache_dir,
+                "Could not open data folder: {path}",
+                path=data_dir,
             )
         )
 
