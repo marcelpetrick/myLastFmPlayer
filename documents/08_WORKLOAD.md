@@ -160,7 +160,7 @@ YouTube and downloads:
 - Use `<Artist> - <Title>.mp3` filenames.
 - Automatic lookup and download after fetching.
 - FIFO download queue.
-- Default concurrency of two downloads, configurable in the UI.
+- Default concurrency of two downloads, configurable in Preferences.
 - Random 1-5 second backoff between downloads.
 - Up to three download attempts per track, then mark failed.
 - Priority lookup/download when the user selects or starts a track.

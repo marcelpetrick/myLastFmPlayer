@@ -4,7 +4,16 @@ from pathlib import Path
 
 from PyQt6.QtCore import QSettings
 
-from my_lastfm_player.settings import KEEP_DATA_ON_QUIT_KEY, LANGUAGE_KEY, THEME_KEY, AppSettings
+from my_lastfm_player.settings import (
+    DEFAULT_DOWNLOAD_CONCURRENCY,
+    DOWNLOAD_CONCURRENCY_KEY,
+    KEEP_DATA_ON_QUIT_KEY,
+    LANGUAGE_KEY,
+    MAX_DOWNLOAD_CONCURRENCY,
+    MIN_DOWNLOAD_CONCURRENCY,
+    THEME_KEY,
+    AppSettings,
+)
 from my_lastfm_player.themes import ThemeMode
 
 
@@ -67,3 +76,26 @@ def test_ytdlp_cookies_browser_rejects_unknown_browser(tmp_path: Path) -> None:
     settings.set_ytdlp_cookies_browser("edge")
 
     assert settings.ytdlp_cookies_browser() == ""
+
+
+def test_download_concurrency_defaults_persists_and_clamps(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    settings = AppSettings(_ini_settings(path))
+
+    assert settings.download_concurrency() == DEFAULT_DOWNLOAD_CONCURRENCY
+
+    settings.set_download_concurrency(7)
+    assert AppSettings(_ini_settings(path)).download_concurrency() == 7
+
+    settings.set_download_concurrency(0)
+    assert settings.download_concurrency() == MIN_DOWNLOAD_CONCURRENCY
+
+    settings.set_download_concurrency(99)
+    assert settings.download_concurrency() == MAX_DOWNLOAD_CONCURRENCY
+
+
+def test_download_concurrency_uses_default_for_invalid_raw_value(tmp_path: Path) -> None:
+    raw = _ini_settings(tmp_path / "settings.ini")
+    raw.setValue(DOWNLOAD_CONCURRENCY_KEY, "many")
+
+    assert AppSettings(raw).download_concurrency() == DEFAULT_DOWNLOAD_CONCURRENCY

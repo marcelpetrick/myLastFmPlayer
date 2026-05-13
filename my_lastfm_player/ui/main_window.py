@@ -6,7 +6,6 @@ from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtS
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
-    QFormLayout,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -20,7 +19,6 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSlider,
-    QSpinBox,
     QTableView,
     QVBoxLayout,
     QWidget,
@@ -282,15 +280,10 @@ class MainWindow(QMainWindow):
         playback_layout.addLayout(playback_timeline_layout)
 
         self.downloads_group = QGroupBox()
-        self.downloads_layout = QFormLayout(self.downloads_group)
+        self.downloads_layout = QVBoxLayout(self.downloads_group)
         self.download_toggle_button = QPushButton()
         self.download_toggle_button.clicked.connect(self.download_requested.emit)
-        self.concurrency_label = QLabel()
-        self.concurrency_input = QSpinBox()
-        self.concurrency_input.setRange(1, 8)
-        self.concurrency_input.setValue(2)
-        self.downloads_layout.addRow(self.concurrency_label, self.concurrency_input)
-        self.downloads_layout.addRow(self.download_toggle_button)
+        self.downloads_layout.addWidget(self.download_toggle_button)
 
         layout.addWidget(self.playback_group)
         layout.addWidget(self.downloads_group)
@@ -387,7 +380,6 @@ class MainWindow(QMainWindow):
         self.set_fetch_enabled(enabled)
         if not self._download_active:
             self.download_toggle_button.setEnabled(enabled)
-        self.concurrency_input.setEnabled(enabled)
 
     def set_dependency_status(self, is_ok: bool, message: str) -> None:
         """Display dependency check status in the source panel."""
@@ -618,7 +610,6 @@ class MainWindow(QMainWindow):
         self.download_toggle_button.setText(
             self.tr("Stop Downloads") if self._download_active else self.tr("Start Downloads")
         )
-        self.concurrency_label.setText(self.tr("Concurrency"))
         self.clear_feedback_button.setText(self.tr("Clear log"))
         self.clear_feedback_button.setToolTip(self.tr("Clear status updates and errors"))
         self.feedback_log.setPlaceholderText(

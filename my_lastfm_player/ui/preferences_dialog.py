@@ -13,12 +13,18 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
 from my_lastfm_player.scrobbling import ScrobblingService
-from my_lastfm_player.settings import YTDLP_BROWSER_CHOICES, AppSettings
+from my_lastfm_player.settings import (
+    MAX_DOWNLOAD_CONCURRENCY,
+    MIN_DOWNLOAD_CONCURRENCY,
+    YTDLP_BROWSER_CHOICES,
+    AppSettings,
+)
 
 
 class PreferencesDialog(QDialog):
@@ -27,6 +33,7 @@ class PreferencesDialog(QDialog):
     def __init__(self, parent: QWidget, service: ScrobblingService | None) -> None:
         super().__init__(parent)
         self._service = service
+        self._settings = AppSettings()
         self.setMinimumWidth(420)
         self._build_ui()
         self.retranslate_ui()
@@ -75,9 +82,17 @@ class PreferencesDialog(QDialog):
         browser_row.addWidget(self.browser_label)
         browser_row.addWidget(self.browser_combo)
         browser_row.addStretch()
+        concurrency_row = QHBoxLayout()
+        self.concurrency_label = QLabel(self)
+        self.concurrency_input = QSpinBox(self)
+        self.concurrency_input.setRange(MIN_DOWNLOAD_CONCURRENCY, MAX_DOWNLOAD_CONCURRENCY)
+        concurrency_row.addWidget(self.concurrency_label)
+        concurrency_row.addWidget(self.concurrency_input)
+        concurrency_row.addStretch()
         self.youtube_hint = QLabel(self)
         self.youtube_hint.setWordWrap(True)
         youtube_layout.addLayout(browser_row)
+        youtube_layout.addLayout(concurrency_row)
         youtube_layout.addWidget(self.youtube_hint)
         layout.addWidget(self.youtube_group)
 
@@ -99,11 +114,11 @@ class PreferencesDialog(QDialog):
         self.disconnect_button.clicked.connect(self._on_disconnect)
         self.scrobbling_checkbox.stateChanged.connect(self._on_scrobbling_toggled)
         self.browser_combo.currentIndexChanged.connect(self._on_browser_changed)
+        self.concurrency_input.valueChanged.connect(self._on_concurrency_changed)
         self.keep_data_checkbox.stateChanged.connect(self._on_keep_data_toggled)
 
         # Populate and restore browser selection
-        settings = AppSettings()
-        current_browser = settings.ytdlp_cookies_browser()
+        current_browser = self._settings.ytdlp_cookies_browser()
         for value in self._browser_values:
             self.browser_combo.addItem(value or self.tr("None (disabled)"), value)
         saved_index = (
@@ -113,9 +128,13 @@ class PreferencesDialog(QDialog):
         )
         self.browser_combo.setCurrentIndex(saved_index)
 
+        self.concurrency_input.blockSignals(True)
+        self.concurrency_input.setValue(self._settings.download_concurrency())
+        self.concurrency_input.blockSignals(False)
+
         # Restore keep-data-on-quit setting
         self.keep_data_checkbox.blockSignals(True)
-        self.keep_data_checkbox.setChecked(settings.keep_data_on_quit())
+        self.keep_data_checkbox.setChecked(self._settings.keep_data_on_quit())
         self.keep_data_checkbox.blockSignals(False)
 
     def retranslate_ui(self) -> None:
@@ -133,11 +152,12 @@ class PreferencesDialog(QDialog):
         )
         self.youtube_group.setTitle(self.tr("YouTube Downloads"))
         self.browser_label.setText(self.tr("Browser cookies:"))
+        self.concurrency_label.setText(self.tr("Parallel downloads:"))
         self.youtube_hint.setText(
             self.tr(
                 "Select the browser whose YouTube login cookies yt-dlp should use. "
                 "Required for age-restricted videos. You must be signed into YouTube "
-                "in the selected browser."
+                "in the selected browser. Parallel download changes apply to new work."
             )
         )
         self.browser_combo.setItemText(0, self.tr("None (disabled)"))
@@ -223,7 +243,10 @@ class PreferencesDialog(QDialog):
 
     def _on_browser_changed(self, index: int) -> None:
         browser = self._browser_values[index] if 0 <= index < len(self._browser_values) else ""
-        AppSettings().set_ytdlp_cookies_browser(browser)
+        self._settings.set_ytdlp_cookies_browser(browser)
+
+    def _on_concurrency_changed(self, value: int) -> None:
+        self._settings.set_download_concurrency(value)
 
     def _on_keep_data_toggled(self, state: int) -> None:
-        AppSettings().set_keep_data_on_quit(bool(state))
+        self._settings.set_keep_data_on_quit(bool(state))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,34 @@ class FakeRunner:
             template = command[output_idx]
             Path(template.replace("%(ext)s", "webm")).touch()
         return subprocess.CompletedProcess(command, return_code, stdout="", stderr=stderr)
+
+
+class BlockingRunner:
+    def __init__(self, expected_parallel: int) -> None:
+        self.expected_parallel = expected_parallel
+        self.commands: list[list[str]] = []
+        self.active = 0
+        self.max_active = 0
+        self.lock = threading.Lock()
+        self.release = threading.Event()
+
+    def __call__(self, command, **_kwargs) -> subprocess.CompletedProcess[str]:
+        self.commands.append(list(command))
+        with self.lock:
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+            if self.active == self.expected_parallel:
+                self.release.set()
+        try:
+            assert self.release.wait(timeout=2), "download workers did not reach concurrency"
+            if "--output" in command:
+                output_idx = list(command).index("--output") + 1
+                template = command[output_idx]
+                Path(template.replace("%(ext)s", "webm")).touch()
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+        finally:
+            with self.lock:
+                self.active -= 1
 
 
 def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
@@ -88,6 +117,31 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
         TrackStatus.DOWNLOADED,
     ]
     assert track_updates[-1].file_type == "WEBM"
+
+
+def test_download_manager_uses_configured_parallel_worker_count(tmp_path: Path) -> None:
+    runner = BlockingRunner(expected_parallel=4)
+    manager = DownloadManager(
+        command_runner=runner,
+        max_retries=1,
+        backoff_factory=lambda: 0,
+        sleeper=lambda _seconds: None,
+    )
+    tracks = [
+        Track(
+            artist=f"Artist {index}",
+            title=f"Title {index}",
+            youtube_url=f"https://youtu.be/example-{index}",
+            status=TrackStatus.QUEUED,
+        )
+        for index in range(4)
+    ]
+
+    result = manager.download_tracks(tracks, tmp_path, concurrency=4)
+
+    assert len(runner.commands) == 4
+    assert runner.max_active == 4
+    assert [track.status for track in result] == [TrackStatus.DOWNLOADED] * 4
 
 
 def test_probe_audio_file_reads_ffprobe_metadata(monkeypatch, tmp_path: Path) -> None:

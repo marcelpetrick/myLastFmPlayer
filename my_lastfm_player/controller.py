@@ -21,6 +21,7 @@ from my_lastfm_player.lastfm import LastFmError, LastFmLovedTracksScraper
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.playback import PlaybackError, PlaybackService
 from my_lastfm_player.scrobbling import SCROBBLE_THRESHOLD, ScrobblingService
+from my_lastfm_player.settings import AppSettings
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import (
@@ -127,8 +128,6 @@ class ApplicationController(QObject):
         self.check_dependencies()
 
     def _handle_quit(self) -> None:
-        from my_lastfm_player.settings import AppSettings  # noqa: PLC0415
-
         if not AppSettings().keep_data_on_quit():
             self.repository.wipe()
 
@@ -357,8 +356,6 @@ class ApplicationController(QObject):
         self._apply_ytdlp_settings()
 
     def _apply_ytdlp_settings(self) -> None:
-        from my_lastfm_player.settings import AppSettings  # noqa: PLC0415
-
         browser = AppSettings().ytdlp_cookies_browser()
         self.youtube_resolver.cookies_browser = browser
         self.download_manager.cookies_browser = browser
@@ -521,7 +518,7 @@ class ApplicationController(QObject):
             )
             return
 
-        concurrency = self.window.concurrency_input.value()
+        concurrency = AppSettings().download_concurrency()
         LOGGER.info(
             "Download requested for Last.fm user %s with concurrency %s",
             username,

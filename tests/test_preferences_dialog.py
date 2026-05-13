@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from my_lastfm_player.scrobbling import ScrobblingService
+from my_lastfm_player.ui import preferences_dialog as preferences_module
 from my_lastfm_player.ui.preferences_dialog import PreferencesDialog
 
 
@@ -46,6 +47,31 @@ def _make_svc(**kwargs) -> ScrobblingService:
         sg_factory=FakeSG,
         **kwargs,
     )
+
+
+class FakeSettings:
+    def __init__(self) -> None:
+        self.browser = ""
+        self.keep_data = False
+        self.concurrency = 4
+
+    def ytdlp_cookies_browser(self) -> str:
+        return self.browser
+
+    def set_ytdlp_cookies_browser(self, browser: str) -> None:
+        self.browser = browser
+
+    def keep_data_on_quit(self) -> bool:
+        return self.keep_data
+
+    def set_keep_data_on_quit(self, keep: bool) -> None:
+        self.keep_data = keep
+
+    def download_concurrency(self) -> int:
+        return self.concurrency
+
+    def set_download_concurrency(self, concurrency: int) -> None:
+        self.concurrency = concurrency
 
 
 def test_preferences_dialog_shows_not_connected(qapp) -> None:
@@ -173,3 +199,18 @@ def test_preferences_dialog_buttons_ignore_none_service(qapp) -> None:
     dialog._on_authorize()
     dialog._on_disconnect()
     dialog._on_scrobbling_toggled(1)
+
+
+def test_preferences_dialog_download_concurrency_persists(qapp, monkeypatch) -> None:
+    settings = FakeSettings()
+    monkeypatch.setattr(preferences_module, "AppSettings", lambda: settings)
+
+    dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
+
+    assert dialog.concurrency_input.minimum() == 1
+    assert dialog.concurrency_input.maximum() == 10
+    assert dialog.concurrency_input.value() == 4
+
+    dialog.concurrency_input.setValue(8)
+
+    assert settings.concurrency == 8

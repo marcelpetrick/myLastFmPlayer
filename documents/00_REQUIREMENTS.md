@@ -163,7 +163,7 @@ Each track shall move through the following states:
 * Concurrency:
 
   * Default: **2 parallel downloads**
-  * User-configurable
+  * User-configurable in Preferences, minimum **1**, maximum **10**
 
 * Backoff:
 

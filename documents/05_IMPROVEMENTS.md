@@ -15,7 +15,7 @@ but they should be revisited before the MVP is considered finished.
 - change request 24: Track titles that are longer than the available cell width shall be truncated with an ellipsis, not wrapped into a taller two-line cell.
 - improvement 25: URL resolving and downloading can run in parallel — as soon as the first track is resolved, start its download without waiting for all resolutions to finish.
 - fixed: feature 26: Show the currently playing track (artist and title) above the playback duration controls. When the track list is long the playing row may scroll out of view; this label keeps that information always visible.
-- change 27: Move the download-thread-count setting to Preferences. Default to 2, maximum 10, minimum 1. The user can change it at any time; each time new work is picked up, check and spawn additional workers if the limit allows.
+- fixed: change 27: Move the download-thread-count setting to Preferences. Default to 2, maximum 10, minimum 1. The user can change it at any time; each time new work is picked up, check and spawn additional workers if the limit allows.
 - fixed: change 28: Rename the cached-songs menu action to "Open data folder in file manager" and point it at the full application data directory (credentials, track lists, and both caches).
 - fixed: change 29: By default, when the application quits, wipe all credentials and cached data. Only skip the wipe if the user has checked "Keep cached data after quitting" in Preferences › Privacy. Deletion failures are printed to stdout without aborting the quit.
 - fixed: change 30: Audit all code for UTF-8 compatibility. Add explicit `encoding="utf-8"` to every subprocess call that uses `text=True` (yt-dlp runner and ffprobe). All file I/O already used UTF-8.

@@ -966,11 +966,16 @@ def test_controller_handles_downloaded_tracks_and_pending_play(qapp) -> None:
     )
 
 
-def test_controller_starts_fetch_lookup_and_download_workers(qapp, tmp_path) -> None:
+def test_controller_starts_fetch_lookup_and_download_workers(
+    qapp, tmp_path, monkeypatch
+) -> None:
+    from my_lastfm_player import settings as settings_module
+
     window = MainWindow()
     window.username_input.setText("user")
     controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
     workers: list[tuple[str, object]] = []
+    monkeypatch.setattr(settings_module.AppSettings, "download_concurrency", lambda self: 4)
 
     def fake_run_worker(worker: object) -> None:
         workers.append((worker.__class__.__name__, worker))
@@ -988,6 +993,9 @@ def test_controller_starts_fetch_lookup_and_download_workers(qapp, tmp_path) -> 
     ]
     assert controller._active_fetch_worker is workers[0][1]
     assert not window.fetch_button.isEnabled()
+    download_worker = workers[2][1]
+    assert isinstance(download_worker, controller_module.DownloadTracksWorker)
+    assert download_worker.concurrency == 4
 
 
 def test_controller_starts_lookup_from_first_partial_fetch_update(qapp, tmp_path) -> None:

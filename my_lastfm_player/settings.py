@@ -10,9 +10,13 @@ from my_lastfm_player.themes import ThemeMode
 THEME_KEY = "appearance/theme"
 LANGUAGE_KEY = "appearance/language"
 YTDLP_BROWSER_KEY = "download/cookiesbrowser"
+DOWNLOAD_CONCURRENCY_KEY = "download/concurrency"
 KEEP_DATA_ON_QUIT_KEY = "privacy/keepdataonquit"
 
 YTDLP_BROWSER_CHOICES = ["", "firefox", "chromium", "chrome", "brave"]
+DEFAULT_DOWNLOAD_CONCURRENCY = 2
+MIN_DOWNLOAD_CONCURRENCY = 1
+MAX_DOWNLOAD_CONCURRENCY = 10
 
 
 class AppSettings:
@@ -61,6 +65,20 @@ class AppSettings:
         safe = browser if browser in YTDLP_BROWSER_CHOICES else ""
         self._settings.setValue(YTDLP_BROWSER_KEY, safe)
 
+    def download_concurrency(self) -> int:
+        """Return the configured number of parallel download workers."""
+
+        value = self._settings.value(DOWNLOAD_CONCURRENCY_KEY, DEFAULT_DOWNLOAD_CONCURRENCY)
+        return _clamp_download_concurrency(value)
+
+    def set_download_concurrency(self, concurrency: int) -> None:
+        """Persist the configured number of parallel download workers."""
+
+        self._settings.setValue(
+            DOWNLOAD_CONCURRENCY_KEY,
+            _clamp_download_concurrency(concurrency),
+        )
+
     def keep_data_on_quit(self) -> bool:
         """Return True when the user opted to keep cached data after the app closes."""
 
@@ -70,3 +88,11 @@ class AppSettings:
         """Persist the keep-data-on-quit preference."""
 
         self._settings.setValue(KEEP_DATA_ON_QUIT_KEY, keep)
+
+
+def _clamp_download_concurrency(value: object) -> int:
+    try:
+        concurrency = int(value)
+    except (TypeError, ValueError):
+        return DEFAULT_DOWNLOAD_CONCURRENCY
+    return max(MIN_DOWNLOAD_CONCURRENCY, min(MAX_DOWNLOAD_CONCURRENCY, concurrency))

@@ -280,7 +280,7 @@ sequenceDiagram
 Current download rules:
 
 - FIFO queue order by default.
-- Default concurrency is `2`, controlled by the UI spin box.
+- Default concurrency is `2`, controlled in Preferences with a range of `1` to `10`.
 - Tracks already in the shared cache are marked `Downloaded` and skipped.
 - Each failing download is retried up to `3` times.
 - Retry backoff is random between `1` and `5` seconds.
