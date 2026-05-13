@@ -32,6 +32,7 @@ from my_lastfm_player.ui.track_table_model import (
     ElidedTextDelegate,
     TrackTableModel,
     example_tracks,
+    translated_track_status,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -65,13 +66,14 @@ class MainWindow(QMainWindow):
         self._last_status_message = "Ready"
         self._playback_duration_ms = 0
         self._track_count = 0
+        self._showing_example_tracks = False
         self.set_application_title(__display_version__)
         self.resize(1120, 720)
 
         self._build_actions()
         self._build_menus()
         self._build_central_widget()
-        self.set_tracks(example_tracks())
+        self._set_example_tracks()
         self.statusBar().showMessage(self.tr("Ready"))
         self.retranslate_ui()
 
@@ -324,9 +326,17 @@ class MainWindow(QMainWindow):
 
         self.track_model.set_tracks(tracks)
         self._track_count = len(tracks)
+        self._showing_example_tracks = False
         self._update_track_count_label()
         print(f"[myLastFmPlayer] Table now contains {len(tracks)} tracks", flush=True)
         self.show_status(self.tr("Loaded {count} tracks").format(count=len(tracks)))
+
+    def _set_example_tracks(self) -> None:
+        tracks = example_tracks()
+        self.track_model.set_tracks(tracks)
+        self._track_count = len(tracks)
+        self._showing_example_tracks = True
+        self._update_track_count_label()
 
     def _update_track_count_label(self) -> None:
         self.track_count_label.setText(
@@ -444,7 +454,7 @@ class MainWindow(QMainWindow):
         """Replace one visible row with ``track`` and update the status bar."""
 
         self.track_model.update_track(row, track)
-        status = self.tr(track.status.value)
+        status = translated_track_status(track.status)
         self.show_status(
             self.tr("Updated {artist} - {title}: {status}").format(
                 artist=track.artist,
@@ -616,6 +626,8 @@ class MainWindow(QMainWindow):
             self.tr("Status updates and errors will appear here.")
         )
         self._update_track_count_label()
+        if self._showing_example_tracks:
+            self._set_example_tracks()
         if not self.dependency_label.text():
             self.dependency_label.setText(
                 self.tr("Dependencies: yt-dlp and ffmpeg not checked yet")

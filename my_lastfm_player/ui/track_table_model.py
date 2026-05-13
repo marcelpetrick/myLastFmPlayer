@@ -166,23 +166,7 @@ class TrackTableModel(QAbstractTableModel):
             case 2:
                 return track.loved_at or ""
             case 3:
-                match track.status:
-                    case TrackStatus.FETCHED:
-                        return self.tr("Fetched")
-                    case TrackStatus.QUEUED:
-                        return self.tr("Queued")
-                    case TrackStatus.SEARCHING:
-                        return self.tr("Searching")
-                    case TrackStatus.DOWNLOADING:
-                        return self.tr("Downloading")
-                    case TrackStatus.DOWNLOADED:
-                        return self.tr("Downloaded")
-                    case TrackStatus.FAILED:
-                        return self.tr("Failed")
-                    case TrackStatus.NOT_FOUND:
-                        return self.tr("Not found")
-                    case _:
-                        return track.status.value
+                return translated_track_status(track.status)
             case 4:
                 return _download_file_details(track)
             case _:
@@ -218,6 +202,26 @@ def example_tracks() -> list[Track]:
             status=TrackStatus.QUEUED,
         ),
     ]
+
+
+def translated_track_status(status: TrackStatus) -> str:
+    match status:
+        case TrackStatus.FETCHED:
+            return QCoreApplication.translate("TrackTableModel", "Fetched")
+        case TrackStatus.QUEUED:
+            return QCoreApplication.translate("TrackTableModel", "Queued")
+        case TrackStatus.SEARCHING:
+            return QCoreApplication.translate("TrackTableModel", "Searching")
+        case TrackStatus.DOWNLOADING:
+            return QCoreApplication.translate("TrackTableModel", "Downloading")
+        case TrackStatus.DOWNLOADED:
+            return QCoreApplication.translate("TrackTableModel", "Downloaded")
+        case TrackStatus.FAILED:
+            return QCoreApplication.translate("TrackTableModel", "Failed")
+        case TrackStatus.NOT_FOUND:
+            return QCoreApplication.translate("TrackTableModel", "Not found")
+        case _:
+            return status.value
 
 
 def _download_file_details(track: Track) -> str:

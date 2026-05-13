@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
 import pytest
 
 from my_lastfm_player import i18n as i18n_module
@@ -80,3 +84,29 @@ def test_translate_falls_back_to_source_on_bad_placeholder(monkeypatch, qapp) ->
     )
     result = translate("ApplicationController", "Playing {artist}", artist="Kraftwerk")
     assert result == "Playing Kraftwerk"
+
+
+def test_translation_catalogs_are_complete_and_keep_placeholders() -> None:
+    placeholder_pattern = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+    catalogs = sorted(
+        (Path(__file__).parents[1] / "my_lastfm_player" / "translations").glob("*.ts")
+    )
+
+    assert catalogs
+    for catalog in catalogs:
+        root = ET.parse(catalog).getroot()
+        for message in root.findall(".//message"):
+            translation = message.find("translation")
+            if translation is not None and translation.get("type") == "vanished":
+                continue
+            source_text = message.findtext("source") or ""
+            translation_text = (
+                "" if translation is None or translation.text is None else translation.text
+            )
+            assert translation is not None
+            assert translation.get("type") != "unfinished", (
+                f"{catalog.name} has unfinished translation: {source_text}"
+            )
+            assert set(placeholder_pattern.findall(translation_text)) == set(
+                placeholder_pattern.findall(source_text)
+            ), f"{catalog.name} changes placeholders for: {source_text}"
