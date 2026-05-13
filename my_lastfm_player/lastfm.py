@@ -5,6 +5,7 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime as _Datetime
 from typing import Protocol
 from urllib.parse import quote, urljoin
 
@@ -381,7 +382,20 @@ def _parse_track_row(row: Tag, page_url: str) -> Track | None:
     if isinstance(href, str) and href:
         lastfm_url = urljoin(page_url, href)
 
-    return Track(artist=artist, title=title, lastfm_url=lastfm_url)
+    return Track(artist=artist, title=title, lastfm_url=lastfm_url, loved_at=_parse_loved_at(row))
+
+
+def _parse_loved_at(row: Tag) -> str | None:
+    time_tag = row.select_one("time[datetime]")
+    if time_tag is None:
+        return None
+    datetime_str = time_tag.get("datetime")
+    if not isinstance(datetime_str, str) or not datetime_str:
+        return None
+    try:
+        return _Datetime.fromisoformat(datetime_str).strftime("%Y%m%d-%H%M%S")
+    except ValueError:
+        return None
 
 
 def _find_next_page_url(soup: BeautifulSoup, page_url: str) -> str | None:

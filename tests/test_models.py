@@ -41,6 +41,7 @@ def test_track_serializes_to_json_ready_dict() -> None:
         "artist": "Artist",
         "title": "Title",
         "lastfm_url": "https://last.fm/music/Artist/_/Title",
+        "loved_at": None,
         "youtube_url": "https://youtube.example/watch?v=abc",
         "local_path": "/music/Artist - Title.mp3",
         "status": "Downloaded",

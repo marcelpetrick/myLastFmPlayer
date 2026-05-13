@@ -16,15 +16,17 @@ def test_track_table_model_exposes_artist_title_and_status() -> None:
     )
 
     assert model.rowCount() == 1
-    assert model.columnCount() == 4
+    assert model.columnCount() == 5
     assert model.headerData(0, Qt.Orientation.Horizontal) == "Artist"
     assert model.headerData(1, Qt.Orientation.Horizontal) == "Title"
-    assert model.headerData(2, Qt.Orientation.Horizontal) == "Status"
-    assert model.headerData(3, Qt.Orientation.Horizontal) == "File"
+    assert model.headerData(2, Qt.Orientation.Horizontal) == "Loved at"
+    assert model.headerData(3, Qt.Orientation.Horizontal) == "Status"
+    assert model.headerData(4, Qt.Orientation.Horizontal) == "File"
     assert model.data(model.index(0, 0)) == "Artist"
     assert model.data(model.index(0, 1)) == "Title"
-    assert model.data(model.index(0, 2)) == "Searching"
-    assert model.data(model.index(0, 3)) == ""
+    assert model.data(model.index(0, 2)) == ""
+    assert model.data(model.index(0, 3)) == "Searching"
+    assert model.data(model.index(0, 4)) == ""
 
 
 def test_track_table_model_returns_user_role_cache_key_and_edit_value() -> None:
@@ -63,7 +65,7 @@ def test_track_table_model_displays_all_known_statuses() -> None:
     )
 
     assert [
-        model.data(model.index(row, 2))
+        model.data(model.index(row, 3))
         for row in range(model.rowCount())
     ] == list(statuses.values())
 
@@ -93,9 +95,9 @@ def test_track_table_model_displays_downloaded_file_details_only() -> None:
     )
     model = TrackTableModel([downloaded, extension_fallback, queued])
 
-    assert model.data(model.index(0, 3)) == "MP3, 192 kbps"
-    assert model.data(model.index(1, 3)) == "M4A"
-    assert model.data(model.index(2, 3)) == ""
+    assert model.data(model.index(0, 4)) == "MP3, 192 kbps"
+    assert model.data(model.index(1, 4)) == "M4A"
+    assert model.data(model.index(2, 4)) == ""
 
 
 def test_track_table_model_replaces_and_returns_tracks() -> None:
@@ -115,7 +117,7 @@ def test_track_table_model_updates_existing_row() -> None:
     model.update_track(0, updated_track)
 
     assert model.track_at(0) == updated_track
-    assert model.data(model.index(0, 2)) == "Downloaded"
+    assert model.data(model.index(0, 3)) == "Downloaded"
 
 
 def test_track_table_model_rejects_out_of_range_updates() -> None:
@@ -173,5 +175,5 @@ def test_track_table_model_retranslate_emits_header_and_data_changes() -> None:
 
     model.retranslate()
 
-    assert headers == [(0, 3)]
+    assert headers == [(0, 4)]
     assert [int(Qt.ItemDataRole.DisplayRole)] in data_roles

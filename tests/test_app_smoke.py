@@ -23,8 +23,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.69"
-    assert __display_version__ == "0.0.69"
+    assert __version__ == "0.0.70"
+    assert __display_version__ == "0.0.70"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -61,9 +61,9 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.69"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.70"
     assert window.username_input.placeholderText() == "Enter username"
-    assert window.track_model.columnCount() == 4
+    assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
     assert window.concurrency_input.value() == 2
     assert window.progress_bar.format() == "Idle"
@@ -158,7 +158,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.69\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.70\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert saved_languages == []
@@ -189,7 +189,7 @@ def test_main_window_binds_track_data_and_selection(qapp) -> None:
 
     assert window.track_model.rowCount() == 2
     assert window.track_model.data(window.track_model.index(0, 0)) == "Zed"
-    assert window.track_model.data(window.track_model.index(1, 2)) == "Downloaded"
+    assert window.track_model.data(window.track_model.index(1, 3)) == "Downloaded"
     assert window.selected_track() == tracks[1]
 
 

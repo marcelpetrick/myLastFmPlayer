@@ -40,7 +40,7 @@ class ElidedTextDelegate(QStyledItemDelegate):
 class TrackTableModel(QAbstractTableModel):
     """Qt table model exposing track metadata and download state columns."""
 
-    HEADERS = ("Artist", "Title", "Status", "File")
+    HEADERS = ("Artist", "Title", "Loved at", "Status", "File")
 
     def __init__(self, tracks: list[Track] | None = None) -> None:
         super().__init__()
@@ -95,8 +95,10 @@ class TrackTableModel(QAbstractTableModel):
                 case 1:
                     return self.tr("Title")
                 case 2:
-                    return self.tr("Status")
+                    return self.tr("Loved at")
                 case 3:
+                    return self.tr("Status")
+                case 4:
                     return self.tr("File")
         return None
 
@@ -162,6 +164,8 @@ class TrackTableModel(QAbstractTableModel):
             case 1:
                 return track.title
             case 2:
+                return track.loved_at or ""
+            case 3:
                 match track.status:
                     case TrackStatus.FETCHED:
                         return self.tr("Fetched")
@@ -179,7 +183,7 @@ class TrackTableModel(QAbstractTableModel):
                         return self.tr("Not found")
                     case _:
                         return track.status.value
-            case 3:
+            case 4:
                 return _download_file_details(track)
             case _:
                 return None

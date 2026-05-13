@@ -31,6 +31,7 @@ class Track:
     artist: str
     title: str
     lastfm_url: str | None = None
+    loved_at: str | None = None
     youtube_url: str | None = None
     local_path: str | None = None
     status: TrackStatus = TrackStatus.FETCHED
@@ -78,6 +79,7 @@ class Track:
             "artist": self.artist,
             "title": self.title,
             "lastfm_url": self.lastfm_url,
+            "loved_at": self.loved_at,
             "youtube_url": self.youtube_url,
             "local_path": self.local_path,
             "status": self.status.value,
@@ -96,6 +98,7 @@ class Track:
             artist=_require_string(data, "artist"),
             title=_require_string(data, "title"),
             lastfm_url=_optional_string(data, "lastfm_url"),
+            loved_at=_optional_string(data, "loved_at"),
             youtube_url=_optional_string(data, "youtube_url"),
             local_path=_optional_string(data, "local_path"),
             status=status,

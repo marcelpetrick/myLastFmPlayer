@@ -79,11 +79,13 @@ def test_parse_loved_tracks_page_extracts_tracks_and_next_url() -> None:
                 artist="Guns N' Roses",
                 title="Down on the Farm",
                 lastfm_url="https://www.last.fm/music/Guns+N%27+Roses/_/Down+on+the+Farm",
+                loved_at="20230421-151400",
             ),
             Track(
                 artist="Nelly Furtado",
                 title="Say It Right",
                 lastfm_url="https://www.last.fm/music/Nelly+Furtado/_/Say+It+Right",
+                loved_at="20221105-083000",
             ),
         ],
         next_url="https://www.last.fm/user/example/loved?page=2",
@@ -117,6 +119,7 @@ def test_parse_loved_tracks_page_handles_missing_next_page() -> None:
             artist="The Killers",
             title="Smile Like You Mean It",
             lastfm_url="https://www.last.fm/music/The+Killers/_/Smile+Like+You+Mean+It",
+            loved_at="20210710-224500",
         )
     ]
 
