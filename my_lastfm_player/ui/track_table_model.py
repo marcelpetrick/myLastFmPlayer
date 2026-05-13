@@ -4,8 +4,37 @@ from pathlib import Path
 
 from PyQt6.QtCore import QAbstractTableModel, QCoreApplication, QModelIndex, Qt
 from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import QApplication, QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
 from my_lastfm_player.models import Track, TrackStatus
+
+
+class ElidedTextDelegate(QStyledItemDelegate):
+    """Item delegate that elides overflowing text with '…' instead of wrapping."""
+
+    def paint(self, painter, option: QStyleOptionViewItem, index) -> None:  # type: ignore[override]
+        self.initStyleOption(option, index)
+        text = option.text
+        option.text = ""
+        style = option.widget.style() if option.widget else QApplication.style()
+        style.drawControl(QStyle.ControlElement.CE_ItemViewItem, option, painter, option.widget)
+        text_rect = style.subElementRect(
+            QStyle.SubElement.SE_ItemViewItemText, option, option.widget
+        )
+        elided = option.fontMetrics.elidedText(
+            text, Qt.TextElideMode.ElideRight, text_rect.width()
+        )
+
+        painter.save()
+        painter.setFont(option.font)
+        if option.state & QStyle.StateFlag.State_Selected:
+            painter.setPen(option.palette.highlightedText().color())
+        else:
+            painter.setPen(option.palette.text().color())
+        painter.drawText(
+            text_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, elided
+        )
+        painter.restore()
 
 
 class TrackTableModel(QAbstractTableModel):

@@ -30,7 +30,11 @@ from my_lastfm_player import __display_version__
 from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track
 from my_lastfm_player.ui.flags import flag_icon
-from my_lastfm_player.ui.track_table_model import TrackTableModel, example_tracks
+from my_lastfm_player.ui.track_table_model import (
+    ElidedTextDelegate,
+    TrackTableModel,
+    example_tracks,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -204,6 +208,10 @@ class MainWindow(QMainWindow):
         self.track_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.track_table.customContextMenuRequested.connect(self._show_track_context_menu)
         self.track_table.verticalHeader().setVisible(False)
+        self.track_table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        elide_delegate = ElidedTextDelegate(self.track_table)
+        self.track_table.setItemDelegateForColumn(0, elide_delegate)
+        self.track_table.setItemDelegateForColumn(1, elide_delegate)
         header = self.track_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -316,7 +324,6 @@ class MainWindow(QMainWindow):
         """Replace the visible table contents with ``tracks``."""
 
         self.track_model.set_tracks(tracks)
-        self.track_table.resizeRowsToContents()
         self._track_count = len(tracks)
         self._update_track_count_label()
         print(f"[myLastFmPlayer] Table now contains {len(tracks)} tracks", flush=True)
