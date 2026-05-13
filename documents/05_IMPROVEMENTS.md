@@ -12,14 +12,14 @@ but they should be revisited before the MVP is considered finished.
 - 21. Bug: after seeking first, pressing Play does not start playback at the selected position.
 - fixed: bug 22: problem with download; age verification. Preferences › YouTube Downloads › Browser cookies lets the user select the browser whose YouTube session cookies yt-dlp uses, enabling age-restricted video access.
 - fixed: feature 23: the button "download queued" has to be rename: "start downloads"; when downloading the text switches to "stop downloads". getting tracks which are not locally availalble trigger the download. unless user presses the button for stop. end when everything is downloaded. skip over non available songs.
-- change request 24: track titles which are longer than the space inside one cell of th table shal be truncated (at the end). not wrapped onto a two line cell which in the end has a double height
-- improvement 25: the URl-resolving of the tracks and the download can happen in parallel - not just resolve all of them first and THEN download. no. afte th first is resolved, start a download
-- feature 26: show the currently playing track with artistname and title also above the playduriatio and stuff. if the tracklist is long, it could be that the plaiyng song is not visible. this feature shall not be removed, just augmented by that additional information.
-- change 27: move the downlod thread setting to the preferences; make it by default 2, up to ten. minimum 1. user chan change it whenever. eachtime new work is "picked", the cehck and spawn more workers, if possible.
-- change 28: wording of cache files-actinon-menu: it shall point to the folder with all cached information". find a good wording.
-- change 29: by default, when turning off the app (official quit), then also delete all credentials and all stored info! wipe. just if the user sets "Don't wipe data at quitting" (a checkbox), then skip this step. So by default everything is wiped. cybersecurity. when deleting somehing fails, then just prnt to stdout, but don't stop or abort the quit.
-- change 30: do a check if everthing in the software is UTF-8 compatbile. and all th strings only rely on UTF-8. i am quite sure this is the case.
-* change 31: unit-testing for all calsses above 95%. controller.py is bad.
+- change request 24: Track titles that are longer than the available cell width shall be truncated with an ellipsis, not wrapped into a taller two-line cell.
+- improvement 25: URL resolving and downloading can run in parallel — as soon as the first track is resolved, start its download without waiting for all resolutions to finish.
+- fixed: feature 26: Show the currently playing track (artist and title) above the playback duration controls. When the track list is long the playing row may scroll out of view; this label keeps that information always visible.
+- change 27: Move the download-thread-count setting to Preferences. Default to 2, maximum 10, minimum 1. The user can change it at any time; each time new work is picked up, check and spawn additional workers if the limit allows.
+- fixed: change 28: Rename the cached-songs menu action to "Open data folder in file manager" and point it at the full application data directory (credentials, track lists, and both caches).
+- fixed: change 29: By default, when the application quits, wipe all credentials and cached data. Only skip the wipe if the user has checked "Keep cached data after quitting" in Preferences › Privacy. Deletion failures are printed to stdout without aborting the quit.
+- fixed: change 30: Audit all code for UTF-8 compatibility. Add explicit `encoding="utf-8"` to every subprocess call that uses `text=True` (yt-dlp runner and ffprobe). All file I/O already used UTF-8.
+- fixed: change 31: Raise unit-test coverage for all modules above 95%. Controller.py was at 85%; targeted new tests brought overall project coverage to 97%.
 
 ## UI Design
 

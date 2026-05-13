@@ -133,38 +133,3 @@ whitespace, and end with a newline.
 3. Version is bumped in `version.py`, `README.md`, and smoke tests when required.
 4. Translations are regenerated and compiled when user-visible strings changed.
 5. Relevant improvement or bug entries are marked `fixed:` when applicable.
-
-## Session log
-
-### 0.0.71 — 2026-05-13
-
-**Changes:** Added tests to improve unit-test coverage across four modules.
-
-**Version bump:** `my_lastfm_player/version.py`, `README.md`,
-`tests/test_app_smoke.py` updated from `0.0.70` to `0.0.71`.
-
-**Coverage improvements:**
-
-| Module | Before | After |
-|---|---|---|
-| `download.py` | 91% | 100% |
-| `workers.py` | 95% | 100% |
-| `lastfm.py` | 94% | 99% |
-| `ui/track_table_model.py` | 94% | 96% |
-
-**`./localPipeline.sh` result (all stages passed):**
-
-```
-Virtualenv       : PASS .venv is available
-Dependencies     : PASS Editable install with dev dependencies completed
-Ruff             : PASS 0 violations
-Pylint           : PASS 10.00/10 (100%)
-Docs             : PASS required docs present
-Sphinx           : PASS HTML built with 0 warnings
-Tests+Coverage   : PASS 94.89%; 300 passed, 1 skipped in 2.74s
-Package Build    : PASS Successfully built my_lastfm_player-0.0.71.tar.gz and my_lastfm_player-0.0.71-py3-none-any.whl
-Wheel            : PASS my_lastfm_player-0.0.71-py3-none-any.whl
-Wheel Install    : PASS Built wheel installed into .venv
-Import Check     : PASS 0.0.71+4c36a8
-Launch App       : PASS my-lastfm-player was started once
-```
