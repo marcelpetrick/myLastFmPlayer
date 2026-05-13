@@ -4,7 +4,7 @@ This document collects unresolved follow-up improvements noticed during
 implementation. These are not blockers for the current development-plan step,
 but they should be revisited before the MVP is considered finished.
 
-## Workflow
+## General
 
 - 15. Playlist feature: support dragging and dropping songs into a playlist, then play them one after another.
 - fixed: 19. Bug with the download state: cached track files are downloaded again when double-clicked. Cached files should only be shown when they exist. Do a file-system check if we have a result; otherwise, download them. Also check whether the queued-download mechanism really triggers downloads for the remaining tracks.
@@ -20,10 +20,7 @@ but they should be revisited before the MVP is considered finished.
 - fixed: change 29: By default, when the application quits, wipe all credentials and cached data. Only skip the wipe if the user has checked "Keep cached data after quitting" in Preferences › Privacy. Deletion failures are printed to stdout without aborting the quit.
 - fixed: change 30: Audit all code for UTF-8 compatibility. Add explicit `encoding="utf-8"` to every subprocess call that uses `text=True` (yt-dlp runner and ffprobe). All file I/O already used UTF-8.
 - fixed: change 31: Raise unit-test coverage for all modules above 95%. Controller.py was at 85%; targeted new tests brought overall project coverage to 97%.
-
-## UI Design
-
-- 8. Consider switching from the widget-based UI to QML. Reassess whether this still has benefits after the theme work. #lowprio
+- feature 32: all downloads are with uneven volume, so some low and some loud. some equalizer would help. which automatically then adjusts the rest of the next plays to the loudness of the current song? or should it be better that all songs are converted to mp3 and then mp3gain is run? with 89db? convert them first to 320 CBR-mp3 and then "gain" them? and only the gained copy is played? so we have the original downloads and also their conversion?!?
 
 ## Pipeline
 
