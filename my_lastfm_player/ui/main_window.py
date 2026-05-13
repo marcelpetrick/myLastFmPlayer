@@ -273,6 +273,10 @@ class MainWindow(QMainWindow):
         playback_timeline_layout.addWidget(self.current_time_label)
         playback_timeline_layout.addWidget(self.time_separator_label)
         playback_timeline_layout.addWidget(self.total_time_label)
+        self.now_playing_label = QLabel()
+        self.now_playing_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        playback_layout.addWidget(self.now_playing_label)
         playback_layout.addLayout(playback_button_layout)
         playback_layout.addLayout(playback_timeline_layout)
 
@@ -461,6 +465,14 @@ class MainWindow(QMainWindow):
 
         self.track_model.set_playing_track(cache_key)
 
+    def set_now_playing(self, track: Track | None) -> None:
+        """Display ``track`` info above the playback controls, or clear it when ``None``."""
+
+        if track is None:
+            self.now_playing_label.setText(self.tr("Not playing"))
+        else:
+            self.now_playing_label.setText(f"{track.artist} — {track.title}")
+
     def tracks(self) -> list[Track]:
         """Return a copy of the tracks currently visible in the table."""
 
@@ -595,6 +607,8 @@ class MainWindow(QMainWindow):
         self.username_input.setPlaceholderText(self.tr("Enter username"))
         self.fetch_button.setText(self.tr("Fetch"))
         self.playback_group.setTitle(self.tr("Playback"))
+        if self.now_playing_label.text() in ("", "Not playing"):
+            self.now_playing_label.setText(self.tr("Not playing"))
         self.play_button.setText(self.tr("Play"))
         self.pause_button.setText(self.tr("Pause"))
         self.stop_button.setText(self.tr("Stop"))

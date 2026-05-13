@@ -602,6 +602,7 @@ class ApplicationController(QObject):
             return
 
         self.window.set_playing_track(None)
+        self.window.set_now_playing(None)
         self.window.reset_playback_timeline()
         self.window.set_playback_controls(active=False)
         self._scrobble_submitted = False
@@ -923,6 +924,7 @@ class ApplicationController(QObject):
             return
 
         self.window.set_playing_track(track.cache_key)
+        self.window.set_now_playing(track)
         self.window.set_playback_controls(active=True)
         self.window.set_playback_timeline(
             self.playback_service.position_ms(),
@@ -1134,6 +1136,7 @@ class ApplicationController(QObject):
             return
 
         self.window.set_playing_track(None)
+        self.window.set_now_playing(None)
         self.window.reset_playback_timeline()
         self.window.set_playback_controls(active=False)
         self._scrobble_submitted = False
