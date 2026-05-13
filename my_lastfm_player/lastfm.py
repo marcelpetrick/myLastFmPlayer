@@ -386,14 +386,20 @@ def _parse_track_row(row: Tag, page_url: str) -> Track | None:
 
 
 def _parse_loved_at(row: Tag) -> str | None:
-    time_tag = row.select_one("time[datetime]")
-    if time_tag is None:
+    # Last.fm renders: <td class="chartlist-timestamp …"><span title="Weekday D Month YYYY, H:MMam">
+    span = row.select_one("td.chartlist-timestamp span[title]")
+    if span is None:
         return None
-    datetime_str = time_tag.get("datetime")
-    if not isinstance(datetime_str, str) or not datetime_str:
+    title = span.get("title")
+    if not isinstance(title, str) or not title:
         return None
+    # Strip leading weekday word, then normalise am/pm to uppercase for strptime %p.
+    parts = title.split(" ", 1)
+    if len(parts) < 2:
+        return None
+    date_str = re.sub(r"(am|pm)\Z", lambda m: m.group().upper(), parts[1])
     try:
-        return _Datetime.fromisoformat(datetime_str).strftime("%Y%m%d-%H%M%S")
+        return _Datetime.strptime(date_str, "%d %B %Y, %I:%M%p").strftime("%Y%m%d-%H%M%S")
     except ValueError:
         return None
 
