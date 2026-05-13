@@ -310,6 +310,9 @@ class ApplicationController(QObject):
             )
             return
         creds = self.repository.load_credentials()
+        scrobbling_enabled = AppSettings().scrobbling_enabled(
+            default_enabled=bool(creds.get("scrobbling_enabled", True))
+        )
         self._report_user_action(
             translate(
                 "ApplicationController",
@@ -326,7 +329,7 @@ class ApplicationController(QObject):
             api_secret=app_credentials.api_secret,
             session_key=str(creds.get("session_key", "")),
             username=str(creds.get("username", "")),
-            scrobbling_enabled=bool(creds.get("scrobbling_enabled", True)),
+            scrobbling_enabled=scrobbling_enabled,
         )
         if self._scrobbling_service.session_key:
             if self._scrobbling_service.try_connect():
@@ -369,6 +372,7 @@ class ApplicationController(QObject):
                 )
             )
             return
+        AppSettings().set_scrobbling_enabled(self._scrobbling_service.scrobbling_enabled)
         self.repository.save_credentials(self._scrobbling_service.credentials_dict())
         self._report_user_action(
             translate(

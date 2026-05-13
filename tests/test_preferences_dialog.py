@@ -54,6 +54,7 @@ class FakeSettings:
         self.browser = ""
         self.keep_data = False
         self.concurrency = 4
+        self.scrobbling = True
 
     def ytdlp_cookies_browser(self) -> str:
         return self.browser
@@ -72,6 +73,9 @@ class FakeSettings:
 
     def set_download_concurrency(self, concurrency: int) -> None:
         self.concurrency = concurrency
+
+    def set_scrobbling_enabled(self, enabled: bool) -> None:
+        self.scrobbling = enabled
 
 
 def test_preferences_dialog_shows_not_connected(qapp) -> None:
@@ -169,6 +173,18 @@ def test_preferences_dialog_scrobbling_toggle(qapp) -> None:
 
     dialog.scrobbling_checkbox.setChecked(True)
     assert svc.scrobbling_enabled
+
+
+def test_preferences_dialog_scrobbling_toggle_persists(qapp, monkeypatch) -> None:
+    settings = FakeSettings()
+    monkeypatch.setattr(preferences_module, "AppSettings", lambda: settings)
+    svc = _make_svc()
+    dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+
+    dialog.scrobbling_checkbox.setChecked(False)
+
+    assert not svc.scrobbling_enabled
+    assert not settings.scrobbling
 
 
 def test_preferences_dialog_scrobbling_checkbox_checked_by_default(qapp) -> None:

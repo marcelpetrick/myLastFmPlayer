@@ -9,6 +9,7 @@ from my_lastfm_player.themes import ThemeMode
 
 THEME_KEY = "appearance/theme"
 LANGUAGE_KEY = "appearance/language"
+SCROBBLING_ENABLED_KEY = "lastfm/scrobblingenabled"
 YTDLP_BROWSER_KEY = "download/cookiesbrowser"
 DOWNLOAD_CONCURRENCY_KEY = "download/concurrency"
 KEEP_DATA_ON_QUIT_KEY = "privacy/keepdataonquit"
@@ -52,6 +53,16 @@ class AppSettings:
         """Persist the selected language code."""
 
         self._settings.setValue(LANGUAGE_KEY, language_by_code(code).code)
+
+    def scrobbling_enabled(self, default_enabled: bool = True) -> bool:
+        """Return whether Last.fm scrobbling should be enabled."""
+
+        return bool(self._settings.value(SCROBBLING_ENABLED_KEY, default_enabled, bool))
+
+    def set_scrobbling_enabled(self, enabled: bool) -> None:
+        """Persist whether Last.fm scrobbling should be enabled."""
+
+        self._settings.setValue(SCROBBLING_ENABLED_KEY, enabled)
 
     def ytdlp_cookies_browser(self) -> str:
         """Return the browser name to pass to yt-dlp --cookies-from-browser, or empty string."""

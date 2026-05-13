@@ -166,6 +166,27 @@ def test_controller_initializes_scrobbling_with_bundled_credentials(qapp, tmp_pa
     assert controller._scrobbling_service.has_api_credentials
 
 
+def test_controller_loads_scrobbling_enabled_from_settings(
+    qapp, tmp_path, monkeypatch
+) -> None:
+    from my_lastfm_player import settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module.AppSettings,
+        "scrobbling_enabled",
+        lambda self, default_enabled=True: False,
+    )
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_credentials({"scrobbling_enabled": True})
+    controller = ApplicationController(window, repository=repository)
+
+    controller._init_scrobbling()
+
+    assert controller._scrobbling_service is not None
+    assert not controller._scrobbling_service.scrobbling_enabled
+
+
 def test_controller_skips_scrobbling_when_credentials_are_empty(
     qapp, tmp_path, monkeypatch
 ) -> None:
@@ -1439,8 +1460,11 @@ def test_controller_save_scrobbling_credentials_without_service(qapp, tmp_path) 
 
 def test_controller_show_preferences_opens_dialog_and_saves(qapp, tmp_path, monkeypatch) -> None:
     import my_lastfm_player.ui.preferences_dialog as prefs_module
+    from my_lastfm_player import settings as settings_module
+    from my_lastfm_player.scrobbling import ScrobblingService
 
     exec_calls: list[int] = []
+    saved_scrobbling: list[bool] = []
 
     class FakeDialog:
         def __init__(self, *_args, **_kwargs) -> None:
@@ -1450,15 +1474,27 @@ def test_controller_show_preferences_opens_dialog_and_saves(qapp, tmp_path, monk
             exec_calls.append(1)
 
     monkeypatch.setattr(prefs_module, "PreferencesDialog", FakeDialog)
+    monkeypatch.setattr(
+        settings_module.AppSettings,
+        "set_scrobbling_enabled",
+        lambda self, enabled: saved_scrobbling.append(enabled),
+    )
 
     window = MainWindow()
     controller = ApplicationController(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
     )
+    controller._scrobbling_service = ScrobblingService(
+        api_key="key",
+        api_secret="secret",
+        username="testuser",
+        scrobbling_enabled=False,
+    )
     controller._show_preferences()
 
     assert exec_calls == [1]
+    assert saved_scrobbling == [False]
     assert "Opening preferences." in window.feedback_log.toPlainText()
 
 

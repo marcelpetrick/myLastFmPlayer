@@ -239,7 +239,9 @@ class PreferencesDialog(QDialog):
     def _on_scrobbling_toggled(self, state: int) -> None:
         if self._service is None:
             return
-        self._service.scrobbling_enabled = bool(state)
+        enabled = bool(state)
+        self._service.scrobbling_enabled = enabled
+        self._settings.set_scrobbling_enabled(enabled)
 
     def _on_browser_changed(self, index: int) -> None:
         browser = self._browser_values[index] if 0 <= index < len(self._browser_values) else ""

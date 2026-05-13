@@ -44,6 +44,25 @@ def test_settings_fall_back_for_invalid_values(tmp_path: Path) -> None:
     assert settings.language_code() == "en"
 
 
+def test_scrobbling_enabled_defaults_to_true_and_persists(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    settings = AppSettings(_ini_settings(path))
+
+    assert settings.scrobbling_enabled()
+
+    settings.set_scrobbling_enabled(False)
+
+    reloaded = AppSettings(_ini_settings(path))
+    assert not reloaded.scrobbling_enabled()
+
+
+def test_scrobbling_enabled_can_use_legacy_default(tmp_path: Path) -> None:
+    raw = _ini_settings(tmp_path / "settings.ini")
+    raw.setValue(KEEP_DATA_ON_QUIT_KEY, True)  # unrelated write to confirm key import works
+
+    assert not AppSettings(raw).scrobbling_enabled(default_enabled=False)
+
+
 def test_keep_data_on_quit_defaults_to_false_and_persists(tmp_path: Path) -> None:
     path = tmp_path / "settings.ini"
     settings = AppSettings(_ini_settings(path))
