@@ -16,7 +16,7 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "pylast>=7.0.2",
     "PyQt6>=6.11.0",
-    "requests>=2.33.1",
+    "requests>=2.34.0",
 ]
 
 [project.optional-dependencies]
@@ -24,7 +24,7 @@ dev = [
     "build>=1.5.0",
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
-    "pylint>=4.0.4",
+    "pylint>=4.0.5",
     "ruff>=0.15.12",
     "sphinx>=9.1.0",
 ]
