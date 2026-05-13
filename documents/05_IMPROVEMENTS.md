@@ -14,7 +14,12 @@ but they should be revisited before the MVP is considered finished.
 - fixed: feature 23: the button "download queued" has to be rename: "start downloads"; when downloading the text switches to "stop downloads". getting tracks which are not locally availalble trigger the download. unless user presses the button for stop. end when everything is downloaded. skip over non available songs.
 - change request 24: track titles which are longer than the space inside one cell of th table shal be truncated (at the end). not wrapped onto a two line cell which in the end has a double height
 - improvement 25: the URl-resolving of the tracks and the download can happen in parallel - not just resolve all of them first and THEN download. no. afte th first is resolved, start a download
-
+- feature 26: show the currently playing track with artistname and title also above the playduriatio and stuff. if the tracklist is long, it could be that the plaiyng song is not visible. this feature shall not be removed, just augmented by that additional information.
+- change 27: move the downlod thread setting to the preferences; make it by default 2, up to ten. minimum 1. user chan change it whenever. eachtime new work is "picked", the cehck and spawn more workers, if possible.
+- change 28: wording of cache files-actinon-menu: it shall point to the folder with all cached information". find a good wording.
+- change 29: by default, when turning off the app (official quit), then also delete all credentials and all stored info! wipe. just if the user sets "Don't wipe data at quitting" (a checkbox), then skip this step. So by default everything is wiped. cybersecurity. when deleting somehing fails, then just prnt to stdout, but don't stop or abort the quit.
+- change 30: do a check if everthing in the software is UTF-8 compatbile. and all th strings only rely on UTF-8. i am quite sure this is the case.
+* change 31: unit-testing for all calsses above 95%. controller.py is bad.
 
 ## UI Design
 
