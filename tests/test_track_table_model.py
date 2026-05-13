@@ -177,3 +177,37 @@ def test_track_table_model_retranslate_emits_header_and_data_changes() -> None:
 
     assert headers == [(0, 4)]
     assert [int(Qt.ItemDataRole.DisplayRole)] in data_roles
+
+
+def test_track_table_model_retranslate_on_empty_model_emits_only_headers() -> None:
+    model = TrackTableModel()
+    headers: list[tuple[int, int]] = []
+    data_changes: list[object] = []
+    model.headerDataChanged.connect(
+        lambda _orientation, first, last: headers.append((first, last))
+    )
+    model.dataChanged.connect(lambda *_args: data_changes.append(True))
+
+    model.retranslate()
+
+    assert headers == [(0, 4)]
+    assert data_changes == []
+
+
+def test_track_table_model_header_data_returns_none_for_out_of_range_section() -> None:
+    model = TrackTableModel([Track(artist="Artist", title="Title")])
+
+    assert model.headerData(5, Qt.Orientation.Horizontal) is None
+    assert model.headerData(99, Qt.Orientation.Horizontal) is None
+
+
+def test_download_file_details_returns_empty_for_downloaded_track_without_path_extension() -> None:
+    track = Track(
+        artist="Artist",
+        title="Title",
+        local_path="/music/no_extension",
+        status=TrackStatus.DOWNLOADED,
+    )
+    model = TrackTableModel([track])
+
+    assert model.data(model.index(0, 4)) == ""

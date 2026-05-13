@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from my_lastfm_player.download import DownloadManager, _probe_audio_file
+from my_lastfm_player.download import (
+    DownloadManager,
+    _bit_rate_to_kbps,
+    _format_name_to_file_type,
+    _probe_audio_file,
+)
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 
@@ -301,3 +306,122 @@ def test_download_manager_can_limit_priority_download_to_one_track(tmp_path: Pat
     tracks = repository.load_tracks("user")
     assert tracks[0].status == TrackStatus.FETCHED
     assert tracks[1].status == TrackStatus.DOWNLOADED
+
+
+def test_download_manager_includes_cookies_browser_flag(tmp_path: Path) -> None:
+    runner = FakeRunner()
+    manager = DownloadManager(
+        command_runner=runner,
+        cookies_browser="firefox",
+        backoff_factory=lambda: 0,
+        sleeper=lambda _: None,
+    )
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/example",
+        status=TrackStatus.QUEUED,
+    )
+
+    manager.download_tracks([track], tmp_path)
+
+    assert "--cookies-from-browser" in runner.commands[0]
+    assert "firefox" in runner.commands[0]
+
+
+def test_download_manager_fails_when_output_file_not_found(tmp_path: Path) -> None:
+    def no_file_runner(command, **_kwargs):
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    manager = DownloadManager(
+        command_runner=no_file_runner,
+        backoff_factory=lambda: 0,
+        sleeper=lambda _: None,
+        max_retries=1,
+    )
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/example",
+        status=TrackStatus.QUEUED,
+    )
+
+    tracks = manager.download_tracks([track], tmp_path)
+
+    assert tracks[0].status == TrackStatus.FAILED
+    assert "not found" in tracks[0].error.lower()
+
+
+def test_probe_audio_file_returns_path_type_when_subprocess_raises(
+    monkeypatch, tmp_path: Path
+) -> None:
+    audio_path = tmp_path / "Artist - Title.mp3"
+    audio_path.touch()
+
+    def raise_os_error(*_args, **_kwargs):
+        raise OSError("ffprobe not found")
+
+    monkeypatch.setattr(subprocess, "run", raise_os_error)
+
+    file_type, bitrate = _probe_audio_file(audio_path)
+
+    assert file_type == "MP3"
+    assert bitrate is None
+
+
+def test_probe_audio_file_returns_path_type_when_ffprobe_returns_invalid_json(
+    monkeypatch, tmp_path: Path
+) -> None:
+    audio_path = tmp_path / "Artist - Title.mp3"
+    audio_path.touch()
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_a, **_k: subprocess.CompletedProcess([], 0, stdout="not valid json", stderr=""),
+    )
+
+    file_type, bitrate = _probe_audio_file(audio_path)
+
+    assert file_type == "MP3"
+    assert bitrate is None
+
+
+def test_probe_audio_file_returns_path_type_when_format_is_not_dict(
+    monkeypatch, tmp_path: Path
+) -> None:
+    audio_path = tmp_path / "Artist - Title.mp3"
+    audio_path.touch()
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_a, **_k: subprocess.CompletedProcess(
+            [], 0, stdout='{"format": "string not a dict"}', stderr=""
+        ),
+    )
+
+    file_type, bitrate = _probe_audio_file(audio_path)
+
+    assert file_type == "MP3"
+    assert bitrate is None
+
+
+def test_format_name_to_file_type_returns_none_for_non_string_or_empty() -> None:
+    assert _format_name_to_file_type(None) is None
+    assert _format_name_to_file_type("") is None
+    assert _format_name_to_file_type(42) is None
+
+
+def test_format_name_to_file_type_falls_back_to_first_unknown_format() -> None:
+    assert _format_name_to_file_type("flv") == "FLV"
+
+
+def test_bit_rate_to_kbps_returns_none_for_non_numeric_input() -> None:
+    assert _bit_rate_to_kbps("not-a-number") is None
+    assert _bit_rate_to_kbps(None) is None
+
+
+def test_bit_rate_to_kbps_returns_none_for_non_positive_values() -> None:
+    assert _bit_rate_to_kbps(0) is None
+    assert _bit_rate_to_kbps(-1000) is None

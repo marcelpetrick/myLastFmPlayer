@@ -274,3 +274,60 @@ def test_download_worker_accepts_real_manager(tmp_path: Path) -> None:
     )
 
     assert worker.concurrency == 2
+
+
+def test_fetch_worker_reports_zero_percent_when_total_count_is_unknown(tmp_path: Path) -> None:
+    class ScraperNoTotal:
+        def fetch_and_store_loved_tracks(
+            self, username, repository, progress_callback=None, **_kwargs
+        ):
+            if progress_callback is not None:
+                progress_callback(FetchProgress(1, "Fetched 1 track"))
+            repository.save_tracks(username, [])
+            return []
+
+    worker = FetchLovedTracksWorker(
+        "example",
+        ScraperNoTotal(),  # type: ignore[arg-type]
+        JsonTrackRepository(data_dir=tmp_path),
+    )
+    progress_events: list[tuple[int, str]] = []
+    worker.progress.connect(lambda value, label: progress_events.append((value, label)))
+
+    worker.run()
+
+    assert (0, "Fetched 1 track") in progress_events
+
+
+def test_fetch_worker_pause_and_resume_toggle_event(tmp_path: Path) -> None:
+    worker = FetchLovedTracksWorker(
+        "example",
+        FakeScraper(),
+        JsonTrackRepository(data_dir=tmp_path),
+    )
+
+    worker.pause_fetch()
+    assert not worker._resume_event.is_set()
+
+    worker.resume_fetch()
+    assert worker._resume_event.is_set()
+
+
+def test_fetch_worker_sleeps_while_paused_then_returns_true_on_resume(
+    monkeypatch, tmp_path: Path
+) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    worker = FetchLovedTracksWorker("example", FakeScraper(), repository)
+    worker.pause_fetch()
+    sleep_calls: list[float] = []
+
+    def fake_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+        worker.resume_fetch()
+
+    monkeypatch.setattr("my_lastfm_player.workers.time.sleep", fake_sleep)
+
+    result = worker._can_continue_fetching()
+
+    assert sleep_calls == [0.05]
+    assert result is True

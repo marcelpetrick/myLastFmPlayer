@@ -19,6 +19,7 @@ from my_lastfm_player.lastfm import (
     _find_next_page_url,
     _find_total_tracks,
     _is_retryable_error,
+    _parse_loved_at,
     parse_loved_tracks_page,
 )
 from my_lastfm_player.models import Track, TrackStatus
@@ -494,3 +495,103 @@ def test_retryable_error_detection() -> None:
     assert _is_retryable_error(requests.ConnectionError("network"))
     assert _is_retryable_error(LastFmError("Last.fm returned HTTP status 503"))
     assert not _is_retryable_error(LastFmError("Last.fm returned HTTP status 404"))
+
+
+def test_scraper_rejects_empty_username_for_track_count_fetch() -> None:
+    with pytest.raises(ValueError, match="username"):
+        LastFmLovedTracksScraper().fetch_loved_track_count("")
+
+
+def test_parse_loved_tracks_page_sets_lastfm_url_none_when_title_link_has_no_href() -> None:
+    page = parse_loved_tracks_page(
+        """
+        <table>
+          <tr class="chartlist-row">
+            <td class="chartlist-name"><a>Title Without Href</a></td>
+            <td class="chartlist-artist"><a href="/music/Artist">Artist</a></td>
+          </tr>
+        </table>
+        """,
+        "https://www.last.fm/user/example/loved",
+    )
+
+    assert page.tracks == [Track(artist="Artist", title="Title Without Href")]
+
+
+def test_parse_loved_at_returns_none_when_title_attribute_is_empty() -> None:
+    html = '<tr><td class="chartlist-timestamp"><span title="">text</span></td></tr>'
+    row = BeautifulSoup(html, "html.parser").find("tr")
+    assert _parse_loved_at(row) is None
+
+
+def test_parse_loved_at_returns_none_when_title_has_no_space() -> None:
+    html = '<tr><td class="chartlist-timestamp"><span title="NoSpaceHere">text</span></td></tr>'
+    row = BeautifulSoup(html, "html.parser").find("tr")
+    assert _parse_loved_at(row) is None
+
+
+def test_parse_loved_at_returns_none_for_invalid_date_format() -> None:
+    html = (
+        '<tr><td class="chartlist-timestamp">'
+        '<span title="Weekday bad date format">text</span></td></tr>'
+    )
+    row = BeautifulSoup(html, "html.parser").find("tr")
+    assert _parse_loved_at(row) is None
+
+
+def test_controlled_sleep_returns_true_after_deadline_has_elapsed(monkeypatch) -> None:
+    monotonic_values = [0.0, 2.0]
+    monkeypatch.setattr(
+        "my_lastfm_player.lastfm.time.monotonic",
+        lambda: monotonic_values.pop(0) if monotonic_values else 2.0,
+    )
+    monkeypatch.setattr("my_lastfm_player.lastfm.time.sleep", lambda _: None)
+
+    assert _controlled_sleep(1.0, lambda: True)
+
+
+def test_scraper_sleeps_between_pages_when_page_delay_is_positive(monkeypatch) -> None:
+    sleep_calls: list[float] = []
+    monkeypatch.setattr(
+        "my_lastfm_player.lastfm._controlled_sleep",
+        lambda delay, _cb: (sleep_calls.append(delay), True)[1],
+    )
+    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
+    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
+    session = FakeSession(
+        {
+            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
+            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+        }
+    )
+
+    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=1.5).fetch_loved_tracks(
+        "example"
+    )
+
+    assert len(tracks) == 3
+    assert sleep_calls == [1.5]
+
+
+def test_scraper_stops_during_page_delay_when_controlled_sleep_returns_false(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "my_lastfm_player.lastfm._controlled_sleep",
+        lambda _delay, _cb: False,
+    )
+    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
+    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
+    session = FakeSession(
+        {
+            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
+            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+        }
+    )
+
+    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=1.5).fetch_loved_tracks(
+        "example"
+    )
+
+    assert [track.title for track in tracks] == ["Down on the Farm", "Say It Right"]
+    assert session.requested_urls == [first_url]
