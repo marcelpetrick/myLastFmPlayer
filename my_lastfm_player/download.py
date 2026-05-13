@@ -222,6 +222,7 @@ class DownloadManager:
                 check=False,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
             )
         except OSError as error:
             raise DownloadError(f"Could not run {self.executable}: {error}") from error
@@ -275,6 +276,7 @@ def _probe_audio_file(path: Path) -> tuple[str | None, int | None]:
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
     except OSError:
         return file_type, None

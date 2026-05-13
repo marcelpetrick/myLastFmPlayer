@@ -164,6 +164,7 @@ class YouTubeResolver:
                 check=False,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
             )
         except OSError as error:
             raise YouTubeLookupError(f"Could not run {self.executable}: {error}") from error
