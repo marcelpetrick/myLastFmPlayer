@@ -70,6 +70,23 @@ class JsonTrackRepository:
 
         return self.tracks_dir / f"{sanitize_path_component(username)}.json"
 
+    def wipe(self) -> None:
+        """Delete all cached data files (credentials, track lists, caches).
+
+        Audio files in the downloads directory are intentionally kept.
+        Deletion errors are printed to stdout and silently skipped.
+        """
+
+        targets: list[Path] = [self.credentials_path, self.cache_path, self.lookup_cache_path]
+        if self.tracks_dir.is_dir():
+            targets.extend(self.tracks_dir.iterdir())
+        for path in targets:
+            try:
+                if path.is_file():
+                    path.unlink()
+            except OSError as error:
+                print(f"[myLastFmPlayer] Could not delete {path} during wipe: {error}", flush=True)
+
     def load_download_cache(self) -> dict[str, Track]:
         """Load cached downloaded tracks keyed by cache key."""
 

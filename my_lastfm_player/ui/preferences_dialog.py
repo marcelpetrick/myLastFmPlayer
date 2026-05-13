@@ -81,6 +81,13 @@ class PreferencesDialog(QDialog):
         youtube_layout.addWidget(self.youtube_hint)
         layout.addWidget(self.youtube_group)
 
+        # ── Privacy group ───────────────────────────────────────────────
+        self.privacy_group = QGroupBox(self)
+        privacy_layout = QVBoxLayout(self.privacy_group)
+        self.keep_data_checkbox = QCheckBox(self)
+        privacy_layout.addWidget(self.keep_data_checkbox)
+        layout.addWidget(self.privacy_group)
+
         # ── Close button ────────────────────────────────────────────────
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, self)
         buttons.rejected.connect(self.reject)
@@ -92,6 +99,7 @@ class PreferencesDialog(QDialog):
         self.disconnect_button.clicked.connect(self._on_disconnect)
         self.scrobbling_checkbox.stateChanged.connect(self._on_scrobbling_toggled)
         self.browser_combo.currentIndexChanged.connect(self._on_browser_changed)
+        self.keep_data_checkbox.stateChanged.connect(self._on_keep_data_toggled)
 
         # Populate and restore browser selection
         settings = AppSettings()
@@ -104,6 +112,11 @@ class PreferencesDialog(QDialog):
             else 0
         )
         self.browser_combo.setCurrentIndex(saved_index)
+
+        # Restore keep-data-on-quit setting
+        self.keep_data_checkbox.blockSignals(True)
+        self.keep_data_checkbox.setChecked(settings.keep_data_on_quit())
+        self.keep_data_checkbox.blockSignals(False)
 
     def retranslate_ui(self) -> None:
         """Apply current translations to all static labels."""
@@ -128,6 +141,8 @@ class PreferencesDialog(QDialog):
             )
         )
         self.browser_combo.setItemText(0, self.tr("None (disabled)"))
+        self.privacy_group.setTitle(self.tr("Privacy"))
+        self.keep_data_checkbox.setText(self.tr("Keep cached data after quitting"))
 
     def _refresh(self) -> None:
         if self._service is None or not self._service.has_api_credentials:
@@ -209,3 +224,6 @@ class PreferencesDialog(QDialog):
     def _on_browser_changed(self, index: int) -> None:
         browser = self._browser_values[index] if 0 <= index < len(self._browser_values) else ""
         AppSettings().set_ytdlp_cookies_browser(browser)
+
+    def _on_keep_data_toggled(self, state: int) -> None:
+        AppSettings().set_keep_data_on_quit(bool(state))

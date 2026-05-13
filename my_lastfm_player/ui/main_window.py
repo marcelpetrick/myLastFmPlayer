@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
-from PyQt6.QtGui import QAction, QActionGroup, QMouseEvent
+from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QFormLayout,
@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
     theme_requested = pyqtSignal(str)
     preferences_requested = pyqtSignal()
     file_cache_requested = pyqtSignal()
+    quit_requested = pyqtSignal()
 
     def __init__(self, translation_manager: TranslationManager | None = None) -> None:
         super().__init__()
@@ -642,6 +643,10 @@ class MainWindow(QMainWindow):
             if self.translation_manager is not None
             else DEFAULT_LANGUAGE_CODE
         ].setChecked(True)
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        self.quit_requested.emit()
+        event.accept()
 
 
 def application_title(version: str) -> str:

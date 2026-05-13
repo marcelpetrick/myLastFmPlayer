@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import QSettings
 
-from my_lastfm_player.settings import LANGUAGE_KEY, THEME_KEY, AppSettings
+from my_lastfm_player.settings import KEEP_DATA_ON_QUIT_KEY, LANGUAGE_KEY, THEME_KEY, AppSettings
 from my_lastfm_player.themes import ThemeMode
 
 
@@ -33,3 +33,37 @@ def test_settings_fall_back_for_invalid_values(tmp_path: Path) -> None:
 
     assert settings.theme_mode() is ThemeMode.LIGHT
     assert settings.language_code() == "en"
+
+
+def test_keep_data_on_quit_defaults_to_false_and_persists(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    settings = AppSettings(_ini_settings(path))
+
+    assert settings.keep_data_on_quit() is False
+
+    settings.set_keep_data_on_quit(True)
+
+    reloaded = AppSettings(_ini_settings(path))
+    assert reloaded.keep_data_on_quit() is True
+
+
+def test_ytdlp_cookies_browser_defaults_to_empty_and_persists(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    settings = AppSettings(_ini_settings(path))
+
+    assert settings.ytdlp_cookies_browser() == ""
+
+    settings.set_ytdlp_cookies_browser("firefox")
+
+    reloaded = AppSettings(_ini_settings(path))
+    assert reloaded.ytdlp_cookies_browser() == "firefox"
+
+
+def test_ytdlp_cookies_browser_rejects_unknown_browser(tmp_path: Path) -> None:
+    raw = _ini_settings(tmp_path / "settings.ini")
+    raw.setValue(KEEP_DATA_ON_QUIT_KEY, True)  # unrelated write to confirm key import works
+
+    settings = AppSettings(raw)
+    settings.set_ytdlp_cookies_browser("edge")
+
+    assert settings.ytdlp_cookies_browser() == ""

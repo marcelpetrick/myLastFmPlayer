@@ -344,3 +344,59 @@ def test_credentials_returns_empty_dict_for_non_dict_json(tmp_path: Path) -> Non
     repository.credentials_path.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
 
     assert repository.load_credentials() == {}
+
+
+def test_wipe_removes_credentials_cache_and_track_files(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(artist="A", title="T")
+
+    repository.save_credentials({"key": "val"})
+    repository.save_tracks("user", [track])
+    repository.save_download_cache([])
+    repository.save_lookup_cache([])
+
+    assert repository.credentials_path.exists()
+    assert repository.cache_path.exists()
+    assert repository.lookup_cache_path.exists()
+    assert repository.user_tracks_path("user").exists()
+
+    repository.wipe()
+
+    assert not repository.credentials_path.exists()
+    assert not repository.cache_path.exists()
+    assert not repository.lookup_cache_path.exists()
+    assert not repository.user_tracks_path("user").exists()
+
+
+def test_wipe_keeps_downloaded_audio_files(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    audio_file = repository.downloads_dir / "song.mp3"
+    audio_file.parent.mkdir(parents=True, exist_ok=True)
+    audio_file.write_text("audio", encoding="utf-8")
+
+    repository.save_credentials({"key": "val"})
+    repository.wipe()
+
+    assert audio_file.exists()
+    assert not repository.credentials_path.exists()
+
+
+def test_wipe_tolerates_oserror_without_raising(tmp_path: Path, capsys) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_credentials({"key": "val"})
+
+    credentials_path = repository.credentials_path
+    credentials_path.chmod(0o444)
+    credentials_path.parent.chmod(0o555)
+    try:
+        repository.wipe()
+    finally:
+        credentials_path.parent.chmod(0o755)
+
+    captured = capsys.readouterr()
+    assert "Could not delete" in captured.out
+
+
+def test_wipe_is_idempotent_when_nothing_exists(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.wipe()  # must not raise

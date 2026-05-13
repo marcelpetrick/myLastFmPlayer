@@ -121,9 +121,16 @@ class ApplicationController(QObject):
         self.window.language_changed.connect(self.check_dependencies)
         self.window.preferences_requested.connect(self._show_preferences)
         self.window.file_cache_requested.connect(self.open_file_cache)
+        self.window.quit_requested.connect(self._handle_quit)
         self._init_scrobbling()
         self._apply_ytdlp_settings()
         self.check_dependencies()
+
+    def _handle_quit(self) -> None:
+        from my_lastfm_player.settings import AppSettings  # noqa: PLC0415
+
+        if not AppSettings().keep_data_on_quit():
+            self.repository.wipe()
 
     def _report_user_action(self, message: str) -> None:
         LOGGER.info("User action: %s", message)
