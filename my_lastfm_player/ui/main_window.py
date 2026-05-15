@@ -32,6 +32,13 @@ from my_lastfm_player import __display_version__
 from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track
 from my_lastfm_player.ui.flags import flag_icon
+from my_lastfm_player.ui.icons import (
+    folder_icon,
+    palette_icon,
+    preferences_icon,
+    quit_icon,
+    theme_swatch_icon,
+)
 from my_lastfm_player.ui.track_table_model import (
     ElidedTextDelegate,
     TrackTableModel,
@@ -92,9 +99,11 @@ class MainWindow(QMainWindow):
         self.refresh_action.triggered.connect(self.fetch_requested.emit)
 
         self.preferences_action = QAction(self)
+        self.preferences_action.setIcon(preferences_icon())
         self.preferences_action.triggered.connect(self.preferences_requested.emit)
 
         self.file_cache_action = QAction(self)
+        self.file_cache_action.setIcon(folder_icon())
         self.file_cache_action.triggered.connect(self.file_cache_requested.emit)
 
         self.about_action = QAction(self)
@@ -104,16 +113,21 @@ class MainWindow(QMainWindow):
         self.open_source_licenses_action.triggered.connect(self.show_open_source_licenses_dialog)
 
         self.quit_action = QAction(self)
+        self.quit_action.setIcon(quit_icon())
         self.quit_action.triggered.connect(self.close)
 
         self.theme_light_action = QAction(self)
+        self.theme_light_action.setIcon(theme_swatch_icon("#F3EEE3", "#B9AA86"))
         self.theme_light_action.setCheckable(True)
         self.theme_light_action.setChecked(True)
         self.theme_dark_action = QAction(self)
+        self.theme_dark_action.setIcon(theme_swatch_icon("#2F343A", "#14171A"))
         self.theme_dark_action.setCheckable(True)
         self.theme_lilac_action = QAction(self)
+        self.theme_lilac_action.setIcon(theme_swatch_icon("#D8C5F0", "#8D6CC2"))
         self.theme_lilac_action.setCheckable(True)
         self.theme_mint_action = QAction(self)
+        self.theme_mint_action.setIcon(theme_swatch_icon("#B8E4D0", "#4FA37F"))
         self.theme_mint_action.setCheckable(True)
         self.theme_light_action.setData("light")
         self.theme_dark_action.setData("dark")
@@ -139,6 +153,7 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self) -> None:
         self.theme_menu = QMenu(self)
+        self.theme_menu.setIcon(palette_icon())
         self.theme_menu.addAction(self.theme_light_action)
         self.theme_menu.addAction(self.theme_dark_action)
         self.theme_menu.addAction(self.theme_lilac_action)

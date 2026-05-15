@@ -24,8 +24,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.97"
-    assert __display_version__ == "0.0.97"
+    assert __version__ == "0.0.98"
+    assert __display_version__ == "0.0.98"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -62,7 +62,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.97"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.98"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -73,6 +73,19 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     assert not window.fetch_stop_button.isEnabled()
     assert window.fetch_pause_button.toolTip()
     assert window.fetch_stop_button.toolTip()
+
+
+def test_main_window_menu_actions_have_icons(qapp) -> None:
+    window = MainWindow()
+
+    assert not window.preferences_action.icon().isNull()
+    assert not window.file_cache_action.icon().isNull()
+    assert not window.quit_action.icon().isNull()
+    assert not window.theme_menu.icon().isNull()
+    assert not window.theme_light_action.icon().isNull()
+    assert not window.theme_dark_action.icon().isNull()
+    assert not window.theme_lilac_action.icon().isNull()
+    assert not window.theme_mint_action.icon().isNull()
 
 
 def test_application_title_includes_version_suffix() -> None:
@@ -158,7 +171,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.97\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.98\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert saved_languages == []
