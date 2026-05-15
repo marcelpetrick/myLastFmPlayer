@@ -600,10 +600,6 @@ class MainWindow(QMainWindow):
                 self.tr("Apache License 2.0; HTTP client for Last.fm API calls."),
             ),
             _component_license(
-                "beautifulsoup4",
-                self.tr("MIT License; legacy Last.fm HTML parser support."),
-            ),
-            _component_license(
                 "pylast",
                 self.tr("Apache License 2.0; Last.fm scrobbling integration."),
             ),
@@ -653,8 +649,6 @@ class MainWindow(QMainWindow):
                 "Qt 6 - " + self.tr("GNU LGPL v3 / GPL v3; cross-platform UI toolkit."),
                 "requests - "
                 + self.tr("Apache License 2.0; HTTP client for Last.fm API calls."),
-                "beautifulsoup4 - "
-                + self.tr("MIT License; legacy Last.fm HTML parser support."),
                 "pylast - " + self.tr("Apache License 2.0; Last.fm scrobbling integration."),
                 "yt-dlp - " + self.tr("Unlicense; media lookup and download helper."),
                 "FFmpeg - "

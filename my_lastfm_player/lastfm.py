@@ -7,17 +7,19 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import datetime as _Datetime
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from urllib.parse import quote, urljoin
 
 import requests
-from bs4 import BeautifulSoup, Tag
 
 from my_lastfm_player.app_credentials import lastfm_api_credentials
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.version import __display_version__
+
+if TYPE_CHECKING:
+    from bs4 import BeautifulSoup, Tag
 
 LASTFM_BASE_URL = "https://www.last.fm"
 LASTFM_API_URL = "https://ws.audioscrobbler.com/2.0/"
@@ -289,7 +291,7 @@ class LastFmLovedTracksParser:
         """Parse ``html`` into tracks, a next-page URL, and an optional total count."""
 
         _log_info("Parsing Last.fm loved-track HTML with BeautifulSoup: %s", page_url)
-        soup = BeautifulSoup(html, "html.parser")
+        soup = _parse_html_document(html)
         tracks = [_parse_track_row(row, page_url) for row in _find_track_rows(soup)]
         parsed_tracks = [track for track in tracks if track is not None]
         page = LovedTracksPage(
@@ -556,6 +558,17 @@ def _parse_api_loved_at(value: object) -> str | None:
     except ValueError:
         return None
     return _Datetime.fromtimestamp(timestamp, tz=UTC).strftime("%Y%m%d-%H%M%S")
+
+
+def _parse_html_document(html: str) -> BeautifulSoup:
+    try:
+        from bs4 import BeautifulSoup  # noqa: PLC0415
+    except ImportError as error:
+        raise LastFmError(
+            "Beautiful Soup is required only for legacy Last.fm HTML parsing. "
+            "Install the development dependencies to use that parser."
+        ) from error
+    return BeautifulSoup(html, "html.parser")
 
 
 def _parse_positive_int(value: object) -> int | None:

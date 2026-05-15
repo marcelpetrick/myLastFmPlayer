@@ -24,8 +24,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.96"
-    assert __display_version__ == "0.0.96"
+    assert __version__ == "0.0.97"
+    assert __display_version__ == "0.0.97"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -62,7 +62,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.96"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.97"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -158,7 +158,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.96\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.97\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert saved_languages == []
@@ -338,8 +338,9 @@ def test_main_window_open_source_license_text_lists_runtime_tools(qapp) -> None:
 
     license_text = window.open_source_licenses_plain_text()
 
-    for expected in ("PyQt6", "requests", "beautifulsoup4", "pylast", "yt-dlp", "FFmpeg"):
+    for expected in ("PyQt6", "requests", "pylast", "yt-dlp", "FFmpeg"):
         assert expected in license_text
+    assert "beautifulsoup4" not in license_text
 
 
 def test_main_window_open_source_license_text_bolds_components(qapp) -> None:

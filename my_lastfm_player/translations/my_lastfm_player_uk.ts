@@ -439,17 +439,17 @@
 </context><context>
     <name>LastFmLovedTracksScraper</name>
     <message>
-        <location filename="../lastfm.py" line="381" />
+        <location filename="../lastfm.py" line="383" />
         <source>Found Last.fm user {username}</source>
         <translation>Знайдено користувача Last.fm {username}</translation>
     </message>
     <message>
-        <location filename="../lastfm.py" line="666" />
+        <location filename="../lastfm.py" line="679" />
         <source>Fetched {count} tracks</source>
         <translation>Отримано {count} треків</translation>
     </message>
     <message>
-        <location filename="../lastfm.py" line="671" />
+        <location filename="../lastfm.py" line="684" />
         <source>Fetched {done}/{total} tracks</source>
         <translation>Отримано {done}/{total} треків</translation>
     </message>
@@ -468,306 +468,304 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="801" />
-        <location filename="../ui/main_window.py" line="80" />
+        <location filename="../ui/main_window.py" line="797" />
+        <location filename="../ui/main_window.py" line="82" />
         <source>Ready</source>
         <translation>Готовий</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="247" />
+        <location filename="../ui/main_window.py" line="249" />
         <source>Retry Download</source>
         <translation>Повторити завантаження</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="794" />
-        <location filename="../ui/main_window.py" line="322" />
+        <location filename="../ui/main_window.py" line="790" />
+        <location filename="../ui/main_window.py" line="324" />
         <source>Idle</source>
         <translation>Бездіяльність</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="346" />
+        <location filename="../ui/main_window.py" line="348" />
         <source>Loaded {count} tracks</source>
         <translation>Завантажено {count} треків</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="357" />
+        <location filename="../ui/main_window.py" line="359" />
         <source>Playlist: {count} titles</source>
         <translation>Список відтворення: {count} назв</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="378" />
+        <location filename="../ui/main_window.py" line="380" />
         <source>Resume</source>
         <translation>Резюме</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="774" />
-        <location filename="../ui/main_window.py" line="378" />
+        <location filename="../ui/main_window.py" line="770" />
+        <location filename="../ui/main_window.py" line="380" />
         <source>Pause</source>
         <translation>Пауза</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="775" />
-        <location filename="../ui/main_window.py" line="379" />
+        <location filename="../ui/main_window.py" line="771" />
+        <location filename="../ui/main_window.py" line="381" />
         <source>Stop</source>
         <translation>СТІЙ</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="381" />
+        <location filename="../ui/main_window.py" line="383" />
         <source>Resume the paused Last.fm fetch</source>
         <translation>Відновити призупинене отримання Last.fm</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="383" />
+        <location filename="../ui/main_window.py" line="385" />
         <source>Pause the active Last.fm fetch</source>
         <translation>Призупинити активне отримання Last.fm</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="384" />
+        <location filename="../ui/main_window.py" line="386" />
         <source>Stop the active Last.fm fetch</source>
         <translation>Зупиніть активне отримання Last.fm</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="779" />
-        <location filename="../ui/main_window.py" line="394" />
+        <location filename="../ui/main_window.py" line="775" />
+        <location filename="../ui/main_window.py" line="396" />
         <source>Stop Downloads</source>
         <translation>Зупинити завантаження</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="779" />
-        <location filename="../ui/main_window.py" line="398" />
+        <location filename="../ui/main_window.py" line="775" />
+        <location filename="../ui/main_window.py" line="400" />
         <source>Start Downloads</source>
         <translation>Почати завантаження</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="473" />
+        <location filename="../ui/main_window.py" line="475" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation>Оновлено {artist} - {title}: {status}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="772" />
-        <location filename="../ui/main_window.py" line="490" />
+        <location filename="../ui/main_window.py" line="768" />
+        <location filename="../ui/main_window.py" line="492" />
         <source>Not playing</source>
         <translation>Не відтворюється</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="756" />
-        <location filename="../ui/main_window.py" line="543" />
+        <location filename="../ui/main_window.py" line="752" />
+        <location filename="../ui/main_window.py" line="545" />
         <source>About myLastFmPlayer</source>
         <translation>Про myLastFmPlayer</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="549" />
+        <location filename="../ui/main_window.py" line="551" />
         <source>myLastFmPlayer {version}</source>
         <translation>myLastFmPlayer {version}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="550" />
+        <location filename="../ui/main_window.py" line="552" />
         <source>Author: Marcel Petrick &lt;a href="mailto:mail@marcelpetrick.it"&gt;mail@marcelpetrick.it&lt;/a&gt;</source>
         <translation>Автор: Marcel Petrick &lt;a href="mailto:mail@marcelpetrick.it"&gt;mail@marcelpetrick.it&lt;/a&gt;</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="554" />
+        <location filename="../ui/main_window.py" line="556" />
         <source>License: GNU GPLv3 or later.</source>
         <translation>Ліцензія: GNU GPLv3 або новіша.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="555" />
+        <location filename="../ui/main_window.py" line="557" />
         <source>This application fetches a user's public loved tracks from Last.fm, keeps local metadata, resolves playable sources through yt-dlp, downloads MP3 files, and plays them locally.</source>
         <translation>Ця програма отримує публічні улюблені треки користувача з Last.fm, зберігає локальні метадані, знаходить джерела для відтворення через yt-dlp, завантажує MP3-файли й відтворює їх локально.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="560" />
+        <location filename="../ui/main_window.py" line="562" />
         <source>It is intended as a practical Linux desktop helper for rebuilding a personal loved-track collection without manually searching every song.</source>
         <translation>Вона задумана як практичний помічник для робочого столу Linux, щоб відновити особисту колекцію улюблених треків без ручного пошуку кожної пісні.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="564" />
+        <location filename="../ui/main_window.py" line="566" />
         <source>Optional Last.fm scrobbling can connect the local playback workflow back to the user's Last.fm account.</source>
         <translation>Необов'язковий скроблінг Last.fm може з'єднати локальний процес відтворення з обліковим записом користувача Last.fm.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="757" />
-        <location filename="../ui/main_window.py" line="574" />
+        <location filename="../ui/main_window.py" line="753" />
+        <location filename="../ui/main_window.py" line="576" />
         <source>Open Source Licenses</source>
         <translation>Ліцензії відкритого коду</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="580" />
+        <location filename="../ui/main_window.py" line="582" />
         <source>myLastFmPlayer is GPLv3-or-later software and uses these open-source libraries and external tools:</source>
         <translation>myLastFmPlayer є програмою за ліцензією GPLv3 або новішою та використовує ці бібліотеки відкритого коду й зовнішні інструменти:</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="648" />
-        <location filename="../ui/main_window.py" line="586" />
+        <location filename="../ui/main_window.py" line="646" />
+        <location filename="../ui/main_window.py" line="588" />
         <source>Python Software Foundation License; runtime for the application.</source>
         <translation>Python Software Foundation License; середовище виконання програми.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="650" />
-        <location filename="../ui/main_window.py" line="590" />
+        <location filename="../ui/main_window.py" line="648" />
+        <location filename="../ui/main_window.py" line="592" />
         <source>GNU GPL v3; Python bindings for the Qt desktop interface.</source>
         <translation>GNU GPL v3; прив'язки Python для настільного інтерфейсу Qt.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="651" />
-        <location filename="../ui/main_window.py" line="594" />
+        <location filename="../ui/main_window.py" line="649" />
+        <location filename="../ui/main_window.py" line="596" />
         <source>GNU LGPL v3 / GPL v3; cross-platform UI toolkit.</source>
         <translation>GNU LGPL v3 / GPL v3; кросплатформний набір інструментів UI.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="653" />
-        <location filename="../ui/main_window.py" line="598" />
+        <location filename="../ui/main_window.py" line="651" />
+        <location filename="../ui/main_window.py" line="600" />
         <source>Apache License 2.0; HTTP client for Last.fm API calls.</source>
         <translation>Apache License 2.0; HTTP-клієнт для викликів API Last.fm.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="655" />
-        <location filename="../ui/main_window.py" line="602" />
-        <source>MIT License; legacy Last.fm HTML parser support.</source>
-        <translation>MIT License; підтримка застарілого HTML-парсера Last.fm.</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="656" />
-        <location filename="../ui/main_window.py" line="606" />
+        <location filename="../ui/main_window.py" line="652" />
+        <location filename="../ui/main_window.py" line="604" />
         <source>Apache License 2.0; Last.fm scrobbling integration.</source>
         <translation>Apache License 2.0; інтеграція скроблінгу Last.fm.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="657" />
-        <location filename="../ui/main_window.py" line="610" />
+        <location filename="../ui/main_window.py" line="653" />
+        <location filename="../ui/main_window.py" line="608" />
         <source>Unlicense; media lookup and download helper.</source>
         <translation>Unlicense; допоміжний інструмент для пошуку й завантаження медіа.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="659" />
-        <location filename="../ui/main_window.py" line="614" />
+        <location filename="../ui/main_window.py" line="655" />
+        <location filename="../ui/main_window.py" line="612" />
         <source>LGPL/GPL family licenses depending on the installed build; audio conversion backend.</source>
         <translation>Родина ліцензій LGPL/GPL залежно від установленої збірки; бекенд перетворення аудіо.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="619" />
+        <location filename="../ui/main_window.py" line="617" />
         <source>Development tools include {tools} under their respective open-source licenses.</source>
         <translation>Інструменти розробки включають {tools} під їхніми відповідними ліцензіями відкритого коду.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="635" />
+        <location filename="../ui/main_window.py" line="633" />
         <source>This summary is informational; the complete license texts are provided by the installed projects and system packages.</source>
         <translation>Цей підсумок є інформаційним; повні тексти ліцензій надаються встановленими проєктами та системними пакетами.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="753" />
+        <location filename="../ui/main_window.py" line="749" />
         <source>Fetch loved tracks</source>
         <translation>Отримайте улюблені треки</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="754" />
+        <location filename="../ui/main_window.py" line="750" />
         <source>Preferences</source>
         <translation>Уподобання</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="755" />
+        <location filename="../ui/main_window.py" line="751" />
         <source>Open data folder in file manager</source>
         <translation>Відкрити теку даних у файловому менеджері</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="758" />
+        <location filename="../ui/main_window.py" line="754" />
         <source>Quit</source>
         <translation>Вийти</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="759" />
+        <location filename="../ui/main_window.py" line="755" />
         <source>Main</source>
         <translation>Головна</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="760" />
+        <location filename="../ui/main_window.py" line="756" />
         <source>Theme</source>
         <translation>Theme</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="761" />
+        <location filename="../ui/main_window.py" line="757" />
         <source>Light</source>
         <translation>Light</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="762" />
+        <location filename="../ui/main_window.py" line="758" />
         <source>Dark</source>
         <translation>Dark</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="763" />
+        <location filename="../ui/main_window.py" line="759" />
         <source>Lilac</source>
         <translation>Lilac</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="764" />
+        <location filename="../ui/main_window.py" line="760" />
         <source>Mint</source>
         <translation>Mint</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="765" />
+        <location filename="../ui/main_window.py" line="761" />
         <source>Language</source>
         <translation>Мова</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="766" />
+        <location filename="../ui/main_window.py" line="762" />
         <source>Help</source>
         <translation>Довідка</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="767" />
+        <location filename="../ui/main_window.py" line="763" />
         <source>Last.fm username</source>
         <translation>Ім'я користувача Last.fm</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="768" />
+        <location filename="../ui/main_window.py" line="764" />
         <source>Enter username</source>
         <translation>Введіть ім'я користувача</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="769" />
+        <location filename="../ui/main_window.py" line="765" />
         <source>Fetch</source>
         <translation>Принести</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="770" />
+        <location filename="../ui/main_window.py" line="766" />
         <source>Playback</source>
         <translation>Відтворення</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="773" />
+        <location filename="../ui/main_window.py" line="769" />
         <source>Play</source>
         <translation>грати</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="776" />
+        <location filename="../ui/main_window.py" line="772" />
         <source>Playback position</source>
         <translation>Позиція відтворення</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="777" />
+        <location filename="../ui/main_window.py" line="773" />
         <source>Downloads</source>
         <translation>Завантаження</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="781" />
+        <location filename="../ui/main_window.py" line="777" />
         <source>Clear log</source>
         <translation>Очистити журнал</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="782" />
+        <location filename="../ui/main_window.py" line="778" />
         <source>Clear status updates and errors</source>
         <translation>Очистити оновлення статусу та помилки</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="784" />
+        <location filename="../ui/main_window.py" line="780" />
         <source>Status updates and errors will appear here.</source>
         <translation>Тут відображатимуться оновлення статусу та помилки.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="791" />
+        <location filename="../ui/main_window.py" line="787" />
         <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
         <translation>Залежності: yt-dlp і ffmpeg ще не перевірено</translation>
+    </message>
+    <message>
+        <source>MIT License; legacy Last.fm HTML parser support.</source>
+        <translation type="vanished">MIT License; підтримка застарілого HTML-парсера Last.fm.</translation>
     </message>
     <message>
         <source>Author: Marcel Petrick &lt;mail@marcelpetrick.it&gt;</source>
@@ -828,110 +826,110 @@
 </context><context>
     <name>PreferencesDialog</name>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="163" />
-        <location filename="../ui/preferences_dialog.py" line="123" />
+        <location filename="../ui/preferences_dialog.py" line="175" />
+        <location filename="../ui/preferences_dialog.py" line="135" />
         <source>None (disabled)</source>
         <translation>Немає (вимкнено)</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="143" />
+        <location filename="../ui/preferences_dialog.py" line="155" />
         <source>Preferences</source>
         <translation>Preferences</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="144" />
+        <location filename="../ui/preferences_dialog.py" line="156" />
         <source>Last.fm Authentication</source>
         <translation>Last.fm Authentication</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="145" />
+        <location filename="../ui/preferences_dialog.py" line="157" />
         <source>Authenticate with Last.fm</source>
         <translation>Authenticate with Last.fm</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="146" />
+        <location filename="../ui/preferences_dialog.py" line="158" />
         <source>I've authorized</source>
         <translation>I've authorized</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="147" />
+        <location filename="../ui/preferences_dialog.py" line="159" />
         <source>Disconnect</source>
         <translation>Disconnect</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="148" />
+        <location filename="../ui/preferences_dialog.py" line="160" />
         <source>Scrobbling</source>
         <translation>Scrobbling</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="149" />
+        <location filename="../ui/preferences_dialog.py" line="161" />
         <source>Enable scrobbling</source>
         <translation>Enable scrobbling</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="151" />
+        <location filename="../ui/preferences_dialog.py" line="163" />
         <source>Submits to Last.fm after 33% of each track has been played.</source>
         <translation>Надсилається на Last.fm після відтворення 33% кожного треку.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="153" />
+        <location filename="../ui/preferences_dialog.py" line="165" />
         <source>YouTube Downloads</source>
         <translation>Завантаження YouTube</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="154" />
+        <location filename="../ui/preferences_dialog.py" line="166" />
         <source>Browser cookies:</source>
         <translation>Cookie браузера:</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="155" />
+        <location filename="../ui/preferences_dialog.py" line="167" />
         <source>Parallel downloads:</source>
         <translation>Паралельні завантаження:</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="157" />
+        <location filename="../ui/preferences_dialog.py" line="169" />
         <source>Select the browser whose YouTube login cookies yt-dlp should use. Required for age-restricted videos. You must be signed into YouTube in the selected browser. Parallel download changes apply to new work.</source>
         <translation>Виберіть браузер, чиї cookie входу YouTube має використовувати yt-dlp. Потрібно для відео з віковими обмеженнями. Ви маєте бути ввійшли в YouTube у вибраному браузері. Зміни паралельних завантажень застосовуються до нових завдань.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="164" />
+        <location filename="../ui/preferences_dialog.py" line="176" />
         <source>Privacy</source>
         <translation>Приватність</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="165" />
+        <location filename="../ui/preferences_dialog.py" line="177" />
         <source>Keep cached data after quitting</source>
         <translation>Зберігати кешовані дані після виходу</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="170" />
+        <location filename="../ui/preferences_dialog.py" line="183" />
         <source>⚠ API credentials not configured.
 Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
         <translation>⚠ API credentials not configured.
 Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="188" />
+        <location filename="../ui/preferences_dialog.py" line="202" />
         <source>🟢 Connected as {username}</source>
         <translation>🟢 Connected as {username}</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="197" />
+        <location filename="../ui/preferences_dialog.py" line="211" />
         <source>🔵 Browser opened — authorize the app, then click «I've authorized».</source>
         <translation>🔵 Browser opened — authorize the app, then click «I've authorized».</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="203" />
+        <location filename="../ui/preferences_dialog.py" line="217" />
         <source>🔴 Not connected</source>
         <translation>🔴 Not connected</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="216" />
+        <location filename="../ui/preferences_dialog.py" line="240" />
         <source>⚠ Could not start authentication. Check API credentials.</source>
         <translation>⚠ Could not start authentication. Check API credentials.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="227" />
+        <location filename="../ui/preferences_dialog.py" line="251" />
         <source>⚠ Authorization not confirmed yet. Authorize in the browser, then try again.</source>
         <translation>⚠ Authorization not confirmed yet. Authorize in the browser, then try again.</translation>
     </message>

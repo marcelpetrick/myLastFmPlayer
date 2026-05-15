@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,7 @@ from my_lastfm_player.lastfm import (
     _find_next_page_url,
     _find_total_tracks,
     _is_retryable_error,
+    _parse_html_document,
     _parse_loved_at,
     parse_loved_tracks_page,
 )
@@ -180,6 +182,20 @@ def test_loved_tracks_parser_extracts_fixture_html_with_beautifulsoup() -> None:
     assert [track.title for track in page.tracks] == ["Down on the Farm", "Say It Right"]
     assert page.total_tracks == 3
     assert page.next_url == "https://www.last.fm/user/example/loved?page=2"
+
+
+def test_legacy_html_parser_reports_missing_beautifulsoup(monkeypatch) -> None:
+    real_import = builtins.__import__
+
+    def fake_import(name, globals_=None, locals_=None, fromlist=(), level=0):
+        if name == "bs4":
+            raise ImportError("blocked")
+        return real_import(name, globals_, locals_, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    with pytest.raises(LastFmError, match="legacy Last.fm HTML parsing"):
+        _parse_html_document("<html></html>")
 
 
 def test_parse_loved_tracks_page_handles_missing_next_page() -> None:
