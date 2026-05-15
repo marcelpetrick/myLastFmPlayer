@@ -847,39 +847,37 @@ class ApplicationController(QObject):
             )
             return
 
-        self.window.set_tracks(tracks)
-        resolved_count = sum(
-            1 for track in tracks if isinstance(track, Track) and track.youtube_url
-        )
+        # Reload from the repository so the UI shows the full current state.
+        current_tracks = self.repository.load_tracks(username)
+        self.window.set_tracks(current_tracks)
+        resolved_count = sum(1 for t in current_tracks if t.youtube_url)
         not_found_count = sum(
-            1
-            for track in tracks
-            if isinstance(track, Track) and track.status is TrackStatus.NOT_FOUND
+            1 for t in current_tracks if t.status is TrackStatus.NOT_FOUND
         )
         self._report_user_action(
             translate(
                 "ApplicationController",
                 "Resolved YouTube URLs for {resolved_count}/{count} tracks; "
                 "{not_found_count} were not found.",
-                count=len(tracks),
+                count=len(current_tracks),
                 resolved_count=resolved_count,
                 not_found_count=not_found_count,
             )
         )
-        LOGGER.info("Loaded %s resolved tracks into UI for %s", len(tracks), username)
+        LOGGER.info("Loaded %s resolved tracks into UI for %s", len(current_tracks), username)
         if self._pending_play_cache_key and self._track_has_youtube_url(
-            tracks,
+            current_tracks,
             self._pending_play_cache_key,
         ):
             self._start_priority_download(username, self._pending_play_cache_key)
         elif self._pending_retry_cache_key and self._track_has_youtube_url(
-            tracks,
+            current_tracks,
             self._pending_retry_cache_key,
         ):
             self._start_priority_download(username, self._pending_retry_cache_key)
-        elif self._has_download_candidates(tracks) and not self._download_worker_active:
+        elif self._has_download_candidates(current_tracks) and not self._download_worker_active:
             self._start_automatic_download(username)
-        elif not self._has_download_candidates(tracks):
+        elif not self._has_download_candidates(current_tracks):
             self._report_user_action(
                 translate("ApplicationController", "No queued tracks are ready for download.")
             )
@@ -900,29 +898,29 @@ class ApplicationController(QObject):
             )
             return
 
-        self.window.set_tracks(tracks)
+        # Reload from the repository so the UI shows the full current state, not the
+        # stale snapshot the worker started with (which may be a small partial list if
+        # the fetch was still running when this worker was spawned).
+        current_tracks = self.repository.load_tracks(username)
+        self.window.set_tracks(current_tracks)
         downloaded_count = sum(
-            1
-            for track in tracks
-            if isinstance(track, Track) and track.status is TrackStatus.DOWNLOADED
+            1 for t in current_tracks if t.status is TrackStatus.DOWNLOADED
         )
         failed_count = sum(
-            1
-            for track in tracks
-            if isinstance(track, Track) and track.status is TrackStatus.FAILED
+            1 for t in current_tracks if t.status is TrackStatus.FAILED
         )
         self._report_user_action(
             translate(
                 "ApplicationController",
                 "Download run for {username} finished: "
                 "{downloaded_count}/{count} tracks downloaded, {failed_count} failed.",
-                count=len(tracks),
+                count=len(current_tracks),
                 username=username,
                 downloaded_count=downloaded_count,
                 failed_count=failed_count,
             )
         )
-        LOGGER.info("Loaded %s downloaded tracks into UI for %s", len(tracks), username)
+        LOGGER.info("Loaded %s downloaded tracks into UI for %s", len(current_tracks), username)
         if self._pending_play_cache_key:
             self._play_prepared_track(self._pending_play_cache_key)
             return
@@ -932,7 +930,7 @@ class ApplicationController(QObject):
         if (
             was_bulk
             and not stop_was_requested
-            and self._has_download_candidates([t for t in tracks if isinstance(t, Track)])
+            and self._has_download_candidates(current_tracks)
         ):
             self._start_automatic_download(username)
 

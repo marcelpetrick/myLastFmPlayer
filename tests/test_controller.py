@@ -564,9 +564,17 @@ def test_controller_does_not_start_parallel_bulk_download_when_worker_active(
     assert auto_calls == []
 
 
-def test_controller_starts_download_after_successful_lookup(qapp) -> None:
+def test_controller_starts_download_after_successful_lookup(qapp, tmp_path) -> None:
     window = MainWindow()
-    controller = ApplicationController(window)
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/example",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_tracks("example", [track])
+    controller = ApplicationController(window, repository=repository)
     calls: list[str] = []
 
     def fake_start_download(username: str) -> None:
@@ -574,17 +582,7 @@ def test_controller_starts_download_after_successful_lookup(qapp) -> None:
 
     controller._start_automatic_download = fake_start_download  # type: ignore[method-assign]
 
-    controller._handle_tracks_resolved(
-        "example",
-        [
-            Track(
-                artist="Artist",
-                title="Title",
-                youtube_url="https://youtu.be/example",
-                status=TrackStatus.QUEUED,
-            )
-        ],
-    )
+    controller._handle_tracks_resolved("example", [track])
 
     assert calls == ["example"]
 
@@ -612,15 +610,17 @@ def test_controller_stop_downloads_pauses_manager_and_clears_ui(qapp) -> None:
     assert window.download_toggle_button.text() == "Start Downloads"
 
 
-def test_controller_starts_priority_download_after_lookup_for_pending_play(qapp) -> None:
+def test_controller_starts_priority_download_after_lookup_for_pending_play(qapp, tmp_path) -> None:
     window = MainWindow()
-    controller = ApplicationController(window)
+    repository = JsonTrackRepository(data_dir=tmp_path)
     track = Track(
         artist="Artist",
         title="Title",
         youtube_url="https://youtu.be/example",
         status=TrackStatus.QUEUED,
     )
+    repository.save_tracks("user", [track])
+    controller = ApplicationController(window, repository=repository)
     calls: list[tuple[str, str]] = []
     controller._pending_play_cache_key = track.cache_key
     controller._start_priority_download = lambda username, cache_key: calls.append(  # type: ignore[method-assign]
@@ -1088,10 +1088,19 @@ def test_controller_handles_invalid_worker_payloads(qapp) -> None:
     assert window.progress_bar.format() == "Failed"
 
 
-def test_controller_handles_downloaded_tracks_and_pending_play(qapp) -> None:
+def test_controller_handles_downloaded_tracks_and_pending_play(qapp, tmp_path) -> None:
     window = MainWindow()
-    controller = ApplicationController(window)
-    track = Track(artist="Artist", title="Title", status=TrackStatus.DOWNLOADED)
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    dummy_file = tmp_path / "Artist - Title.mp3"
+    dummy_file.write_bytes(b"")
+    track = Track(
+        artist="Artist",
+        title="Title",
+        status=TrackStatus.DOWNLOADED,
+        local_path=str(dummy_file),
+    )
+    repository.save_tracks("user", [track])
+    controller = ApplicationController(window, repository=repository)
     calls: list[str] = []
     controller._pending_play_cache_key = track.cache_key
     controller._play_prepared_track = lambda cache_key: calls.append(cache_key)  # type: ignore[method-assign]
@@ -1665,16 +1674,18 @@ def test_controller_handle_tracks_loaded_skips_lookup_when_already_started(qapp)
 
 
 def test_controller_handle_tracks_resolved_starts_priority_download_for_pending_retry(
-    qapp,
+    qapp, tmp_path
 ) -> None:
     window = MainWindow()
-    controller = ApplicationController(window)
+    repository = JsonTrackRepository(data_dir=tmp_path)
     track = Track(
         artist="Artist",
         title="Title",
         youtube_url="https://youtu.be/x",
         status=TrackStatus.QUEUED,
     )
+    repository.save_tracks("user", [track])
+    controller = ApplicationController(window, repository=repository)
     controller._pending_retry_cache_key = track.cache_key
     calls: list[tuple[str, str]] = []
     controller._start_priority_download = lambda username, key: calls.append((username, key))  # type: ignore[method-assign]
@@ -1685,16 +1696,18 @@ def test_controller_handle_tracks_resolved_starts_priority_download_for_pending_
 
 
 def test_controller_handle_tracks_resolved_reports_no_candidates_when_worker_active(
-    qapp,
+    qapp, tmp_path
 ) -> None:
     window = MainWindow()
-    controller = ApplicationController(window)
+    repository = JsonTrackRepository(data_dir=tmp_path)
     queued = Track(
         artist="A",
         title="T",
         youtube_url="https://youtu.be/y",
         status=TrackStatus.QUEUED,
     )
+    repository.save_tracks("user", [queued])
+    controller = ApplicationController(window, repository=repository)
     controller._download_worker_active = True
 
     controller._handle_tracks_resolved("user", [queued])
@@ -1716,13 +1729,15 @@ def test_controller_handle_tracks_downloaded_clears_pending_retry(qapp) -> None:
 
 def test_controller_handle_tracks_downloaded_continues_bulk_download(qapp, tmp_path) -> None:
     window = MainWindow()
-    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
+    repository = JsonTrackRepository(data_dir=tmp_path)
     queued = Track(
         artist="A",
         title="T",
         youtube_url="https://youtu.be/z",
         status=TrackStatus.QUEUED,
     )
+    repository.save_tracks("user", [queued])
+    controller = ApplicationController(window, repository=repository)
     controller._download_worker_active = True
     auto_calls: list[str] = []
     controller._start_automatic_download = lambda username: auto_calls.append(username)  # type: ignore[method-assign]
