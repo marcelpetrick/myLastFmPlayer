@@ -13,6 +13,7 @@ from my_lastfm_player import main as main_module
 from my_lastfm_player.i18n import SUPPORTED_LANGUAGES
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.themes import ThemeMode
+from my_lastfm_player.ui import main_window as main_window_module
 from my_lastfm_player.ui.main_window import (
     MainWindow,
     application_title,
@@ -23,8 +24,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.90"
-    assert __display_version__ == "0.0.90"
+    assert __version__ == "0.0.91"
+    assert __display_version__ == "0.0.91"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -61,7 +62,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.90"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.91"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -157,7 +158,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.90\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.91\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert saved_languages == []
@@ -288,6 +289,16 @@ def test_main_window_has_language_menu(qapp) -> None:
     assert window.language_actions["en"].isChecked()
 
 
+def test_main_window_has_help_menu_actions(qapp) -> None:
+    window = MainWindow()
+
+    assert window.help_menu.title() == "Help"
+    assert [action.text() for action in window.help_menu.actions()] == [
+        "About myLastFmPlayer",
+        "Open Source Licenses",
+    ]
+
+
 def test_main_window_has_main_menu_actions_in_requested_order(qapp) -> None:
     window = MainWindow()
 
@@ -308,6 +319,45 @@ def test_main_window_file_cache_menu_action_emits_request(qapp) -> None:
     window.file_cache_action.trigger()
 
     assert emissions == [True]
+
+
+def test_main_window_about_text_contains_author_license_and_intent(qapp) -> None:
+    window = MainWindow()
+
+    about_text = window.about_dialog_text()
+
+    assert "Marcel Petrick <mail@marcelpetrick.it>" in about_text
+    assert "GNU GPLv3 or later" in about_text
+    assert "fetches a user's public loved tracks from Last.fm" in about_text
+    assert "downloads MP3 files" in about_text
+
+
+def test_main_window_open_source_license_text_lists_runtime_tools(qapp) -> None:
+    window = MainWindow()
+
+    license_text = window.open_source_licenses_dialog_text()
+
+    for expected in ("PyQt6", "requests", "beautifulsoup4", "pylast", "yt-dlp", "FFmpeg"):
+        assert expected in license_text
+
+
+def test_main_window_help_actions_open_dialogs(qapp, monkeypatch) -> None:
+    window = MainWindow()
+    calls: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(
+        main_window_module.QMessageBox,
+        "information",
+        lambda _parent, title, text: calls.append((title, text)),
+    )
+
+    window.about_action.trigger()
+    window.open_source_licenses_action.trigger()
+
+    assert calls[0][0] == "About myLastFmPlayer"
+    assert "Marcel Petrick" in calls[0][1]
+    assert calls[1][0] == "Open Source Licenses"
+    assert "PyQt6" in calls[1][1]
 
 
 def test_main_window_download_control_emits_download_signal(qapp) -> None:

@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMenu,
+    QMessageBox,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
@@ -92,6 +93,12 @@ class MainWindow(QMainWindow):
         self.file_cache_action = QAction(self)
         self.file_cache_action.triggered.connect(self.file_cache_requested.emit)
 
+        self.about_action = QAction(self)
+        self.about_action.triggered.connect(self.show_about_dialog)
+
+        self.open_source_licenses_action = QAction(self)
+        self.open_source_licenses_action.triggered.connect(self.show_open_source_licenses_dialog)
+
         self.quit_action = QAction(self)
         self.quit_action.triggered.connect(self.close)
 
@@ -144,6 +151,11 @@ class MainWindow(QMainWindow):
         for language in SUPPORTED_LANGUAGES:
             self.language_menu.addAction(self.language_actions[language.code])
         self.menuBar().addMenu(self.language_menu)
+
+        self.help_menu = QMenu(self)
+        self.help_menu.addAction(self.about_action)
+        self.help_menu.addAction(self.open_source_licenses_action)
+        self.menuBar().addMenu(self.help_menu)
 
     def _build_central_widget(self) -> None:
         root = QWidget(self)
@@ -507,6 +519,86 @@ class MainWindow(QMainWindow):
             self.feedback_log.horizontalScrollBar().minimum()
         )
 
+    def show_about_dialog(self) -> None:
+        """Show application information, author, license, and project intent."""
+
+        QMessageBox.information(self, self.about_dialog_title(), self.about_dialog_text())
+
+    def show_open_source_licenses_dialog(self) -> None:
+        """Show a compact list of open-source libraries and tool licenses."""
+
+        QMessageBox.information(
+            self,
+            self.open_source_licenses_dialog_title(),
+            self.open_source_licenses_dialog_text(),
+        )
+
+    def about_dialog_title(self) -> str:
+        """Return the translated About dialog title."""
+
+        return self.tr("About myLastFmPlayer")
+
+    def about_dialog_text(self) -> str:
+        """Return translated About dialog text."""
+
+        return "\n\n".join(
+            (
+                self.tr("myLastFmPlayer {version}").format(version=__display_version__),
+                self.tr("Author: Marcel Petrick <mail@marcelpetrick.it>"),
+                self.tr("License: GNU GPLv3 or later."),
+                self.tr(
+                    "This application fetches a user's public loved tracks from Last.fm, "
+                    "keeps local metadata, resolves playable sources through yt-dlp, "
+                    "downloads MP3 files, and plays them locally."
+                ),
+                self.tr(
+                    "It is intended as a practical Linux desktop helper for rebuilding "
+                    "a personal loved-track collection without manually searching every song."
+                ),
+                self.tr(
+                    "Optional Last.fm scrobbling can connect the local playback workflow "
+                    "back to the user's Last.fm account."
+                ),
+            )
+        )
+
+    def open_source_licenses_dialog_title(self) -> str:
+        """Return the translated open-source licenses dialog title."""
+
+        return self.tr("Open Source Licenses")
+
+    def open_source_licenses_dialog_text(self) -> str:
+        """Return translated open-source license summary text."""
+
+        sections = [
+            self.tr(
+                "myLastFmPlayer is GPLv3-or-later software and uses these open-source "
+                "libraries and external tools:"
+            ),
+            self.tr(
+                "Python - Python Software Foundation License; runtime for the application."
+            ),
+            self.tr("PyQt6 - GNU GPL v3; Python bindings for the Qt desktop interface."),
+            self.tr("Qt 6 - GNU LGPL v3 / GPL v3; cross-platform UI toolkit."),
+            self.tr("requests - Apache License 2.0; HTTP client for Last.fm API calls."),
+            self.tr("beautifulsoup4 - MIT License; legacy Last.fm HTML parser support."),
+            self.tr("pylast - Apache License 2.0; Last.fm scrobbling integration."),
+            self.tr("yt-dlp - Unlicense; media lookup and download helper."),
+            self.tr(
+                "FFmpeg - LGPL/GPL family licenses depending on the installed build; "
+                "audio conversion backend."
+            ),
+            self.tr(
+                "Development tools include pytest, pytest-cov, coverage.py, Ruff, Pylint, "
+                "Sphinx, and build under their respective open-source licenses."
+            ),
+            self.tr(
+                "This summary is informational; the complete license texts are provided "
+                "by the installed projects and system packages."
+            ),
+        ]
+        return "\n\n".join(sections)
+
     def show_status(self, message: str) -> None:
         """Show ``message`` in the status bar and terminal log."""
 
@@ -597,6 +689,8 @@ class MainWindow(QMainWindow):
         self.refresh_action.setText(self.tr("Fetch loved tracks"))
         self.preferences_action.setText(self.tr("Preferences"))
         self.file_cache_action.setText(self.tr("Open data folder in file manager"))
+        self.about_action.setText(self.tr("About myLastFmPlayer"))
+        self.open_source_licenses_action.setText(self.tr("Open Source Licenses"))
         self.quit_action.setText(self.tr("Quit"))
         self.main_menu.setTitle(self.tr("Main"))
         self.theme_menu.setTitle(self.tr("Theme"))
@@ -605,6 +699,7 @@ class MainWindow(QMainWindow):
         self.theme_lilac_action.setText(self.tr("Lilac"))
         self.theme_mint_action.setText(self.tr("Mint"))
         self.language_menu.setTitle(self.tr("Language"))
+        self.help_menu.setTitle(self.tr("Help"))
         self.username_label.setText(self.tr("Last.fm username"))
         self.username_input.setPlaceholderText(self.tr("Enter username"))
         self.fetch_button.setText(self.tr("Fetch"))
