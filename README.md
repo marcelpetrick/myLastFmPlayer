@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.93` - work in progress; tons of features are not implemented
+Current version: `0.0.94` - work in progress; tons of features are not implemented
 
 ## Current state
 

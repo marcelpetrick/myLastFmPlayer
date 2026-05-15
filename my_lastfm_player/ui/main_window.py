@@ -7,6 +7,8 @@ from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtS
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QDialog,
+    QDialogButtonBox,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -16,7 +18,6 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMenu,
-    QMessageBox,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
@@ -847,10 +848,20 @@ def _component_license(component: str, license_text: str) -> str:
 
 
 def _show_rich_text_dialog(parent: QWidget, title: str, text: str) -> None:
-    dialog = QMessageBox(parent)
+    dialog = QDialog(parent)
     dialog.setWindowTitle(title)
-    dialog.setTextFormat(Qt.TextFormat.RichText)
-    dialog.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
-    dialog.setOpenExternalLinks(True)
-    dialog.setText(text)
+    dialog.resize(560, 360)
+
+    layout = QVBoxLayout(dialog)
+    text_label = QLabel(text)
+    text_label.setWordWrap(True)
+    text_label.setTextFormat(Qt.TextFormat.RichText)
+    text_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+    text_label.setOpenExternalLinks(True)
+    layout.addWidget(text_label)
+
+    button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+    button_box.accepted.connect(dialog.accept)
+    layout.addWidget(button_box)
+
     dialog.exec()
