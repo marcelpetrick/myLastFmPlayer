@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 from dataclasses import replace
@@ -9,6 +10,8 @@ from threading import RLock
 from typing import Any
 
 from my_lastfm_player.models import Track, TrackStatus
+
+LOGGER = logging.getLogger(__name__)
 
 APP_DIR_NAME = "myLastFmPlayer"
 TRACKS_DIR_NAME = "tracks"
@@ -89,7 +92,7 @@ class JsonTrackRepository:
                 if path.is_file():
                     path.unlink()
             except OSError as error:
-                print(f"[myLastFmPlayer] Could not delete {path} during wipe: {error}", flush=True)
+                LOGGER.warning("Could not delete %s during wipe: %s", path, error)
 
     def load_download_cache(self) -> dict[str, Track]:
         """Load cached downloaded tracks keyed by cache key."""

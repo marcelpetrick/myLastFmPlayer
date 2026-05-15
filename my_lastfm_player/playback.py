@@ -173,7 +173,6 @@ class PlaybackService:
             self.backend.stop()
 
         LOGGER.info("Starting playback for %s - %s", track.artist, track.title)
-        print(f"[myLastFmPlayer] Starting playback: {track.artist} - {track.title}", flush=True)
         self.backend.play(path)
         self.current_track = track
         self._paused = False
@@ -189,7 +188,6 @@ class PlaybackService:
             self.current_track.artist,
             self.current_track.title,
         )
-        print("[myLastFmPlayer] Pausing playback", flush=True)
         self.backend.pause()
         self._paused = True
 
@@ -203,7 +201,6 @@ class PlaybackService:
             self.current_track.artist,
             self.current_track.title,
         )
-        print("[myLastFmPlayer] Resuming playback", flush=True)
         self.backend.resume()
         self._paused = False
 
@@ -217,7 +214,6 @@ class PlaybackService:
             self.current_track.artist,
             self.current_track.title,
         )
-        print("[myLastFmPlayer] Stopping playback", flush=True)
         self.backend.stop()
         stopped_track = self.current_track
         self.current_track = None

@@ -105,7 +105,6 @@ class ApplicationController(QObject):
         """Connect UI signals and run the startup dependency check."""
 
         LOGGER.info("Starting application controller")
-        print("[myLastFmPlayer] Starting application controller", flush=True)
         self.window.fetch_requested.connect(self.fetch_loved_tracks)
         self.window.username_input.editingFinished.connect(
             self.load_cached_tracks_for_entered_username
@@ -430,7 +429,6 @@ class ApplicationController(QObject):
         LOGGER.info(
             "Fresh fetch requested for Last.fm user %s (expected=%s)", username, expected_count
         )
-        print(f"[myLastFmPlayer] UI fetch requested for Last.fm user {username}", flush=True)
         if expected_count is not None:
             self._report_user_action(
                 translate(
@@ -505,7 +503,6 @@ class ApplicationController(QObject):
             return
 
         LOGGER.info("YouTube lookup requested for Last.fm user %s", username)
-        print(f"[myLastFmPlayer] Starting YouTube lookup for {username}", flush=True)
         self._report_user_action(
             translate(
                 "ApplicationController",
@@ -558,11 +555,6 @@ class ApplicationController(QObject):
             "Download requested for Last.fm user %s with concurrency %s",
             username,
             concurrency,
-        )
-        print(
-            f"[myLastFmPlayer] Starting downloads for {username} "
-            f"with concurrency {concurrency}",
-            flush=True,
         )
         self._report_user_action(
             translate(
@@ -673,18 +665,12 @@ class ApplicationController(QObject):
     def _run_worker(self, worker: WorkflowWorker) -> None:
         thread = QThread(self)
         worker_name = worker.__class__.__name__
-        print(f"[myLastFmPlayer] Preparing {worker_name} on background thread", flush=True)
+        LOGGER.info("Preparing %s on background thread", worker_name)
         worker.moveToThread(thread)
         self._running_worker_count += 1
         self.window.set_workflow_enabled(False)
 
         thread.started.connect(worker.run)
-        thread.started.connect(
-            lambda worker_name=worker_name: print(
-                f"[myLastFmPlayer] Thread started for {worker_name}",
-                flush=True,
-            )
-        )
         worker.progress.connect(self.window.set_progress)
         worker.error.connect(self._handle_worker_error)
         if isinstance(worker, FetchLovedTracksWorker):
@@ -706,12 +692,11 @@ class ApplicationController(QObject):
 
         self._active_threads.append(thread)
         self._active_workers.append(worker)
-        LOGGER.info("Starting worker thread for %s", worker_name)
-        print(
-            f"[myLastFmPlayer] Starting thread for {worker_name}; "
-            f"active_threads={len(self._active_threads)} "
-            f"active_workers={len(self._active_workers)}",
-            flush=True,
+        LOGGER.info(
+            "Starting thread for %s; active_threads=%d active_workers=%d",
+            worker_name,
+            len(self._active_threads),
+            len(self._active_workers),
         )
         thread.start()
 
@@ -741,10 +726,6 @@ class ApplicationController(QObject):
         self._started_incremental_lookup_for_fetch = False
         self.window.set_fetch_control_state(active=False, paused=False)
         LOGGER.info("Loaded %s fetched tracks into UI for %s", len(tracks), username)
-        print(
-            f"[myLastFmPlayer] UI loaded {len(tracks)} fetched tracks for {username}",
-            flush=True,
-        )
         if tracks and not already_started_lookup:
             self._start_automatic_lookup(username, len(tracks))
 
@@ -936,7 +917,6 @@ class ApplicationController(QObject):
 
     def _handle_worker_error(self, message: str) -> None:
         LOGGER.error("Worker error: %s", message)
-        print(f"[myLastFmPlayer] Worker error shown in UI: {message}", flush=True)
         self.window.append_feedback(message)
         self.window.set_progress(0, translate("ApplicationController", "Failed"))
 
@@ -1237,10 +1217,7 @@ class ApplicationController(QObject):
     def _forget_thread(self, thread: QThread) -> None:
         if thread in self._active_threads:
             self._active_threads.remove(thread)
-        print(
-            f"[myLastFmPlayer] Thread finished; active_threads={len(self._active_threads)}",
-            flush=True,
-        )
+        LOGGER.info("Thread finished; active_threads=%d", len(self._active_threads))
 
     def _forget_worker(self, worker: WorkflowWorker) -> None:
         if worker is self._active_fetch_worker:
@@ -1248,7 +1225,4 @@ class ApplicationController(QObject):
             self._fetch_paused = False
         if worker in self._active_workers:
             self._active_workers.remove(worker)
-        print(
-            f"[myLastFmPlayer] Worker released; active_workers={len(self._active_workers)}",
-            flush=True,
-        )
+        LOGGER.info("Worker released; active_workers=%d", len(self._active_workers))

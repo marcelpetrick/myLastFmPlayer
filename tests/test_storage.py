@@ -413,7 +413,9 @@ def test_wipe_keeps_downloaded_audio_files(tmp_path: Path) -> None:
     assert not repository.credentials_path.exists()
 
 
-def test_wipe_tolerates_oserror_without_raising(tmp_path: Path, capsys) -> None:
+def test_wipe_tolerates_oserror_without_raising(tmp_path: Path, caplog) -> None:
+    import logging
+
     repository = JsonTrackRepository(data_dir=tmp_path)
     repository.save_credentials({"key": "val"})
 
@@ -421,12 +423,12 @@ def test_wipe_tolerates_oserror_without_raising(tmp_path: Path, capsys) -> None:
     credentials_path.chmod(0o444)
     credentials_path.parent.chmod(0o555)
     try:
-        repository.wipe()
+        with caplog.at_level(logging.WARNING, logger="my_lastfm_player.storage"):
+            repository.wipe()
     finally:
         credentials_path.parent.chmod(0o755)
 
-    captured = capsys.readouterr()
-    assert "Could not delete" in captured.out
+    assert "Could not delete" in caplog.text
 
 
 def test_wipe_is_idempotent_when_nothing_exists(tmp_path: Path) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 from collections.abc import Callable, Sequence
 from dataclasses import replace
@@ -9,6 +10,8 @@ from typing import Any
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
+
+LOGGER = logging.getLogger(__name__)
 
 YTDLP_SEARCH_PREFIX = "ytsearch1:"
 
@@ -253,7 +256,7 @@ def _report(
     value: int,
     message: str,
 ) -> None:
-    print(f"[myLastFmPlayer] YouTube lookup progress {value}%: {message}", flush=True)
+    LOGGER.info("YouTube lookup progress %s%%: %s", value, message)
     if progress_callback is not None:
         progress_callback(value, message)
 

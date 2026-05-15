@@ -494,12 +494,10 @@ def _controlled_sleep(
 
 def _log_info(message: str, *args: object) -> None:
     LOGGER.info(message, *args)
-    print("[myLastFmPlayer]", message % args if args else message, flush=True)
 
 
 def _log_warning(message: str, *args: object) -> None:
     LOGGER.warning(message, *args)
-    print("[myLastFmPlayer] WARNING", message % args if args else message, flush=True)
 
 
 def _to_lastfm_error(url: str, error: LastFmError | requests.RequestException) -> LastFmError:

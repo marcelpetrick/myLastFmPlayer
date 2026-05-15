@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import traceback
 
 from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent
@@ -329,7 +328,7 @@ class MainWindow(QMainWindow):
         self._track_count = len(tracks)
         self._showing_example_tracks = False
         self._update_track_count_label()
-        print(f"[myLastFmPlayer] Table now contains {len(tracks)} tracks", flush=True)
+        LOGGER.info("Table now contains %d tracks", len(tracks))
         self.show_status(self.tr("Loaded {count} tracks").format(count=len(tracks)))
 
     def _set_example_tracks(self) -> None:
@@ -343,10 +342,6 @@ class MainWindow(QMainWindow):
         self.track_count_label.setText(
             self.tr("Playlist: {count} titles").format(count=self._track_count)
         )
-        stack = "".join(traceback.format_stack()[:-1])
-        msg = f"[playlist-size] count={self._track_count}\n{stack}"
-        print(msg, flush=True)
-        self.append_feedback(f"[playlist-size] count={self._track_count}")
 
     def username(self) -> str:
         """Return the trimmed Last.fm username currently entered by the user."""
@@ -516,7 +511,6 @@ class MainWindow(QMainWindow):
         """Show ``message`` in the status bar and terminal log."""
 
         LOGGER.info("UI status: %s", message)
-        print(f"[myLastFmPlayer] UI status: {message}", flush=True)
         self._last_status_message = message
         self.statusBar().showMessage(message)
 

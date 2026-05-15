@@ -47,10 +47,6 @@ class FetchLovedTracksWorker(QObject):
 
         try:
             LOGGER.info("Worker started fetching loved tracks for %s", self.username)
-            print(
-                f"[myLastFmPlayer] Worker started fetching loved tracks for {self.username}",
-                flush=True,
-            )
             self.progress.emit(
                 0,
                 translate(
@@ -88,35 +84,19 @@ class FetchLovedTracksWorker(QObject):
                 self.tracks_loaded.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
             LOGGER.exception("Loved-track fetch failed for %s", self.username)
-            print(
-                f"[myLastFmPlayer] Loved-track fetch failed for {self.username}: {error}",
-                flush=True,
-            )
             self.error.emit(str(error))
         finally:
             LOGGER.info("Worker finished fetching loved tracks for %s", self.username)
-            print(
-                f"[myLastFmPlayer] Worker finished fetching loved tracks for {self.username}",
-                flush=True,
-            )
             self.finished.emit()
 
     def _report_fetch_progress(self, progress: FetchProgress) -> None:
         total = progress.total_count or self.expected_count
         percent = min(99, int(progress.fetched_count / total * 100)) if total else 0
-        print(
-            f"[myLastFmPlayer] Worker progress for {self.username}: "
-            f"{percent}% {progress.message}",
-            flush=True,
-        )
+        LOGGER.info("Worker progress for %s: %s%% %s", self.username, percent, progress.message)
         self.progress.emit(percent, progress.message)
 
     def _report_partial_tracks(self, tracks: list[object]) -> None:
-        print(
-            f"[myLastFmPlayer] Worker partial fetch for {self.username}: "
-            f"{len(tracks)} tracks",
-            flush=True,
-        )
+        LOGGER.info("Worker partial fetch for %s: %d tracks", self.username, len(tracks))
         self.tracks_updated.emit(self.username, tracks)
 
     def pause_fetch(self) -> None:
@@ -239,10 +219,6 @@ class DownloadTracksWorker(QObject):
 
         try:
             LOGGER.info("Worker started downloading tracks for %s", self.username)
-            print(
-                f"[myLastFmPlayer] Worker started downloading tracks for {self.username}",
-                flush=True,
-            )
             tracks = self.download_manager.download_and_store_tracks(
                 self.username,
                 self.repository,
@@ -255,14 +231,9 @@ class DownloadTracksWorker(QObject):
             self.tracks_downloaded.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
             LOGGER.exception("Download failed for %s", self.username)
-            print(f"[myLastFmPlayer] Download failed for {self.username}: {error}", flush=True)
             self.error.emit(str(error))
         finally:
             LOGGER.info("Worker finished downloading tracks for %s", self.username)
-            print(
-                f"[myLastFmPlayer] Worker finished downloading tracks for {self.username}",
-                flush=True,
-            )
             self.finished.emit()
 
     def _report_track_update(self, track: object) -> None:

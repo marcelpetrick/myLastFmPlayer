@@ -246,7 +246,6 @@ def _prioritize_candidates(
 
 def _report(progress_callback: ProgressCallback | None, value: int, message: str) -> None:
     LOGGER.info("Download progress %s%%: %s", value, message)
-    print(f"[myLastFmPlayer] Download progress {value}%: {message}", flush=True)
     if progress_callback is not None:
         progress_callback(value, message)
 
