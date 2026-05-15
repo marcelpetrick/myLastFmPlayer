@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -26,6 +27,8 @@ from my_lastfm_player.settings import (
     AppSettings,
 )
 
+PREFERENCES_MINIMUM_WIDTH = 520
+
 
 class PreferencesDialog(QDialog):
     """Modal preferences dialog for Last.fm authentication and scrobbling."""
@@ -34,17 +37,20 @@ class PreferencesDialog(QDialog):
         super().__init__(parent)
         self._service = service
         self._settings = AppSettings()
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(PREFERENCES_MINIMUM_WIDTH)
         self._build_ui()
         self.retranslate_ui()
         self._refresh()
+        self._fit_to_content()
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
 
         # ── Authentication group ────────────────────────────────────────
         self.auth_group = QGroupBox(self)
+        self.auth_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         auth_layout = QVBoxLayout(self.auth_group)
 
         self.status_label = QLabel(self)
@@ -64,6 +70,9 @@ class PreferencesDialog(QDialog):
 
         # ── Scrobbling group ────────────────────────────────────────────
         self.scrobbling_group = QGroupBox(self)
+        self.scrobbling_group.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+        )
         scrobbling_layout = QVBoxLayout(self.scrobbling_group)
         self.scrobbling_checkbox = QCheckBox(self)
         self.scrobbling_hint = QLabel(self)
@@ -74,6 +83,7 @@ class PreferencesDialog(QDialog):
 
         # ── YouTube group ───────────────────────────────────────────────
         self.youtube_group = QGroupBox(self)
+        self.youtube_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         youtube_layout = QVBoxLayout(self.youtube_group)
         browser_row = QHBoxLayout()
         self.browser_label = QLabel(self)
@@ -98,10 +108,12 @@ class PreferencesDialog(QDialog):
 
         # ── Privacy group ───────────────────────────────────────────────
         self.privacy_group = QGroupBox(self)
+        self.privacy_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         privacy_layout = QVBoxLayout(self.privacy_group)
         self.keep_data_checkbox = QCheckBox(self)
         privacy_layout.addWidget(self.keep_data_checkbox)
         layout.addWidget(self.privacy_group)
+        layout.addStretch(1)
 
         # ── Close button ────────────────────────────────────────────────
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, self)
@@ -163,6 +175,7 @@ class PreferencesDialog(QDialog):
         self.browser_combo.setItemText(0, self.tr("None (disabled)"))
         self.privacy_group.setTitle(self.tr("Privacy"))
         self.keep_data_checkbox.setText(self.tr("Keep cached data after quitting"))
+        self._fit_to_content()
 
     def _refresh(self) -> None:
         if self._service is None or not self._service.has_api_credentials:
@@ -176,6 +189,7 @@ class PreferencesDialog(QDialog):
             self.authorize_button.setVisible(False)
             self.disconnect_button.setEnabled(False)
             self.scrobbling_checkbox.setEnabled(False)
+            self._fit_to_content()
             return
 
         self.scrobbling_checkbox.setEnabled(True)
@@ -204,6 +218,16 @@ class PreferencesDialog(QDialog):
             self.authenticate_button.setEnabled(True)
             self.authorize_button.setVisible(False)
             self.disconnect_button.setEnabled(False)
+        self._fit_to_content()
+
+    def _fit_to_content(self) -> None:
+        self.layout().activate()
+        minimum_size = self.minimumSizeHint()
+        self.setMinimumSize(
+            max(PREFERENCES_MINIMUM_WIDTH, minimum_size.width()),
+            minimum_size.height(),
+        )
+        self.resize(max(self.width(), self.minimumWidth()), self.minimumHeight())
 
     def _on_authenticate(self) -> None:
         if self._service is None:

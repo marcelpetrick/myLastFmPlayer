@@ -230,3 +230,21 @@ def test_preferences_dialog_download_concurrency_persists(qapp, monkeypatch) -> 
     dialog.concurrency_input.setValue(8)
 
     assert settings.concurrency == 8
+
+
+def test_preferences_dialog_uses_content_minimum_height(qapp) -> None:
+    dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
+
+    assert dialog.minimumWidth() >= preferences_module.PREFERENCES_MINIMUM_WIDTH
+    assert dialog.minimumHeight() >= dialog.minimumSizeHint().height()
+
+
+def test_preferences_dialog_keeps_sections_fixed_when_expanded(qapp) -> None:
+    dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
+
+    fixed_policy = preferences_module.QSizePolicy.Policy.Fixed
+
+    assert dialog.auth_group.sizePolicy().verticalPolicy() == fixed_policy
+    assert dialog.scrobbling_group.sizePolicy().verticalPolicy() == fixed_policy
+    assert dialog.youtube_group.sizePolicy().verticalPolicy() == fixed_policy
+    assert dialog.privacy_group.sizePolicy().verticalPolicy() == fixed_policy

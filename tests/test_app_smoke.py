@@ -24,8 +24,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.95"
-    assert __display_version__ == "0.0.95"
+    assert __version__ == "0.0.96"
+    assert __display_version__ == "0.0.96"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -62,7 +62,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.95"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.96"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -158,7 +158,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.95\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.96\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert saved_languages == []
