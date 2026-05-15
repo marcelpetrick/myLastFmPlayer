@@ -124,6 +124,14 @@
         <translation>Neuen Last.fm-Abruf für {username} starten.</translation>
     </message>
     <message>
+        <source>Could not reach Last.fm for {username}: {error}</source>
+        <translation>Last.fm für {username} nicht erreichbar: {error}</translation>
+    </message>
+    <message>
+        <source>Starting fresh Last.fm fetch for {username}; {count} tracks expected.</source>
+        <translation>Neuen Last.fm-Abruf für {username} starten; {count} Titel erwartet.</translation>
+    </message>
+    <message>
         <location filename="../controller.py" line="423" />
         <source>Starting fetch</source>
         <translation>Abruf wird gestartet</translation>

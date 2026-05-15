@@ -124,6 +124,14 @@
         <translation>Pokretanje novog dohvaćanja Last.fm-a za {username}.</translation>
     </message>
     <message>
+        <source>Could not reach Last.fm for {username}: {error}</source>
+        <translation>Last.fm za {username} nije dostupan: {error}</translation>
+    </message>
+    <message>
+        <source>Starting fresh Last.fm fetch for {username}; {count} tracks expected.</source>
+        <translation>Pokretanje novog dohvaćanja Last.fm-a za {username}; očekuje se {count} zapisa.</translation>
+    </message>
+    <message>
         <location filename="../controller.py" line="423" />
         <source>Starting fetch</source>
         <translation>Počinje dohvaćanje</translation>

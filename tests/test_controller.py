@@ -315,6 +315,69 @@ def test_controller_uses_cache_when_online_count_check_fails(qapp, tmp_path) -> 
     assert "using 1 cached tracks" in window.feedback_log.toPlainText()
 
 
+def test_controller_aborts_fresh_fetch_when_lastfm_is_unreachable(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("example")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    # No tracks saved — no cache, so pre-flight runs.
+    scraper = CountCheckingScraper(controller_module.LastFmError("user not found"))
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        scraper=scraper,  # type: ignore[arg-type]
+    )
+    workers: list[object] = []
+    controller._run_worker = workers.append  # type: ignore[method-assign]
+
+    controller.fetch_loved_tracks()
+
+    assert len(workers) == 0
+    assert scraper.checked_usernames == ["example"]
+    assert "Could not reach Last.fm for example" in window.feedback_log.toPlainText()
+
+
+def test_controller_shows_expected_count_before_fresh_fetch(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("example")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    # No cache — pre-flight returns a known count.
+    scraper = CountCheckingScraper(523)
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        scraper=scraper,  # type: ignore[arg-type]
+    )
+    workers: list[object] = []
+    controller._run_worker = workers.append  # type: ignore[method-assign]
+
+    controller.fetch_loved_tracks()
+
+    assert len(workers) == 1
+    assert scraper.checked_usernames == ["example"]
+    assert "523 tracks expected" in window.feedback_log.toPlainText()
+
+
+def test_controller_skips_preflight_when_cache_count_already_checked(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("example")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks("example", [Track(artist="Cached", title="Track")])
+    scraper = CountCheckingScraper(2)  # count mismatch triggers fresh fetch
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        scraper=scraper,  # type: ignore[arg-type]
+    )
+    workers: list[object] = []
+    controller._run_worker = workers.append  # type: ignore[method-assign]
+
+    controller.fetch_loved_tracks()
+
+    # fetch_loved_track_count called once only (from cache check, not again in pre-flight)
+    assert scraper.checked_usernames == ["example"]
+    assert len(workers) == 1
+
+
 def test_controller_rejects_empty_username_for_lookup(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)
@@ -1038,7 +1101,11 @@ def test_controller_starts_fetch_lookup_and_download_workers(
 
     window = MainWindow()
     window.username_input.setText("user")
-    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        scraper=CountCheckingScraper(42),  # type: ignore[arg-type]
+    )
     workers: list[tuple[str, object]] = []
     monkeypatch.setattr(settings_module.AppSettings, "download_concurrency", lambda self: 4)
 

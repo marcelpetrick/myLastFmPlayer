@@ -124,6 +124,14 @@
         <translation>Початок свіжого отримання Last.fm для {username}.</translation>
     </message>
     <message>
+        <source>Could not reach Last.fm for {username}: {error}</source>
+        <translation>Last.fm для {username} недоступний: {error}</translation>
+    </message>
+    <message>
+        <source>Starting fresh Last.fm fetch for {username}; {count} tracks expected.</source>
+        <translation>Початок свіжого отримання Last.fm для {username}; очікується {count} треків.</translation>
+    </message>
+    <message>
         <location filename="../controller.py" line="423" />
         <source>Starting fetch</source>
         <translation>Початок отримання</translation>

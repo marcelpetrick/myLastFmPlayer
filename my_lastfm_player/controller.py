@@ -408,15 +408,46 @@ class ApplicationController(QObject):
                 self._start_automatic_lookup(username, len(tracks))
             return
 
-        LOGGER.info("Fetch requested for Last.fm user %s", username)
-        print(f"[myLastFmPlayer] UI fetch requested for Last.fm user {username}", flush=True)
-        self._report_user_action(
-            translate(
-                "ApplicationController",
-                "Starting fresh Last.fm fetch for {username}.",
-                username=username,
-            )
+        # Pre-flight: if no cache exists yet, verify the username on Last.fm before
+        # spawning the heavy fetch worker.  When cache existed but count mismatched,
+        # the username was already verified above, so skip the extra round-trip.
+        has_any_cache = bool(self.repository.load_tracks(username))
+        expected_count: int | None = None
+        if not has_any_cache:
+            try:
+                expected_count = self.scraper.fetch_loved_track_count(username)
+            except LastFmError as error:
+                self._report_user_action(
+                    translate(
+                        "ApplicationController",
+                        "Could not reach Last.fm for {username}: {error}",
+                        username=username,
+                        error=error,
+                    )
+                )
+                return
+
+        LOGGER.info(
+            "Fresh fetch requested for Last.fm user %s (expected=%s)", username, expected_count
         )
+        print(f"[myLastFmPlayer] UI fetch requested for Last.fm user {username}", flush=True)
+        if expected_count is not None:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Starting fresh Last.fm fetch for {username}; {count} tracks expected.",
+                    username=username,
+                    count=expected_count,
+                )
+            )
+        else:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Starting fresh Last.fm fetch for {username}.",
+                    username=username,
+                )
+            )
         self.window.set_workflow_enabled(False)
         self.window.set_fetch_control_state(active=True, paused=False)
         self._fetch_paused = False

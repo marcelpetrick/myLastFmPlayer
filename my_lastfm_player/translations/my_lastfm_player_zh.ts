@@ -124,6 +124,14 @@
         <translation>开始对 {username} 进行新的 Last.fm 提取。</translation>
     </message>
     <message>
+        <source>Could not reach Last.fm for {username}: {error}</source>
+        <translation>无法访问 {username} 的 Last.fm：{error}</translation>
+    </message>
+    <message>
+        <source>Starting fresh Last.fm fetch for {username}; {count} tracks expected.</source>
+        <translation>开始对 {username} 进行新的 Last.fm 提取；预计 {count} 首曲目。</translation>
+    </message>
+    <message>
         <location filename="../controller.py" line="423" />
         <source>Starting fetch</source>
         <translation>开始获取</translation>
