@@ -539,7 +539,7 @@ def _parse_loved_track_api_item(item: object) -> Track | None:
 
 def _parse_api_artist(value: object) -> str:
     if isinstance(value, dict):
-        return _clean_text(str(value.get("#text", "")))
+        return _clean_text(str(value.get("name") or value.get("#text") or ""))
     if isinstance(value, str):
         return _clean_text(value)
     return ""

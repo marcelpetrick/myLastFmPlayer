@@ -110,7 +110,7 @@ def api_loved_payload(page: int, total_pages: int = 2, total: int = 3) -> dict[s
         1: [
             {
                 "name": "Down on the Farm",
-                "artist": {"#text": "Guns N' Roses"},
+                "artist": {"name": "Guns N' Roses"},
                 "url": "https://www.last.fm/music/Guns+N%27+Roses/_/Down+on+the+Farm",
                 "date": {"uts": "1682090040"},
             },
