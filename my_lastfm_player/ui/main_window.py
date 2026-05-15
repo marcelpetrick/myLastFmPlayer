@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import traceback
 
 from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent
@@ -342,6 +343,10 @@ class MainWindow(QMainWindow):
         self.track_count_label.setText(
             self.tr("Playlist: {count} titles").format(count=self._track_count)
         )
+        stack = "".join(traceback.format_stack()[:-1])
+        msg = f"[playlist-size] count={self._track_count}\n{stack}"
+        print(msg, flush=True)
+        self.append_feedback(f"[playlist-size] count={self._track_count}")
 
     def username(self) -> str:
         """Return the trimmed Last.fm username currently entered by the user."""

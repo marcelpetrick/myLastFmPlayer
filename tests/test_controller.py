@@ -13,6 +13,15 @@ from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 
 
+def user_feedback(window) -> str:
+    """Return feedback log text with debug trace lines stripped out."""
+    return "\n".join(
+        line
+        for line in window.feedback_log.toPlainText().splitlines()
+        if "[playlist-size]" not in line
+    ).strip()
+
+
 class FakeSignal:
     def __init__(self) -> None:
         self.callbacks: list[object] = []
@@ -481,7 +490,7 @@ def test_controller_ignores_fetch_controls_without_active_worker(qapp) -> None:
     controller.toggle_fetch_pause()
     controller.stop_fetch()
 
-    assert window.feedback_log.toPlainText() == ""
+    assert user_feedback(window) == ""
 
 
 def test_controller_handles_stopped_fetch_without_starting_lookup(qapp) -> None:
@@ -1764,7 +1773,7 @@ def test_controller_retry_track_download_does_nothing_for_unknown_track(
 
     controller.retry_track_download("nonexistent_key")
 
-    assert window.feedback_log.toPlainText() == ""
+    assert user_feedback(window) == ""
 
 
 def test_controller_retry_track_download_resets_not_found_and_starts_lookup(
@@ -1901,7 +1910,7 @@ def test_controller_handle_playback_finished_does_nothing_when_no_track(qapp) ->
 
     controller._handle_playback_finished()
 
-    assert window.feedback_log.toPlainText() == ""
+    assert user_feedback(window) == ""
 
 
 def test_controller_handle_playback_finished_reports_done_when_no_next(qapp, tmp_path) -> None:
