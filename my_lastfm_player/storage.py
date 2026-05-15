@@ -291,14 +291,19 @@ def _track_needing_download(track: Track) -> Track:
 
 
 def merge_track_updates(existing_tracks: list[Track], updates: list[Track]) -> list[Track]:
-    """Return ``existing_tracks`` with matching ``updates`` applied, appending new tracks."""
+    """Return ``existing_tracks`` with matching ``updates`` applied, appending new tracks.
 
+    Each matching update is applied via ``Track.merge_preserving`` so that already-resolved
+    status and optional fields (youtube_url, local_path, …) are never overwritten by a
+    lower-ranked incoming snapshot (e.g. a partial Last.fm fetch arriving while lookup runs).
+    """
     updates_by_key = {track.cache_key: track for track in updates}
     merged_tracks: list[Track] = []
     seen_keys: set[str] = set()
     for track in existing_tracks:
-        updated_track = updates_by_key.get(track.cache_key, track)
-        merged_tracks.append(updated_track)
+        incoming = updates_by_key.get(track.cache_key)
+        merged = Track.merge_preserving(track, incoming) if incoming is not None else track
+        merged_tracks.append(merged)
         seen_keys.add(track.cache_key)
     merged_tracks.extend(track for track in updates if track.cache_key not in seen_keys)
     return merged_tracks

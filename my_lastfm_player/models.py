@@ -23,6 +23,16 @@ COLLAPSED_WHITESPACE = re.compile(r"\s+")
 MAX_FILENAME_LENGTH = 240
 CACHE_KEY_SEPARATOR = "\x1f"
 
+_STATUS_RANK: dict[TrackStatus, int] = {
+    TrackStatus.FETCHED: 0,
+    TrackStatus.SEARCHING: 1,
+    TrackStatus.QUEUED: 2,
+    TrackStatus.DOWNLOADING: 3,
+    TrackStatus.FAILED: 4,
+    TrackStatus.NOT_FOUND: 5,
+    TrackStatus.DOWNLOADED: 6,
+}
+
 
 @dataclass(frozen=True, slots=True)
 class Track:
@@ -71,6 +81,25 @@ class Track:
         """Return a copy with the retry count increased by one."""
 
         return replace(self, retry_count=self.retry_count + 1, error=error)
+
+    @classmethod
+    def merge_preserving(cls, old: Track, new: Track) -> Track:
+        """Merge two snapshots: status never goes backwards; None in ``new`` preserves ``old``."""
+        advances = _STATUS_RANK[new.status] > _STATUS_RANK[old.status]
+        merged_status = new.status if advances else old.status
+        return cls(
+            artist=new.artist,
+            title=new.title,
+            lastfm_url=new.lastfm_url if new.lastfm_url is not None else old.lastfm_url,
+            loved_at=new.loved_at if new.loved_at is not None else old.loved_at,
+            youtube_url=new.youtube_url if new.youtube_url is not None else old.youtube_url,
+            local_path=new.local_path if new.local_path is not None else old.local_path,
+            status=merged_status,
+            retry_count=max(old.retry_count, new.retry_count),
+            error=new.error,
+            file_type=new.file_type if new.file_type is not None else old.file_type,
+            bitrate_kbps=new.bitrate_kbps if new.bitrate_kbps is not None else old.bitrate_kbps,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the track to a JSON-compatible dictionary."""

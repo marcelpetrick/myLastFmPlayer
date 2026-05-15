@@ -271,23 +271,9 @@ def _merge_existing_download_state(
     current_tracks: list[Track],
 ) -> list[Track]:
     current_by_key = {track.cache_key: track for track in current_tracks}
-    merged_tracks: list[Track] = []
-    for track in resolved_tracks:
-        current_track = current_by_key.get(track.cache_key)
-        if (
-            current_track is not None
-            and current_track.status is TrackStatus.DOWNLOADED
-            and current_track.local_path
-        ):
-            merged_tracks.append(
-                replace(
-                    track,
-                    youtube_url=track.youtube_url or current_track.youtube_url,
-                    local_path=current_track.local_path,
-                    status=TrackStatus.DOWNLOADED,
-                    error=None,
-                )
-            )
-            continue
-        merged_tracks.append(track)
-    return merged_tracks
+    return [
+        Track.merge_preserving(current_by_key[track.cache_key], track)
+        if track.cache_key in current_by_key
+        else track
+        for track in resolved_tracks
+    ]

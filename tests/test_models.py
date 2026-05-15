@@ -161,3 +161,168 @@ def test_audio_base_name_is_limited_to_safe_length() -> None:
     base = build_audio_base_name("A" * 300, "B" * 300)
 
     assert len(base) <= 235
+
+
+# ---------------------------------------------------------------------------
+# Track.merge_preserving
+# ---------------------------------------------------------------------------
+
+
+def _track(**kwargs) -> Track:
+    artist = kwargs.pop("artist", "Artist")
+    title = kwargs.pop("title", "Title")
+    return Track(artist=artist, title=title, **kwargs)
+
+
+def test_merge_preserving_takes_forward_status() -> None:
+    old = _track(status=TrackStatus.FETCHED)
+    new = _track(status=TrackStatus.QUEUED, youtube_url="https://yt/1")
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.status == TrackStatus.QUEUED
+    assert result.youtube_url == "https://yt/1"
+
+
+def test_merge_preserving_never_downgrades_downloaded() -> None:
+    old = _track(
+        status=TrackStatus.DOWNLOADED,
+        local_path="/music/Artist - Title.mp3",
+        youtube_url="https://yt/1",
+    )
+    new = _track(status=TrackStatus.QUEUED, youtube_url="https://yt/1")
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.status == TrackStatus.DOWNLOADED
+    assert result.local_path == "/music/Artist - Title.mp3"
+
+
+def test_merge_preserving_never_downgrades_not_found() -> None:
+    old = _track(status=TrackStatus.NOT_FOUND)
+    new = _track(status=TrackStatus.FETCHED)
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.status == TrackStatus.NOT_FOUND
+
+
+def test_merge_preserving_never_downgrades_failed() -> None:
+    old = _track(status=TrackStatus.FAILED, error="network error")
+    new = _track(status=TrackStatus.DOWNLOADING)
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.status == TrackStatus.FAILED
+
+
+def test_merge_preserving_allows_failed_to_advance_to_not_found() -> None:
+    old = _track(status=TrackStatus.FAILED)
+    new = _track(status=TrackStatus.NOT_FOUND)
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.status == TrackStatus.NOT_FOUND
+
+
+def test_merge_preserving_preserves_youtube_url_when_new_is_none() -> None:
+    old = _track(youtube_url="https://yt/old", status=TrackStatus.QUEUED)
+    new = _track(status=TrackStatus.FETCHED)
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.youtube_url == "https://yt/old"
+
+
+def test_merge_preserving_takes_new_youtube_url_when_set() -> None:
+    old = _track(youtube_url="https://yt/old", status=TrackStatus.QUEUED)
+    new = _track(youtube_url="https://yt/new", status=TrackStatus.QUEUED)
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.youtube_url == "https://yt/new"
+
+
+def test_merge_preserving_preserves_local_path_when_new_is_none() -> None:
+    old = _track(local_path="/music/song.mp3", status=TrackStatus.DOWNLOADED)
+    new = _track(status=TrackStatus.QUEUED, youtube_url="https://yt/1")
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.local_path == "/music/song.mp3"
+
+
+def test_merge_preserving_preserves_loved_at_when_new_is_none() -> None:
+    old = _track(loved_at="20230101-120000")
+    new = _track()
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.loved_at == "20230101-120000"
+
+
+def test_merge_preserving_clears_error_when_new_error_is_none() -> None:
+    old = _track(error="download failed", status=TrackStatus.FAILED)
+    new = _track(status=TrackStatus.FAILED)
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.error is None
+
+
+def test_merge_preserving_takes_max_retry_count() -> None:
+    old = _track(retry_count=3)
+    new = _track(retry_count=1)
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.retry_count == 3
+
+
+def test_merge_preserving_preserves_file_type_and_bitrate_when_new_is_none() -> None:
+    old = _track(
+        status=TrackStatus.DOWNLOADED,
+        local_path="/f.mp3",
+        file_type="MP3",
+        bitrate_kbps=320,
+    )
+    new = _track(
+        status=TrackStatus.QUEUED,
+        youtube_url="https://yt/1",
+        file_type=None,
+        bitrate_kbps=None,
+    )
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.file_type == "MP3"
+    assert result.bitrate_kbps == 320
+
+
+def test_merge_preserving_full_pipeline_progression() -> None:
+    fetched = _track()
+    searching = _track(status=TrackStatus.SEARCHING)
+    queued = _track(youtube_url="https://yt/1", status=TrackStatus.QUEUED)
+    downloading = _track(youtube_url="https://yt/1", status=TrackStatus.DOWNLOADING)
+    downloaded = _track(
+        youtube_url="https://yt/1",
+        local_path="/music/Artist - Title.mp3",
+        status=TrackStatus.DOWNLOADED,
+        file_type="OPUS",
+        bitrate_kbps=160,
+    )
+
+    after_search = Track.merge_preserving(fetched, searching)
+    after_queue = Track.merge_preserving(after_search, queued)
+    after_dl = Track.merge_preserving(after_queue, downloading)
+    after_done = Track.merge_preserving(after_dl, downloaded)
+
+    assert after_done.status == TrackStatus.DOWNLOADED
+    assert after_done.local_path == "/music/Artist - Title.mp3"
+    assert after_done.youtube_url == "https://yt/1"
+
+    stale_fetch = _track()
+    after_stale = Track.merge_preserving(after_done, stale_fetch)
+
+    assert after_stale.status == TrackStatus.DOWNLOADED
+    assert after_stale.local_path == "/music/Artist - Title.mp3"

@@ -224,6 +224,38 @@ def test_download_cache_ignores_missing_files(tmp_path: Path) -> None:
     assert repository.load_download_cache() == {}
 
 
+def test_merge_track_updates_preserves_queued_state_when_partial_fetch_arrives() -> None:
+    queued = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtube.example/watch?v=abc",
+        status=TrackStatus.QUEUED,
+    )
+    partial_fetch = Track(artist="Artist", title="Title")
+
+    result = merge_track_updates([queued], [partial_fetch])
+
+    assert result[0].status == TrackStatus.QUEUED
+    assert result[0].youtube_url == "https://youtube.example/watch?v=abc"
+
+
+def test_merge_track_updates_does_not_overwrite_downloaded_state() -> None:
+    downloaded = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtube.example/watch?v=abc",
+        local_path="/music/song.mp3",
+        status=TrackStatus.DOWNLOADED,
+    )
+    fetched_update = Track(artist="Artist", title="Title")
+
+    result = merge_track_updates([downloaded], [fetched_update])
+
+    assert result[0].status == TrackStatus.DOWNLOADED
+    assert result[0].local_path == "/music/song.mp3"
+    assert result[0].youtube_url == "https://youtube.example/watch?v=abc"
+
+
 def test_merge_track_updates_preserves_existing_order_and_appends_new_tracks() -> None:
     first = Track(artist="First", title="Track")
     second = Track(artist="Second", title="Track")
