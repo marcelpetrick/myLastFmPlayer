@@ -446,9 +446,14 @@ class LastFmLovedTracksScraper:
             control_callback=control_callback,
         )
         tracks = repository.mark_cached_downloads(repository.mark_cached_lookups(tracks))
-        repository.save_tracks(username, tracks)
-        _log_info("Stored %s Last.fm loved tracks for user %s", len(tracks), username)
-        return tracks
+        merged_tracks = repository.merge_tracks(username, tracks)
+        _log_info(
+            "Merged %s fetched Last.fm loved tracks into %s stored tracks for user %s",
+            len(tracks),
+            len(merged_tracks),
+            username,
+        )
+        return merged_tracks
 
     def fetch_loved_track_count(self, username: str) -> int | None:
         """Fetch the first loved-track API page and return Last.fm's total count."""

@@ -137,6 +137,10 @@ class ApplicationController(QObject):
     def load_cached_tracks_for_entered_username(self, *, verify_online_count: bool = False) -> bool:
         """Load locally stored tracks for the entered username when available."""
 
+        if self._active_fetch_worker is not None:
+            LOGGER.info("Skipped cached-track load because a fresh fetch is active")
+            return False
+
         username = self.window.username()
         if not username:
             return False
@@ -173,7 +177,7 @@ class ApplicationController(QObject):
         tracks = self.repository.mark_cached_downloads(
             self.repository.mark_cached_lookups(tracks)
         )
-        self.repository.save_tracks(username, tracks)
+        tracks = self.repository.merge_tracks(username, tracks)
         self.window.set_tracks(tracks)
         self._report_user_action(
             translate(
@@ -929,7 +933,7 @@ class ApplicationController(QObject):
     def _save_visible_tracks(self) -> None:
         username = self.window.username()
         if username:
-            self.repository.save_tracks(username, self.window.tracks())
+            self.repository.merge_tracks(username, self.window.tracks())
 
     def _play_track(self, track: Track) -> None:
         if self._can_prepare_for_playback(track):

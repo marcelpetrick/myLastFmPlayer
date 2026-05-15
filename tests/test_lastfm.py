@@ -676,6 +676,68 @@ def test_fetch_and_store_loved_tracks_persists_results(tmp_path: Path) -> None:
     assert repository.load_tracks("example")[0].status == TrackStatus.FETCHED
 
 
+def test_fetch_and_store_loved_tracks_merges_api_data_without_replacing_cache(
+    tmp_path: Path,
+) -> None:
+    session = ApiFakeSession(
+        {
+            1: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={
+                    "lovedtracks": {
+                        "@attr": {"page": "1", "totalPages": "1", "total": "0"},
+                        "track": [],
+                    }
+                },
+            )
+        }
+    )
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    cached = Track(
+        artist="Cached",
+        title="Track",
+        youtube_url="https://youtube.example/watch?v=cached",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_tracks("example", [cached])
+
+    tracks = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_and_store_loved_tracks("example", repository)
+
+    assert tracks == [cached]
+    assert repository.load_tracks("example") == [cached]
+
+
+def test_fetch_and_store_loved_tracks_preserves_cached_lookup_state(
+    tmp_path: Path,
+) -> None:
+    session = ApiFakeSession(
+        {1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2, total_pages=1))}
+    )
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    cached = Track(
+        artist="The Killers",
+        title="Smile Like You Mean It",
+        youtube_url="https://youtube.example/watch?v=resolved",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_tracks("example", [cached])
+
+    tracks = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_and_store_loved_tracks("example", repository)
+
+    assert tracks[0].youtube_url == cached.youtube_url
+    assert tracks[0].status is TrackStatus.QUEUED
+    assert tracks[0].loved_at == "20210710-224500"
+
+
 def test_controlled_sleep_stops_when_control_callback_returns_false(monkeypatch) -> None:
     monotonic_values = iter([0.0, 0.05, 0.05, 0.2])
     monkeypatch.setattr(

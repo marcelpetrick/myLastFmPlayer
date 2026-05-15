@@ -1523,6 +1523,22 @@ def test_controller_load_cached_tracks_reports_count_when_verify_and_tracks_pres
     assert "Found 1 cached tracks for user" in window.feedback_log.toPlainText()
 
 
+def test_controller_does_not_reload_cache_while_fresh_fetch_is_active(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks("user", [Track(artist="Cached", title="Track")])
+    controller = ApplicationController(window, repository=repository)
+    active_worker = object()
+    controller._active_fetch_worker = active_worker  # type: ignore[assignment]
+
+    result = controller.load_cached_tracks_for_entered_username()
+
+    assert result is False
+    assert controller._active_fetch_worker is active_worker
+    assert [track.artist for track in window.tracks()] != ["Cached"]
+
+
 def test_controller_open_file_cache_reports_mkdir_failure(qapp, tmp_path, monkeypatch) -> None:
     from pathlib import Path
 
