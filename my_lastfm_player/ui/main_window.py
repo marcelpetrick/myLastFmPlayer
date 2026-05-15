@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from html import escape
 
 from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent
@@ -525,12 +526,12 @@ class MainWindow(QMainWindow):
     def show_about_dialog(self) -> None:
         """Show application information, author, license, and project intent."""
 
-        QMessageBox.information(self, self.about_dialog_title(), self.about_dialog_text())
+        _show_rich_text_dialog(self, self.about_dialog_title(), self.about_dialog_text())
 
     def show_open_source_licenses_dialog(self) -> None:
         """Show a compact list of open-source libraries and tool licenses."""
 
-        QMessageBox.information(
+        _show_rich_text_dialog(
             self,
             self.open_source_licenses_dialog_title(),
             self.open_source_licenses_dialog_text(),
@@ -544,26 +545,28 @@ class MainWindow(QMainWindow):
     def about_dialog_text(self) -> str:
         """Return translated About dialog text."""
 
-        return "\n\n".join(
-            (
-                self.tr("myLastFmPlayer {version}").format(version=__display_version__),
-                self.tr("Author: Marcel Petrick <mail@marcelpetrick.it>"),
-                self.tr("License: GNU GPLv3 or later."),
-                self.tr(
-                    "This application fetches a user's public loved tracks from Last.fm, "
-                    "keeps local metadata, resolves playable sources through yt-dlp, "
-                    "downloads MP3 files, and plays them locally."
-                ),
-                self.tr(
-                    "It is intended as a practical Linux desktop helper for rebuilding "
-                    "a personal loved-track collection without manually searching every song."
-                ),
-                self.tr(
-                    "Optional Last.fm scrobbling can connect the local playback workflow "
-                    "back to the user's Last.fm account."
-                ),
-            )
-        )
+        paragraphs = [
+            _bold_text(self.tr("myLastFmPlayer {version}").format(version=__display_version__)),
+            self.tr(
+                "Author: Marcel Petrick <a href=\"mailto:mail@marcelpetrick.it\">"
+                "mail@marcelpetrick.it</a>"
+            ),
+            self.tr("License: GNU GPLv3 or later."),
+            self.tr(
+                "This application fetches a user's public loved tracks from Last.fm, "
+                "keeps local metadata, resolves playable sources through yt-dlp, "
+                "downloads MP3 files, and plays them locally."
+            ),
+            self.tr(
+                "It is intended as a practical Linux desktop helper for rebuilding "
+                "a personal loved-track collection without manually searching every song."
+            ),
+            self.tr(
+                "Optional Last.fm scrobbling can connect the local playback workflow "
+                "back to the user's Last.fm account."
+            ),
+        ]
+        return _html_paragraphs(paragraphs)
 
     def open_source_licenses_dialog_title(self) -> str:
         """Return the translated open-source licenses dialog title."""
@@ -573,34 +576,92 @@ class MainWindow(QMainWindow):
     def open_source_licenses_dialog_text(self) -> str:
         """Return translated open-source license summary text."""
 
-        sections = [
+        paragraphs = [
             self.tr(
                 "myLastFmPlayer is GPLv3-or-later software and uses these open-source "
                 "libraries and external tools:"
             ),
-            self.tr(
-                "Python - Python Software Foundation License; runtime for the application."
+            _component_license(
+                "Python",
+                self.tr("Python Software Foundation License; runtime for the application."),
             ),
-            self.tr("PyQt6 - GNU GPL v3; Python bindings for the Qt desktop interface."),
-            self.tr("Qt 6 - GNU LGPL v3 / GPL v3; cross-platform UI toolkit."),
-            self.tr("requests - Apache License 2.0; HTTP client for Last.fm API calls."),
-            self.tr("beautifulsoup4 - MIT License; legacy Last.fm HTML parser support."),
-            self.tr("pylast - Apache License 2.0; Last.fm scrobbling integration."),
-            self.tr("yt-dlp - Unlicense; media lookup and download helper."),
-            self.tr(
-                "FFmpeg - LGPL/GPL family licenses depending on the installed build; "
-                "audio conversion backend."
+            _component_license(
+                "PyQt6",
+                self.tr("GNU GPL v3; Python bindings for the Qt desktop interface."),
+            ),
+            _component_license(
+                "Qt 6",
+                self.tr("GNU LGPL v3 / GPL v3; cross-platform UI toolkit."),
+            ),
+            _component_license(
+                "requests",
+                self.tr("Apache License 2.0; HTTP client for Last.fm API calls."),
+            ),
+            _component_license(
+                "beautifulsoup4",
+                self.tr("MIT License; legacy Last.fm HTML parser support."),
+            ),
+            _component_license(
+                "pylast",
+                self.tr("Apache License 2.0; Last.fm scrobbling integration."),
+            ),
+            _component_license(
+                "yt-dlp",
+                self.tr("Unlicense; media lookup and download helper."),
+            ),
+            _component_license(
+                "FFmpeg",
+                self.tr(
+                    "LGPL/GPL family licenses depending on the installed build; "
+                    "audio conversion backend."
+                ),
             ),
             self.tr(
-                "Development tools include pytest, pytest-cov, coverage.py, Ruff, Pylint, "
-                "Sphinx, and build under their respective open-source licenses."
+                "Development tools include {tools} under their respective open-source licenses."
+            ).format(
+                tools=", ".join(
+                    _bold_text(tool)
+                    for tool in (
+                        "pytest",
+                        "pytest-cov",
+                        "coverage.py",
+                        "Ruff",
+                        "Pylint",
+                        "Sphinx",
+                        "build",
+                    )
+                )
             ),
             self.tr(
                 "This summary is informational; the complete license texts are provided "
                 "by the installed projects and system packages."
             ),
         ]
-        return "\n\n".join(sections)
+        return _html_paragraphs(paragraphs)
+
+    def open_source_licenses_plain_text(self) -> str:
+        """Return a plain-text variant of the license summary for tests and logs."""
+
+        return "\n\n".join(
+            (
+                "Python - "
+                + self.tr("Python Software Foundation License; runtime for the application."),
+                "PyQt6 - "
+                + self.tr("GNU GPL v3; Python bindings for the Qt desktop interface."),
+                "Qt 6 - " + self.tr("GNU LGPL v3 / GPL v3; cross-platform UI toolkit."),
+                "requests - "
+                + self.tr("Apache License 2.0; HTTP client for Last.fm API calls."),
+                "beautifulsoup4 - "
+                + self.tr("MIT License; legacy Last.fm HTML parser support."),
+                "pylast - " + self.tr("Apache License 2.0; Last.fm scrobbling integration."),
+                "yt-dlp - " + self.tr("Unlicense; media lookup and download helper."),
+                "FFmpeg - "
+                + self.tr(
+                    "LGPL/GPL family licenses depending on the installed build; "
+                    "audio conversion backend."
+                ),
+            )
+        )
 
     def show_status(self, message: str) -> None:
         """Show ``message`` in the status bar and terminal log."""
@@ -771,3 +832,25 @@ def format_playback_time(milliseconds: int) -> str:
     if hours:
         return f"{hours}:{minutes:02}:{seconds:02}"
     return f"{minutes}:{seconds:02}"
+
+
+def _html_paragraphs(paragraphs: list[str]) -> str:
+    return "".join(f"<p>{paragraph}</p>" for paragraph in paragraphs)
+
+
+def _bold_text(text: str) -> str:
+    return f"<b>{escape(text)}</b>"
+
+
+def _component_license(component: str, license_text: str) -> str:
+    return f"{_bold_text(component)} - {escape(license_text)}"
+
+
+def _show_rich_text_dialog(parent: QWidget, title: str, text: str) -> None:
+    dialog = QMessageBox(parent)
+    dialog.setWindowTitle(title)
+    dialog.setTextFormat(Qt.TextFormat.RichText)
+    dialog.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+    dialog.setOpenExternalLinks(True)
+    dialog.setText(text)
+    dialog.exec()
