@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSlider,
     QTableView,
+    QTextBrowser,
     QVBoxLayout,
     QWidget,
 )
@@ -836,7 +837,7 @@ def format_playback_time(milliseconds: int) -> str:
 
 
 def _html_paragraphs(paragraphs: list[str]) -> str:
-    return "".join(f"<p>{paragraph}</p>" for paragraph in paragraphs)
+    return "".join(f'<p style="margin: 0 0 8px 0;">{paragraph}</p>' for paragraph in paragraphs)
 
 
 def _bold_text(text: str) -> str:
@@ -850,18 +851,28 @@ def _component_license(component: str, license_text: str) -> str:
 def _show_rich_text_dialog(parent: QWidget, title: str, text: str) -> None:
     dialog = QDialog(parent)
     dialog.setWindowTitle(title)
-    dialog.resize(560, 360)
+    dialog.resize(*_rich_text_dialog_size(text))
 
     layout = QVBoxLayout(dialog)
-    text_label = QLabel(text)
-    text_label.setWordWrap(True)
-    text_label.setTextFormat(Qt.TextFormat.RichText)
-    text_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
-    text_label.setOpenExternalLinks(True)
-    layout.addWidget(text_label)
+    layout.setContentsMargins(16, 16, 16, 16)
+    layout.setSpacing(10)
+
+    text_browser = QTextBrowser()
+    text_browser.setOpenExternalLinks(True)
+    text_browser.setReadOnly(True)
+    text_browser.setFrameShape(QFrame.Shape.NoFrame)
+    text_browser.document().setDocumentMargin(0)
+    text_browser.setHtml(text)
+    layout.addWidget(text_browser, stretch=1)
 
     button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
     button_box.accepted.connect(dialog.accept)
     layout.addWidget(button_box)
 
     dialog.exec()
+
+
+def _rich_text_dialog_size(text: str) -> tuple[int, int]:
+    if len(text) > 900:
+        return (680, 520)
+    return (560, 280)
