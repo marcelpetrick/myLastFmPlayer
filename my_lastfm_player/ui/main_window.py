@@ -68,6 +68,7 @@ class MainWindow(QMainWindow):
         self._playback_duration_ms = 0
         self._track_count = 0
         self._showing_example_tracks = False
+        self._now_playing_idle = True
         self.set_application_title(__display_version__)
         self.resize(1120, 720)
 
@@ -484,8 +485,10 @@ class MainWindow(QMainWindow):
         """Display ``track`` info above the playback controls, or clear it when ``None``."""
 
         if track is None:
+            self._now_playing_idle = True
             self.now_playing_label.setText(self.tr("Not playing"))
         else:
+            self._now_playing_idle = False
             self.now_playing_label.setText(f"{track.artist} — {track.title}")
 
     def tracks(self) -> list[Track]:
@@ -704,7 +707,7 @@ class MainWindow(QMainWindow):
         self.username_input.setPlaceholderText(self.tr("Enter username"))
         self.fetch_button.setText(self.tr("Fetch"))
         self.playback_group.setTitle(self.tr("Playback"))
-        if self.now_playing_label.text() in ("", "Not playing"):
+        if self._now_playing_idle:
             self.now_playing_label.setText(self.tr("Not playing"))
         self.play_button.setText(self.tr("Play"))
         self.pause_button.setText(self.tr("Pause"))

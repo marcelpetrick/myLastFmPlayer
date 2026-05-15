@@ -10,7 +10,7 @@ from PyQt6.QtGui import QMouseEvent
 
 from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
-from my_lastfm_player.i18n import SUPPORTED_LANGUAGES
+from my_lastfm_player.i18n import SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.themes import ThemeMode
 from my_lastfm_player.ui import main_window as main_window_module
@@ -24,8 +24,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.91"
-    assert __display_version__ == "0.0.91"
+    assert __version__ == "0.0.92"
+    assert __display_version__ == "0.0.92"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -62,7 +62,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.91"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.92"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -158,7 +158,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.91\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.92\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert saved_languages == []
@@ -339,6 +339,29 @@ def test_main_window_open_source_license_text_lists_runtime_tools(qapp) -> None:
 
     for expected in ("PyQt6", "requests", "beautifulsoup4", "pylast", "yt-dlp", "FFmpeg"):
         assert expected in license_text
+
+
+def test_main_window_retranslates_idle_now_playing_label(qapp) -> None:
+    translation_manager = TranslationManager(qapp)
+    assert translation_manager.set_language("zh")
+    window = MainWindow(translation_manager)
+
+    window.retranslate_ui()
+
+    assert window.now_playing_label.text() == "未播放"
+    translation_manager.set_language("en")
+
+
+def test_main_window_does_not_retranslate_active_now_playing_label(qapp) -> None:
+    translation_manager = TranslationManager(qapp)
+    assert translation_manager.set_language("zh")
+    window = MainWindow(translation_manager)
+    window.set_now_playing(Track(artist="Artist", title="Title"))
+
+    window.retranslate_ui()
+
+    assert window.now_playing_label.text() == "Artist — Title"
+    translation_manager.set_language("en")
 
 
 def test_main_window_help_actions_open_dialogs(qapp, monkeypatch) -> None:
