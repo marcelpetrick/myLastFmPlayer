@@ -30,11 +30,13 @@ class FetchLovedTracksWorker(QObject):
         username: str,
         scraper: LastFmLovedTracksScraper,
         repository: JsonTrackRepository,
+        expected_count: int | None = None,
     ) -> None:
         super().__init__()
         self.username = username
         self.scraper = scraper
         self.repository = repository
+        self.expected_count = expected_count
         self._resume_event = Event()
         self._resume_event.set()
         self._stop_requested = False
@@ -100,10 +102,8 @@ class FetchLovedTracksWorker(QObject):
             self.finished.emit()
 
     def _report_fetch_progress(self, progress: FetchProgress) -> None:
-        if progress.total_count:
-            percent = min(99, int(progress.fetched_count / progress.total_count * 100))
-        else:
-            percent = 0
+        total = progress.total_count or self.expected_count
+        percent = min(99, int(progress.fetched_count / total * 100)) if total else 0
         print(
             f"[myLastFmPlayer] Worker progress for {self.username}: "
             f"{percent}% {progress.message}",

@@ -35,7 +35,7 @@ LOGGER = logging.getLogger(__name__)
 
 DependencyChecker = Callable[[], DependencyCheckResult]
 FetchWorkerFactory = Callable[
-    [str, LastFmLovedTracksScraper, JsonTrackRepository],
+    [str, LastFmLovedTracksScraper, JsonTrackRepository, int | None],
     FetchLovedTracksWorker,
 ]
 LookupWorkerFactory = Callable[
@@ -452,7 +452,7 @@ class ApplicationController(QObject):
         self.window.set_fetch_control_state(active=True, paused=False)
         self._fetch_paused = False
         self.window.set_progress(0, translate("ApplicationController", "Starting fetch"))
-        worker = self.fetch_worker_factory(username, self.scraper, self.repository)
+        worker = self.fetch_worker_factory(username, self.scraper, self.repository, expected_count)
         self._active_fetch_worker = worker
         self._started_incremental_lookup_for_fetch = False
         self._run_worker(worker)

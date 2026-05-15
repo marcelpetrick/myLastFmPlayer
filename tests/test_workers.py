@@ -299,6 +299,32 @@ def test_fetch_worker_reports_zero_percent_when_total_count_is_unknown(tmp_path:
     assert (0, "Fetched 1 track") in progress_events
 
 
+def test_fetch_worker_uses_expected_count_for_progress_when_page_total_is_absent(
+    tmp_path: Path,
+) -> None:
+    class ScraperNoTotal:
+        def fetch_and_store_loved_tracks(
+            self, username, repository, progress_callback=None, **_kwargs
+        ):
+            if progress_callback is not None:
+                progress_callback(FetchProgress(50, "Halfway"))
+            repository.save_tracks(username, [])
+            return []
+
+    worker = FetchLovedTracksWorker(
+        "example",
+        ScraperNoTotal(),  # type: ignore[arg-type]
+        JsonTrackRepository(data_dir=tmp_path),
+        expected_count=100,
+    )
+    progress_events: list[tuple[int, str]] = []
+    worker.progress.connect(lambda value, label: progress_events.append((value, label)))
+
+    worker.run()
+
+    assert (50, "Halfway") in progress_events
+
+
 def test_fetch_worker_pause_and_resume_toggle_event(tmp_path: Path) -> None:
     worker = FetchLovedTracksWorker(
         "example",

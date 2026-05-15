@@ -355,6 +355,7 @@ def test_controller_shows_expected_count_before_fresh_fetch(qapp, tmp_path) -> N
     assert len(workers) == 1
     assert scraper.checked_usernames == ["example"]
     assert "523 tracks expected" in window.feedback_log.toPlainText()
+    assert workers[0].expected_count == 523  # type: ignore[union-attr]
 
 
 def test_controller_skips_preflight_when_cache_count_already_checked(qapp, tmp_path) -> None:
