@@ -20,7 +20,7 @@ The system is a standalone desktop application built with:
 
 The application will:
 
-1. Fetch loved tracks from Last.fm (via web scraping)
+1. Fetch loved tracks from Last.fm
 2. Store metadata locally in JSON
 3. Resolve corresponding YouTube tracks
 4. Download audio (MP3)
@@ -32,7 +32,7 @@ The application will:
 
 ### 2.1 External Systems
 
-* Last.fm (public loved-track HTML scraping plus authenticated scrobbling API calls)
+* Last.fm (loved-track Web API plus authenticated scrobbling API calls)
 * YouTube (search + download via tools such as yt-dlp)
 
 ### 2.2 External Tools
@@ -44,7 +44,7 @@ The application will:
 
 * Public loved-track fetching must not require a user-supplied API key.
 * Scrobbling may use bundled Last.fm desktop application credentials and a user-authorized session key.
-* Dependence on public HTML structure
+* Dependence on Last.fm Web API availability and response shape
 * Linux-only target for MVP
 
 ---

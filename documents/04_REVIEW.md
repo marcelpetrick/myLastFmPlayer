@@ -24,7 +24,7 @@ User-facing/manual deletion is storage-level only and is not exposed in the UI. 
 
 No major missing items.
 
-Live reliability still depends on Last.fm public HTML structure. This is already documented as a risk.
+Live reliability depends on Last.fm Web API availability and response compatibility.
 
 ## Step 5: Responsive UI Data Binding
 

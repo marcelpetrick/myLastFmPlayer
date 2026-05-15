@@ -59,7 +59,7 @@ The end-to-end story for a user named `first` who has never been seen before:
 
 1. **Username entry.** The user types `first` in the `MainWindow` and clicks *Fetch*. `MainWindow` emits `fetch_requested`.
 2. **Cache probe.** `ApplicationController.fetch_loved_tracks` first asks `JsonTrackRepository.load_tracks("first")`. If a cache exists, it cross-checks the cached count against Last.fm's online "loved-track count" before trusting it. If the counts match, it short-circuits to *Loaded cached tracks* and starts an automatic YouTube lookup.
-3. **Fresh fetch.** Otherwise a `FetchLovedTracksWorker` is moved onto a `QThread`, calls `LastFmLovedTracksScraper.fetch_and_store_loved_tracks`, and walks Last.fm's HTML pages one page at a time with a `LASTFM_PAGE_DELAY_SECONDS` pause between pages. Each page is parsed by `LastFmLovedTracksParser` into `Track` objects with `(artist, title, lastfm_url, loved_at)`.
+3. **Fresh fetch.** Otherwise a `FetchLovedTracksWorker` is moved onto a `QThread`, calls `LastFmLovedTracksScraper.fetch_and_store_loved_tracks`, and walks Last.fm's `user.getLovedTracks` API pages one page at a time with a short `LASTFM_PAGE_DELAY_SECONDS` pause between pages. Each JSON page is parsed into `Track` objects with `(artist, title, lastfm_url, loved_at)`.
 4. **Incremental UI updates.** After every page the scraper calls a `tracks_callback` with the cumulative list. The worker re-emits this as `tracks_updated(username, tracks)`. As soon as the first non-empty partial list arrives, the controller does two things:
    - persists the partial list with `repository.merge_tracks` so we never lose work,
    - **launches the YouTube lookup worker in parallel** with the still-running fetch (`_started_incremental_lookup_for_fetch`).
@@ -241,9 +241,9 @@ This section lifts each concern from §1 and matches it to the code.
 
 ### 5.1 "Loved-track parsing is per track, and `loved_at` is sometimes missing"
 
-- **Reality.** Parsing is per-row inside one HTML page, but the *worker* still emits the whole cumulative list after every page (`tracks_updated`). So in the UI it feels per-track, but the underlying transaction unit is one Last.fm page.
-- **`loved_at` is genuinely intermittent.** It is parsed from a `<span title="…">` that Last.fm does not always render (e.g. very old loves, mobile-rendered pages, A/B variants). The current `_parse_loved_at` returns `None` whenever the span is missing or the date format does not match.
-- **Therefore.** The "missing data" is not a bug in `myLastFmPlayer`; it is an upstream gap. The right response is to *acknowledge* the gap in the model (`loved_at: str | None`) and to make sure downstream stages never overwrite a known value with `None`.
+- **Reality.** Fetching is per API page, and the *worker* still emits the whole cumulative list after every page (`tracks_updated`). So in the UI it feels per-track, but the underlying transaction unit is one Last.fm API page.
+- **`loved_at` is provided by the API when available.** It is read from `date.uts` and normalized into the app's timestamp format. The current parser returns `None` whenever Last.fm omits the date or sends an invalid timestamp.
+- **Therefore.** The model still correctly treats `loved_at` as optional (`loved_at: str | None`) and downstream stages must not overwrite a known value with `None`.
 
 ### 5.2 "Downloads are resolved as a separate phase"
 
@@ -514,4 +514,3 @@ So the recommendation is concrete:
 ### 10.7 One-line answer
 
 > **Do Tier 1. Defer the rest. The proposal in §6 is directionally right but priced for a much larger codebase; the merge helper and pre-flight identify-user steps capture ~80% of the value at ~10% of the risk.**
-

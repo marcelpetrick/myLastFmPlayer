@@ -40,10 +40,10 @@ but they should be revisited before the MVP is considered finished.
 - YouTube lookup is currently sequential and simple, which matches the MVP rule. Later queue integration should avoid blocking all downloads behind slow or failing lookups.
 - Storage returns domain objects directly. That is fine for the JSON MVP, but the storage abstraction should remain narrow so a future SQLite migration does not leak database concerns upward.
 
-## Scraping
+## Last.fm API
 
-- Last.fm scraping depends on public HTML structure. Fixture tests protect the parser shape we support, but Step 4 and later should keep parsing errors visible in the UI so site changes are diagnosable.
-- Loved-track total counts are parsed from common Last.fm page text patterns. If Last.fm changes the copy or hides the count, the UI still reports cumulative fetched tracks but cannot show `fetched/total`.
+- Loved-track fetching now uses Last.fm's `user.getLovedTracks` API instead of public HTML scraping. The old parser fixture tests remain useful as regression coverage for legacy page parsing, but the normal workflow no longer depends on Last.fm page markup.
+- API errors are surfaced in the UI through the existing worker error path. If Last.fm omits total-count metadata, the UI still reports cumulative fetched tracks but cannot show `fetched/total`.
 
 ## Logging
 

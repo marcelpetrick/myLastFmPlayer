@@ -7,13 +7,16 @@ import requests
 from bs4 import BeautifulSoup
 
 from my_lastfm_player.lastfm import (
+    LASTFM_API_URL,
     LASTFM_BASE_URL,
     FetchedHtmlPage,
     FetchProgress,
     LastFmError,
+    LastFmLovedTracksApiClient,
     LastFmLovedTracksFetcher,
     LastFmLovedTracksParser,
     LastFmLovedTracksScraper,
+    LovedTracksApiPage,
     LovedTracksPage,
     _controlled_sleep,
     _find_next_page_url,
@@ -29,14 +32,26 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 class FakeResponse:
-    def __init__(self, text: str, url: str, status_code: int = 200) -> None:
+    def __init__(
+        self,
+        text: str,
+        url: str,
+        status_code: int = 200,
+        json_payload: object | None = None,
+    ) -> None:
         self.text = text
         self.url = url
         self.status_code = status_code
+        self.json_payload = json_payload
 
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
             raise requests.HTTPError(f"{self.status_code} error")
+
+    def json(self) -> object:
+        if self.json_payload is None:
+            raise ValueError("No JSON payload configured")
+        return self.json_payload
 
 
 class FakeSession:
@@ -49,6 +64,28 @@ class FakeSession:
         response = self.responses.get(url)
         if response is None:
             raise requests.ConnectionError(f"No fake response for {url}")
+        return response
+
+
+class ApiFakeSession:
+    def __init__(self, responses: dict[int, FakeResponse]) -> None:
+        self.responses = responses
+        self.requests: list[tuple[str, dict[str, object]]] = []
+
+    def get(
+        self,
+        url: str,
+        *,
+        params: dict[str, object] | None = None,
+        timeout: int,
+    ) -> FakeResponse:
+        del timeout
+        request_params = params or {}
+        self.requests.append((url, request_params))
+        page = int(str(request_params.get("page", "1")))
+        response = self.responses.get(page)
+        if response is None:
+            raise requests.ConnectionError(f"No fake response for page {page}")
         return response
 
 
@@ -66,6 +103,43 @@ class SequencedSession:
 
 def read_fixture(name: str) -> str:
     return (FIXTURES_DIR / name).read_text(encoding="utf-8")
+
+
+def api_loved_payload(page: int, total_pages: int = 2, total: int = 3) -> dict[str, object]:
+    tracks = {
+        1: [
+            {
+                "name": "Down on the Farm",
+                "artist": {"#text": "Guns N' Roses"},
+                "url": "https://www.last.fm/music/Guns+N%27+Roses/_/Down+on+the+Farm",
+                "date": {"uts": "1682090040"},
+            },
+            {
+                "name": "Say It Right",
+                "artist": {"#text": "Nelly Furtado"},
+                "url": "https://www.last.fm/music/Nelly+Furtado/_/Say+It+Right",
+                "date": {"uts": "1667637000"},
+            },
+        ],
+        2: [
+            {
+                "name": "Smile Like You Mean It",
+                "artist": {"#text": "The Killers"},
+                "url": "https://www.last.fm/music/The+Killers/_/Smile+Like+You+Mean+It",
+                "date": {"uts": "1625957100"},
+            }
+        ],
+    }
+    return {
+        "lovedtracks": {
+            "@attr": {
+                "page": str(page),
+                "totalPages": str(total_pages),
+                "total": str(total),
+            },
+            "track": tracks.get(page, []),
+        }
+    }
 
 
 def test_parse_loved_tracks_page_extracts_tracks_and_next_url() -> None:
@@ -209,26 +283,139 @@ def test_find_total_tracks_handles_data_attribute_and_invalid_count() -> None:
     )
 
 
-def test_scraper_fetches_paginated_loved_tracks() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
-    session = FakeSession(
+def test_api_client_fetches_loved_tracks_with_loved_at_metadata() -> None:
+    session = ApiFakeSession(
+        {1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1))}
+    )
+
+    page = LastFmLovedTracksApiClient(
+        api_key="test-key",
+        session=session,
+        retry_delay_seconds=0,
+    ).fetch_page("example", 1)
+
+    assert page == LovedTracksApiPage(
+        tracks=[
+            Track(
+                artist="Guns N' Roses",
+                title="Down on the Farm",
+                lastfm_url="https://www.last.fm/music/Guns+N%27+Roses/_/Down+on+the+Farm",
+                loved_at="20230421-151400",
+            ),
+            Track(
+                artist="Nelly Furtado",
+                title="Say It Right",
+                lastfm_url="https://www.last.fm/music/Nelly+Furtado/_/Say+It+Right",
+                loved_at="20221105-083000",
+            ),
+        ],
+        page=1,
+        total_pages=2,
+        total_tracks=3,
+    )
+    assert session.requests == [
+        (
+            LASTFM_API_URL,
+            {
+                "method": "user.getLovedTracks",
+                "user": "example",
+                "api_key": "test-key",
+                "format": "json",
+                "limit": 200,
+                "page": 1,
+            },
+        )
+    ]
+
+
+def test_api_client_handles_single_track_and_missing_optional_metadata() -> None:
+    session = ApiFakeSession(
         {
-            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
-            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+            1: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={
+                    "lovedtracks": {
+                        "@attr": {"page": "1", "totalPages": "1", "total": "1"},
+                        "track": {"name": "Single", "artist": "Artist"},
+                    }
+                },
+            )
         }
     )
 
-    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
-        "example"
+    page = LastFmLovedTracksApiClient(api_key="test-key", session=session).fetch_page("example", 1)
+
+    assert page.tracks == [Track(artist="Artist", title="Single")]
+    assert page.next_page is None
+
+
+def test_api_client_raises_lastfm_error_for_api_error_payload() -> None:
+    session = ApiFakeSession(
+        {
+            1: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={"error": 6, "message": "User not found"},
+            )
+        }
     )
+
+    with pytest.raises(LastFmError, match="User not found"):
+        LastFmLovedTracksApiClient(api_key="test-key", session=session).fetch_page("missing", 1)
+
+
+def test_api_client_retries_request_exception_then_succeeds() -> None:
+    class FlakyApiSession:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get(
+            self,
+            url: str,
+            *,
+            params: dict[str, object] | None = None,
+            timeout: int,
+        ) -> FakeResponse:
+            del url, params, timeout
+            self.calls += 1
+            if self.calls == 1:
+                raise requests.ConnectionError("temporary network failure")
+            return FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1))
+
+    session = FlakyApiSession()
+
+    page = LastFmLovedTracksApiClient(
+        api_key="test-key",
+        session=session,
+        retry_attempts=2,
+        retry_delay_seconds=0,
+    ).fetch_page("example", 1)
+
+    assert page.total_tracks == 3
+    assert session.calls == 2
+
+
+def test_scraper_fetches_paginated_loved_tracks_through_api() -> None:
+    session = ApiFakeSession(
+        {
+            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
+            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
+        }
+    )
+
+    tracks = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_loved_tracks("example")
 
     assert [track.title for track in tracks] == [
         "Down on the Farm",
         "Say It Right",
         "Smile Like You Mean It",
     ]
-    assert session.requested_urls == [first_url, second_url]
+    assert [request[1]["page"] for request in session.requests] == [1, 2]
 
 
 def test_fetcher_fetches_html_documents() -> None:
@@ -312,17 +499,19 @@ def test_fetcher_treats_unavailable_title_as_retryable() -> None:
 
 
 def test_scraper_reports_fetch_progress() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
-    session = FakeSession(
+    session = ApiFakeSession(
         {
-            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
-            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
+            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
         }
     )
     progress_events: list[FetchProgress] = []
 
-    LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
+    LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_loved_tracks(
         "example",
         progress_callback=progress_events.append,
     )
@@ -335,48 +524,54 @@ def test_scraper_reports_fetch_progress() -> None:
 
 
 def test_scraper_fetches_loved_track_count_from_first_page() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    session = FakeSession(
-        {
-            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
-        }
+    session = ApiFakeSession(
+        {1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1))}
     )
 
-    count = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_track_count(
-        "example"
-    )
+    count = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_loved_track_count("example")
 
     assert count == 3
-    assert session.requested_urls == [first_url]
+    assert [request[1]["page"] for request in session.requests] == [1]
 
 
 def test_scraper_returns_none_when_loved_track_count_is_missing() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    session = FakeSession(
+    session = ApiFakeSession(
         {
-            first_url: FakeResponse("<html><body>No total here</body></html>", first_url),
+            1: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={"lovedtracks": {"@attr": {"page": "1"}, "track": []}},
+            ),
         }
     )
 
-    count = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_track_count(
-        "example"
-    )
+    count = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_loved_track_count("example")
 
     assert count is None
 
 
 def test_scraper_reports_cumulative_tracks_after_each_page() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
-    session = FakeSession(
+    session = ApiFakeSession(
         {
-            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
-            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
+            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
         }
     )
     track_events: list[list[Track]] = []
 
-    LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
+    LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_loved_tracks(
         "example",
         tracks_callback=track_events.append,
     )
@@ -388,12 +583,10 @@ def test_scraper_reports_cumulative_tracks_after_each_page() -> None:
 
 
 def test_scraper_stops_paginated_fetch_when_control_callback_returns_false() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
-    session = FakeSession(
+    session = ApiFakeSession(
         {
-            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
-            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
+            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
         }
     )
     control_calls = 0
@@ -403,30 +596,35 @@ def test_scraper_stops_paginated_fetch_when_control_callback_returns_false() -> 
         control_calls += 1
         return control_calls == 1
 
-    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
+    tracks = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_loved_tracks(
         "example",
         control_callback=control_callback,
     )
 
     assert [track.title for track in tracks] == ["Down on the Farm", "Say It Right"]
-    assert session.requested_urls == [first_url]
+    assert [request[1]["page"] for request in session.requests] == [1]
 
 
 def test_scraper_respects_max_pages() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    session = FakeSession(
-        {
-            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
-        }
+    session = ApiFakeSession(
+        {1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1))}
     )
 
-    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
+    tracks = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_loved_tracks(
         "example",
         max_pages=1,
     )
 
     assert [track.title for track in tracks] == ["Down on the Farm", "Say It Right"]
-    assert session.requested_urls == [first_url]
+    assert [request[1]["page"] for request in session.requests] == [1]
 
 
 def test_scraper_encodes_username_in_url() -> None:
@@ -448,25 +646,29 @@ def test_scraper_rejects_invalid_inputs() -> None:
 
 
 def test_scraper_wraps_request_failures() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    session = FakeSession({first_url: FakeResponse("", first_url, status_code=500)})
+    session = ApiFakeSession(
+        {1: FakeResponse("", LASTFM_API_URL, status_code=500, json_payload={})}
+    )
 
     with pytest.raises(LastFmError, match="Could not fetch"):
-        LastFmLovedTracksScraper(session=session, page_delay_seconds=0).fetch_loved_tracks(
-            "example"
-        )
+        LastFmLovedTracksScraper(
+            api_key="test-key",
+            session=session,
+            page_delay_seconds=0,
+        ).fetch_loved_tracks("example")
 
 
 def test_fetch_and_store_loved_tracks_persists_results(tmp_path: Path) -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    session = FakeSession(
-        {
-            first_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), first_url),
-        }
+    session = ApiFakeSession(
+        {1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2, total_pages=1))}
     )
     repository = JsonTrackRepository(data_dir=tmp_path)
 
-    scraper = LastFmLovedTracksScraper(session=session, page_delay_seconds=0)
+    scraper = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    )
 
     tracks = scraper.fetch_and_store_loved_tracks("example", repository)
 
@@ -556,18 +758,18 @@ def test_scraper_sleeps_between_pages_when_page_delay_is_positive(monkeypatch) -
         "my_lastfm_player.lastfm._controlled_sleep",
         lambda delay, _cb: (sleep_calls.append(delay), True)[1],
     )
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
-    session = FakeSession(
+    session = ApiFakeSession(
         {
-            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
-            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
+            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
         }
     )
 
-    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=1.5).fetch_loved_tracks(
-        "example"
-    )
+    tracks = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=1.5,
+    ).fetch_loved_tracks("example")
 
     assert len(tracks) == 3
     assert sleep_calls == [1.5]
@@ -580,18 +782,18 @@ def test_scraper_stops_during_page_delay_when_controlled_sleep_returns_false(
         "my_lastfm_player.lastfm._controlled_sleep",
         lambda _delay, _cb: False,
     )
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    second_url = f"{LASTFM_BASE_URL}/user/example/loved?page=2"
-    session = FakeSession(
+    session = ApiFakeSession(
         {
-            first_url: FakeResponse(read_fixture("lastfm_loved_page_1.html"), first_url),
-            second_url: FakeResponse(read_fixture("lastfm_loved_page_2.html"), second_url),
+            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
+            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
         }
     )
 
-    tracks = LastFmLovedTracksScraper(session=session, page_delay_seconds=1.5).fetch_loved_tracks(
-        "example"
-    )
+    tracks = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=1.5,
+    ).fetch_loved_tracks("example")
 
     assert [track.title for track in tracks] == ["Down on the Farm", "Say It Right"]
-    assert session.requested_urls == [first_url]
+    assert [request[1]["page"] for request in session.requests] == [1]

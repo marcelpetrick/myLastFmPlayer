@@ -5,6 +5,7 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC
 from datetime import datetime as _Datetime
 from typing import Protocol
 from urllib.parse import quote, urljoin
@@ -12,22 +13,25 @@ from urllib.parse import quote, urljoin
 import requests
 from bs4 import BeautifulSoup, Tag
 
+from my_lastfm_player.app_credentials import lastfm_api_credentials
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.version import __display_version__
 
 LASTFM_BASE_URL = "https://www.last.fm"
+LASTFM_API_URL = "https://ws.audioscrobbler.com/2.0/"
 REQUEST_TIMEOUT_SECONDS = 20
 LASTFM_RETRY_ATTEMPTS = 8
 LASTFM_RETRY_DELAY_SECONDS = 2.0
-LASTFM_PAGE_DELAY_SECONDS = 1.5
+LASTFM_PAGE_DELAY_SECONDS = 0.2
+LASTFM_API_PAGE_LIMIT = 200
 LASTFM_HEADERS = {
     "User-Agent": (
         f"myLastFmPlayer/{__display_version__} "
         "(https://github.com/local/myLastFmPlayer; mail@marcelpetrick.it)"
     ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept": "application/json,text/html;q=0.8,*/*;q=0.5",
     "Accept-Language": "en-US,en;q=0.9",
 }
 LOGGER = logging.getLogger(__name__)
@@ -46,9 +50,15 @@ class LastFmError(RuntimeError):
 
 
 class HttpSession(Protocol):
-    """Minimal HTTP session protocol used by the Last.fm fetcher."""
+    """Minimal HTTP session protocol used by the Last.fm fetchers."""
 
-    def get(self, url: str, *, timeout: int) -> requests.Response:
+    def get(
+        self,
+        url: str,
+        *,
+        params: dict[str, object] | None = None,
+        timeout: int,
+    ) -> requests.Response:
         """Fetch ``url`` and return a ``requests``-compatible response."""
 
         ...
@@ -72,6 +82,24 @@ class FetchedHtmlPage:
 
 
 @dataclass(frozen=True, slots=True)
+class LovedTracksApiPage:
+    """Parsed Last.fm Web API page plus pagination metadata."""
+
+    tracks: list[Track]
+    page: int
+    total_pages: int | None = None
+    total_tracks: int | None = None
+
+    @property
+    def next_page(self) -> int | None:
+        """Return the next API page number when the response advertises one."""
+
+        if self.total_pages is None or self.page >= self.total_pages:
+            return None
+        return self.page + 1
+
+
+@dataclass(frozen=True, slots=True)
 class FetchProgress:
     """Progress event emitted while fetching paginated loved tracks."""
 
@@ -83,6 +111,100 @@ class FetchProgress:
 ProgressCallback = Callable[[FetchProgress], None]
 TracksCallback = Callable[[list[Track]], None]
 FetchControlCallback = Callable[[], bool]
+
+
+class LastFmLovedTracksApiClient:
+    """HTTP client for Last.fm's ``user.getLovedTracks`` JSON API."""
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        session: HttpSession | None = None,
+        api_url: str = LASTFM_API_URL,
+        retry_attempts: int = LASTFM_RETRY_ATTEMPTS,
+        retry_delay_seconds: float = LASTFM_RETRY_DELAY_SECONDS,
+        page_limit: int = LASTFM_API_PAGE_LIMIT,
+    ) -> None:
+        self.api_key = (api_key or lastfm_api_credentials().api_key).strip()
+        self.session = session or requests.Session()
+        self.api_url = api_url
+        self.retry_attempts = retry_attempts
+        self.retry_delay_seconds = retry_delay_seconds
+        self.page_limit = page_limit
+        if isinstance(self.session, requests.Session):
+            self.session.headers.update(LASTFM_HEADERS)
+
+    def fetch_page(self, username: str, page: int) -> LovedTracksApiPage:
+        """Fetch and parse one loved-track API page for ``username``."""
+
+        if not self.api_key:
+            raise LastFmError("Last.fm API key is not configured")
+        if page < 1:
+            raise ValueError("page must be positive")
+
+        params: dict[str, object] = {
+            "method": "user.getLovedTracks",
+            "user": username,
+            "api_key": self.api_key,
+            "format": "json",
+            "limit": self.page_limit,
+            "page": page,
+        }
+        attempts = max(1, self.retry_attempts)
+        last_error: LastFmError | None = None
+
+        for attempt in range(1, attempts + 1):
+            _log_info(
+                "Fetching Last.fm loved tracks through API for user %s page %s (attempt %s/%s)",
+                username,
+                page,
+                attempt,
+                attempts,
+            )
+            try:
+                response = self.session.get(
+                    self.api_url,
+                    params=params,
+                    timeout=REQUEST_TIMEOUT_SECONDS,
+                )
+                self._raise_for_unsuccessful_response(response)
+                payload = response.json()
+            except (LastFmError, requests.RequestException, ValueError) as error:
+                last_error = _to_lastfm_error(self.api_url, error)
+                _log_warning(
+                    "Last.fm API fetch attempt %s/%s failed for user %s page %s: %s",
+                    attempt,
+                    attempts,
+                    username,
+                    page,
+                    last_error,
+                )
+                if attempt < attempts and _is_retryable_error(error):
+                    time.sleep(self.retry_delay_seconds)
+                    continue
+                raise last_error from error
+
+            api_page = _parse_loved_tracks_api_payload(payload, page)
+            _log_info(
+                "Fetched Last.fm API page %s for %s: tracks=%s total=%s pages=%s",
+                page,
+                username,
+                len(api_page.tracks),
+                api_page.total_tracks,
+                api_page.total_pages,
+            )
+            return api_page
+
+        raise last_error or LastFmError(f"Could not fetch Last.fm loved tracks from {self.api_url}")
+
+    def _raise_for_unsuccessful_response(self, response: requests.Response) -> None:
+        status_code = response.status_code
+        if status_code >= 400:
+            raise LastFmError(
+                "Could not fetch Last.fm loved tracks from the Web API: "
+                f"Last.fm returned HTTP status {status_code}"
+            )
+        response.raise_for_status()
 
 
 class LastFmLovedTracksFetcher:
@@ -186,7 +308,7 @@ class LastFmLovedTracksParser:
 
 
 class LastFmLovedTracksScraper:
-    """High-level Last.fm scraper that fetches, parses, reports, and stores tracks."""
+    """High-level Last.fm fetcher that reports progress and stores loved tracks."""
 
     def __init__(
         self,
@@ -194,10 +316,17 @@ class LastFmLovedTracksScraper:
         base_url: str = LASTFM_BASE_URL,
         fetcher: LastFmLovedTracksFetcher | None = None,
         parser: LastFmLovedTracksParser | None = None,
+        api_client: LastFmLovedTracksApiClient | None = None,
+        api_key: str | None = None,
         page_delay_seconds: float = LASTFM_PAGE_DELAY_SECONDS,
     ) -> None:
+        self.api_client = api_client or LastFmLovedTracksApiClient(
+            api_key=api_key,
+            session=session,
+        )
         self.fetcher = fetcher or LastFmLovedTracksFetcher(session=session, base_url=base_url)
         self.parser = parser or LastFmLovedTracksParser()
+        self.base_url = base_url.rstrip("/")
         self.page_delay_seconds = page_delay_seconds
 
     def fetch_loved_tracks(
@@ -216,16 +345,16 @@ class LastFmLovedTracksScraper:
             raise ValueError("max_pages must be positive when provided")
 
         tracks: list[Track] = []
-        next_url: str | None = self.loved_tracks_url(username)
+        next_page: int | None = 1
         page_count = 0
         total_count: int | None = None
         _log_info(
-            "Starting Last.fm loved-track fetch for user %s; pagination limit=%s",
+            "Starting Last.fm API loved-track fetch for user %s; pagination limit=%s",
             username,
             max_pages or "none",
         )
 
-        while next_url is not None:
+        while next_page is not None:
             if not _continue_fetching(control_callback):
                 _log_info("Stopping Last.fm loved-track fetch for user %s by request", username)
                 break
@@ -239,12 +368,11 @@ class LastFmLovedTracksScraper:
             page_count += 1
 
             _log_info(
-                "Fetching Last.fm loved-track page %s for user %s: %s",
-                page_count,
+                "Fetching Last.fm API loved-track page %s for user %s",
+                next_page,
                 username,
-                next_url,
             )
-            fetched_page = self.fetcher.fetch_page(next_url)
+            page = self.api_client.fetch_page(username, next_page)
             if page_count == 1:
                 _emit_progress(
                     progress_callback,
@@ -257,13 +385,12 @@ class LastFmLovedTracksScraper:
                         ),
                     ),
                 )
-            page = self.parser.parse(fetched_page.html, fetched_page.url)
             if page.total_tracks is not None:
                 total_count = page.total_tracks
             tracks.extend(page.tracks)
-            next_url = page.next_url
+            next_page = page.next_page
             _log_info(
-                "Fetched %s tracks from page %s for user %s; cumulative=%s total=%s",
+                "Fetched %s tracks from API page %s for user %s; cumulative=%s total=%s",
                 len(page.tracks),
                 page_count,
                 username,
@@ -279,9 +406,9 @@ class LastFmLovedTracksScraper:
                 ),
             )
             _emit_tracks(tracks_callback, tracks)
-            if next_url is not None and self.page_delay_seconds > 0:
+            if next_page is not None and self.page_delay_seconds > 0:
                 _log_info(
-                    "Waiting %.1f seconds before next Last.fm page for %s",
+                    "Waiting %.1f seconds before next Last.fm API page for %s",
                     self.page_delay_seconds,
                     username,
                 )
@@ -293,7 +420,7 @@ class LastFmLovedTracksScraper:
                     break
 
         _log_info(
-            "Finished Last.fm loved-track fetch for user %s with %s tracks across %s page(s)",
+            "Finished Last.fm API loved-track fetch for user %s with %s tracks across %s page(s)",
             username,
             len(tracks),
             page_count,
@@ -324,17 +451,18 @@ class LastFmLovedTracksScraper:
         return tracks
 
     def fetch_loved_track_count(self, username: str) -> int | None:
-        """Fetch the first loved-track page and return Last.fm's total count if available."""
+        """Fetch the first loved-track API page and return Last.fm's total count."""
 
         if not username:
             raise ValueError("Last.fm username must not be empty")
 
-        loved_url = self.loved_tracks_url(username)
         _log_info("Checking online Last.fm loved-track count for user %s", username)
-        fetched_page = self.fetcher.fetch_page(loved_url)
-        page = self.parser.parse(fetched_page.html, fetched_page.url)
+        page = self.api_client.fetch_page(username, 1)
         if page.total_tracks is None:
-            _log_info("Last.fm loved-track count for user %s was not present in HTML", username)
+            _log_info(
+                "Last.fm loved-track count for user %s was not present in API response",
+                username,
+            )
             return None
         _log_info(
             "Last.fm online loved-track count for user %s is %s",
@@ -344,15 +472,93 @@ class LastFmLovedTracksScraper:
         return page.total_tracks
 
     def loved_tracks_url(self, username: str) -> str:
-        """Return the loved-track URL for ``username``."""
+        """Return the public loved-track URL for ``username``."""
 
-        return self.fetcher.loved_tracks_url(username)
+        return f"{self.base_url}/user/{quote(username, safe='')}/loved"
 
 
 def parse_loved_tracks_page(html: str, page_url: str) -> LovedTracksPage:
     """Parse one loved-track HTML page without constructing a scraper."""
 
     return LastFmLovedTracksParser().parse(html, page_url)
+
+
+def _parse_loved_tracks_api_payload(payload: object, page: int) -> LovedTracksApiPage:
+    if not isinstance(payload, dict):
+        raise LastFmError("Last.fm API returned an invalid response")
+    if "error" in payload:
+        message = payload.get("message") or "unknown Last.fm API error"
+        raise LastFmError(f"Last.fm API error: {message}")
+
+    loved_tracks = payload.get("lovedtracks")
+    if not isinstance(loved_tracks, dict):
+        raise LastFmError("Last.fm API response did not contain loved tracks")
+
+    attrs = loved_tracks.get("@attr")
+    if not isinstance(attrs, dict):
+        attrs = {}
+
+    tracks_value = loved_tracks.get("track", [])
+    track_items = tracks_value if isinstance(tracks_value, list) else [tracks_value]
+    tracks = [
+        track
+        for track in (_parse_loved_track_api_item(item) for item in track_items)
+        if track is not None
+    ]
+    return LovedTracksApiPage(
+        tracks=tracks,
+        page=_parse_positive_int(attrs.get("page")) or page,
+        total_pages=_parse_positive_int(attrs.get("totalPages")),
+        total_tracks=_parse_count(str(attrs.get("total", ""))),
+    )
+
+
+def _parse_loved_track_api_item(item: object) -> Track | None:
+    if not isinstance(item, dict):
+        return None
+
+    title = _clean_text(str(item.get("name", "")))
+    artist = _parse_api_artist(item.get("artist"))
+    if not title or not artist:
+        return None
+
+    url = item.get("url")
+    lastfm_url = url if isinstance(url, str) and url else None
+    return Track(
+        artist=artist,
+        title=title,
+        lastfm_url=lastfm_url,
+        loved_at=_parse_api_loved_at(item.get("date")),
+    )
+
+
+def _parse_api_artist(value: object) -> str:
+    if isinstance(value, dict):
+        return _clean_text(str(value.get("#text", "")))
+    if isinstance(value, str):
+        return _clean_text(value)
+    return ""
+
+
+def _parse_api_loved_at(value: object) -> str | None:
+    if not isinstance(value, dict):
+        return None
+    uts = value.get("uts")
+    if not isinstance(uts, str) or not uts:
+        return None
+    try:
+        timestamp = int(uts)
+    except ValueError:
+        return None
+    return _Datetime.fromtimestamp(timestamp, tz=UTC).strftime("%Y%m%d-%H%M%S")
+
+
+def _parse_positive_int(value: object) -> int | None:
+    try:
+        parsed = int(str(value))
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
 
 
 def _find_track_rows(soup: BeautifulSoup) -> list[Tag]:
@@ -500,14 +706,19 @@ def _log_warning(message: str, *args: object) -> None:
     LOGGER.warning(message, *args)
 
 
-def _to_lastfm_error(url: str, error: LastFmError | requests.RequestException) -> LastFmError:
+def _to_lastfm_error(
+    url: str,
+    error: LastFmError | requests.RequestException | ValueError,
+) -> LastFmError:
     if isinstance(error, LastFmError):
         return error
     return LastFmError(f"Could not fetch Last.fm loved tracks from {url}: {error}")
 
 
-def _is_retryable_error(error: LastFmError | requests.RequestException) -> bool:
+def _is_retryable_error(error: LastFmError | requests.RequestException | ValueError) -> bool:
     if isinstance(error, requests.RequestException):
+        return True
+    if isinstance(error, ValueError):
         return True
     return (
         "HTTP status 600" in str(error)

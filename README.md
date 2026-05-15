@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.87` - work in progress; tons of features are not implemented
+Current version: `0.0.88` - work in progress; tons of features are not implemented
 
 ## Current state
 
@@ -87,21 +87,23 @@ Alternatively:
 python -m my_lastfm_player
 ```
 
-## Last.fm Scrobbling Credentials
+## Last.fm API Credentials
 
-The app ships with Last.fm desktop application credentials so scrobbling can work
-without every user registering a separate Last.fm API account:
+The app ships with Last.fm desktop application credentials so loved-track fetching
+and scrobbling can work without every user registering a separate Last.fm API
+account:
 
 - API key: `d36dce7154716e08a1d2907b7badadf7`
 - Shared secret: `ed22747b03cabe49ab93f7215afc06fc`
 
 These are application credentials, not a user's Last.fm password or session key.
-Last.fm's desktop authentication flow requires a key and shared secret to sign
-the app's requests, while the per-user session key is created only after the user
-approves access in the browser. For desktop apps, these app credentials cannot be
-kept confidential from users of the binary or source; larger open-source music
-clients such as Strawberry follow the same practical model by shipping a shared
-Last.fm API key for all users.
+Public loved-track fetching uses the API key only. Last.fm's desktop
+authentication flow for scrobbling also requires the shared secret to sign the
+app's requests, while the per-user session key is created only after the user
+approves access in the browser. For desktop apps, these app credentials cannot
+be kept confidential from users of the binary or source; larger open-source
+music clients such as Strawberry follow the same practical model by shipping a
+shared Last.fm API key for all users.
 
 Advanced users and downstream packages can override the bundled credentials
 without patching source:
@@ -112,7 +114,7 @@ LASTFM_API_KEY=your_key LASTFM_API_SECRET=your_secret my-lastfm-player
 
 ## How to Use the Player
 
-Start the application, enter a Last.fm username, and press Fetch. The app loads that user's public loved-track list from Last.fm, stores it locally, resolves the tracks through `yt-dlp`, and starts downloading playable MP3 files into the local downloads directory.
+Start the application, enter a Last.fm username, and press Fetch. The app loads that user's public loved-track list from the Last.fm Web API, stores it locally, resolves the tracks through `yt-dlp`, and starts downloading playable MP3 files into the local downloads directory.
 
 The normal workflow is:
 
@@ -288,7 +290,7 @@ The normal pipeline does not require internet access. To include the live Last.f
 MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 ./localPipeline.sh --noRun
 ```
 
-That test fetches all loved-track pages from Last.fm for `first` and prints the tracks during the test run.
+That test fetches all loved-track API pages from Last.fm for `first` and prints the tracks during the test run.
 
 ## Translations
 

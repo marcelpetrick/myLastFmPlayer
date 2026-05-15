@@ -7,7 +7,7 @@ This document describes the workflow implemented in the application as of versio
 Implemented:
 
 - PyQt desktop shell.
-- Last.fm loved-track scraping from public HTML pages.
+- Last.fm loved-track fetching through the Last.fm Web API.
 - Background worker boundary for fetching.
 - Per-user JSON storage.
 - Track table model and UI data binding.
@@ -30,23 +30,19 @@ The app currently uses these data sources:
 
 | Source | Used For | Code |
 | --- | --- | --- |
-| Last.fm public HTML | Fetching loved tracks by username | `LastFmLovedTracksFetcher`, `LastFmLovedTracksParser`, `LastFmLovedTracksScraper` |
+| Last.fm Web API | Fetching loved tracks by username | `LastFmLovedTracksApiClient`, `LastFmLovedTracksScraper` |
 | Local JSON files | Persisting per-user track metadata | `JsonTrackRepository` |
 | Shared local JSON cache | Remembering downloaded tracks by exact artist/title | `JsonTrackRepository` |
 | `yt-dlp` command | YouTube first-result lookup and MP3 download | `YouTubeResolver`, `DownloadManager` |
 | `shutil.which` | Startup dependency checks for `yt-dlp` and `ffmpeg` | `check_external_dependencies` |
 
-For a username such as `first`, the Last.fm fetch URL is:
+For a username such as `first`, the Last.fm API request uses:
 
 ```text
-https://www.last.fm/user/first/loved
+https://ws.audioscrobbler.com/2.0/?method=user.getLovedTracks&user=first&format=json
 ```
 
-Pagination follows links found in the HTML, for example:
-
-```text
-https://www.last.fm/user/first/loved?page=2
-```
+Pagination follows the API `page` and `totalPages` metadata.
 
 ## High-Level Components
 
@@ -59,9 +55,8 @@ flowchart LR
     Controller --> DownloadWorker[DownloadTracksWorker]
     Controller --> Playback[PlaybackService]
     FetchWorker --> Scraper[LastFmLovedTracksScraper]
-    Scraper --> Fetcher[LastFmLovedTracksFetcher]
-    Scraper --> Parser[LastFmLovedTracksParser]
-    Fetcher --> LastFm[Last.fm public HTML]
+    Scraper --> ApiClient[LastFmLovedTracksApiClient]
+    ApiClient --> LastFm[Last.fm Web API]
     FetchWorker --> Storage[JsonTrackRepository]
     LookupWorker --> Resolver[YouTubeResolver]
     Resolver --> Ytdlp[yt-dlp]
@@ -87,9 +82,8 @@ sequenceDiagram
     participant Thread as QThread
     participant Worker as FetchLovedTracksWorker
     participant Scraper as LastFmLovedTracksScraper
-    participant Fetcher as LastFmLovedTracksFetcher
-    participant Parser as LastFmLovedTracksParser
-    participant LastFm as Last.fm public HTML
+    participant ApiClient as LastFmLovedTracksApiClient
+    participant LastFm as Last.fm Web API
     participant Storage as JsonTrackRepository
     participant Table as TrackTableModel
 
@@ -101,21 +95,15 @@ sequenceDiagram
     Thread->>Worker: run()
     Worker->>UI: Status "Looking up Last.fm user first"
     Worker->>Scraper: fetch_and_store_loved_tracks("first")
-    Scraper->>Fetcher: loved_tracks_url("first")
-    Fetcher-->>Scraper: /user/first/loved
-    Scraper->>Fetcher: fetch_page(page URL)
-    Fetcher->>LastFm: GET /user/first/loved
-    LastFm-->>Fetcher: HTML document
-    Fetcher-->>Scraper: FetchedHtmlPage
+    Scraper->>ApiClient: fetch_page("first", 1)
+    ApiClient->>LastFm: GET user.getLovedTracks page=1
+    LastFm-->>ApiClient: JSON page with totalPages/total
+    ApiClient-->>Scraper: LovedTracksApiPage
     Scraper->>Worker: Progress "Found Last.fm user first"
-    Scraper->>Parser: parse(html, page URL)
-    Parser-->>Scraper: LovedTracksPage
     Scraper->>Worker: Progress "Fetched N/T tracks" if total is known
-    Scraper->>Fetcher: fetch_page(next page) if pagination exists
-    Fetcher->>LastFm: GET next page
-    LastFm-->>Fetcher: HTML document 2..N
-    Fetcher-->>Scraper: FetchedHtmlPage
-    Scraper->>Parser: parse(html, page URL)
+    Scraper->>ApiClient: fetch_page("first", next page) if totalPages allows
+    ApiClient->>LastFm: GET user.getLovedTracks page=2..N
+    LastFm-->>ApiClient: JSON page 2..N
     Scraper-->>Worker: list[Track]
     Worker->>Storage: save_tracks("first", tracks)
     Storage-->>Worker: JSON written
@@ -128,34 +116,34 @@ sequenceDiagram
     Controller->>UI: Re-enable workflow controls after chained workers finish
 ```
 
-## Last.fm Parsing
+## Last.fm API Fetching
 
-The Last.fm implementation is split into three pieces:
+The normal Last.fm implementation is split into two pieces:
 
-- `LastFmLovedTracksFetcher`: recognizes the user URL and fetches HTML documents.
-- `LastFmLovedTracksParser`: parses fetched HTML with BeautifulSoup.
+- `LastFmLovedTracksApiClient`: fetches and parses `user.getLovedTracks` JSON pages.
 - `LastFmLovedTracksScraper`: orchestrates pagination, progress, and storage-facing results.
 
-The parser extracts tracks from Last.fm HTML table rows.
+The API client extracts tracks from Last.fm JSON items.
 
 ```mermaid
 flowchart TD
-    Html[Last.fm HTML page] --> Rows[Find tr.chartlist-row]
-    Rows --> Name[Read .chartlist-name a]
-    Rows --> Artist[Read .chartlist-artist a]
-    Name --> Title[Track title]
-    Artist --> ArtistName[Artist name]
-    Name --> Url[Last.fm track URL]
+    Json[Last.fm user.getLovedTracks JSON] --> Items[Read lovedtracks.track items]
+    Items --> Title[Track title from name]
+    Items --> ArtistName[Artist name from artist.#text]
+    Items --> Url[Last.fm track URL from url]
+    Items --> LovedAt[Loved timestamp from date.uts]
     Title --> Track[Track object]
     ArtistName --> Track
     Url --> Track
+    LovedAt --> Track
 ```
 
-Each parsed `Track` currently stores:
+Each fetched `Track` currently stores:
 
 - artist
 - title
 - Last.fm URL
+- loved-at timestamp, when Last.fm returns one
 - YouTube URL, initially `null`
 - local file path, initially `null`
 - status, initially `Fetched`
@@ -185,7 +173,7 @@ Fetched 200 tracks
 Fetched and stored 200 tracks for first.
 ```
 
-If the total count cannot be parsed from the page, the app still shows cumulative progress:
+If the total count is missing from the API response, the app still shows cumulative progress:
 
 ```text
 Fetched 99 tracks
@@ -330,8 +318,7 @@ flowchart LR
     Worker[Workers] --> Logs
     Download[DownloadManager] --> Logs
     Playback[PlaybackService] --> Logs
-    Fetcher[LastFmLovedTracksFetcher] --> Logs
-    Parser[LastFmLovedTracksParser] --> Logs
+    ApiClient[LastFmLovedTracksApiClient] --> Logs
     Scraper[LastFmLovedTracksScraper] --> Logs
     UI[MainWindow status updates] --> Logs
 ```
@@ -344,4 +331,4 @@ my-lastfm-player
 
 ## Important Current Limitation
 
-Fetching and displaying the Last.fm loved-track list is implemented, but the app still depends on Last.fm public HTML structure. If Last.fm changes class names or pagination markup, the scraper may need selector updates.
+Fetching and displaying the Last.fm loved-track list is implemented through the Last.fm Web API. API failures, invalid users, or missing response metadata still surface through the existing worker error and progress paths.
