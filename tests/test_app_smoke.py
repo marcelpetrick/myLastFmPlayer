@@ -24,8 +24,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.101"
-    assert __display_version__ == "0.0.101"
+    assert __version__ == "0.0.102"
+    assert __display_version__ == "0.0.102"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -62,7 +62,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.101"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.102"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -179,7 +179,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.101\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.102\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -246,6 +246,50 @@ def test_main_window_finds_next_track_in_current_sort_order(qapp) -> None:
     window.select_track_row(2)
 
     assert window.selected_track() == tracks[2]
+
+
+def test_main_window_filters_tracks_by_artist_or_title_while_preserving_sort(qapp) -> None:
+    window = MainWindow()
+    tracks = [
+        Track(artist="Zed", title="Last", status=TrackStatus.DOWNLOADED),
+        Track(artist="Alpha", title="First", status=TrackStatus.DOWNLOADED),
+        Track(artist="Middle", title="Second", status=TrackStatus.DOWNLOADED),
+        Track(artist="Band", title="Alpine", status=TrackStatus.DOWNLOADED),
+    ]
+    window.set_tracks(tracks)
+    window.track_sort_model.sort(0, Qt.SortOrder.AscendingOrder)
+
+    window.track_filter_input.setText("Al")
+
+    assert window.track_sort_model.rowCount() == 2
+    assert [
+        window.track_sort_model.data(window.track_sort_model.index(row, 0))
+        for row in range(window.track_sort_model.rowCount())
+    ] == ["Alpha", "Band"]
+    assert [
+        window.track_sort_model.data(window.track_sort_model.index(row, 1))
+        for row in range(window.track_sort_model.rowCount())
+    ] == ["First", "Alpine"]
+
+    window.track_filter_reset_button.click()
+
+    assert window.track_filter_input.text() == ""
+    assert window.track_sort_model.rowCount() == 4
+
+
+def test_main_window_filter_is_case_insensitive_and_hard_filters(qapp) -> None:
+    window = MainWindow()
+    tracks = [
+        Track(artist="Artist", title="Blue Song", status=TrackStatus.DOWNLOADED),
+        Track(artist="Other", title="Track", status=TrackStatus.DOWNLOADED),
+    ]
+    window.set_tracks(tracks)
+
+    window.track_filter_input.setText("blue")
+
+    assert window.track_sort_model.rowCount() == 1
+    assert window.track_sort_model.data(window.track_sort_model.index(0, 1)) == "Blue Song"
+    assert window.next_track_after(tracks[1].cache_key) is None
 
 
 def test_main_window_random_track_uses_full_track_list(qapp) -> None:

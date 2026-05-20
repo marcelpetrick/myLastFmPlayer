@@ -473,303 +473,318 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="847" />
-        <location filename="../ui/main_window.py" line="92" />
+        <location filename="../ui/main_window.py" line="902" />
+        <location filename="../ui/main_window.py" line="121" />
         <source>Ready</source>
         <translation>Spreman</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="267" />
+        <location filename="../ui/main_window.py" line="319" />
         <source>Retry Download</source>
         <translation>Ponovi preuzimanje</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="840" />
-        <location filename="../ui/main_window.py" line="345" />
+        <location filename="../ui/main_window.py" line="895" />
+        <location filename="../ui/main_window.py" line="397" />
         <source>Idle</source>
         <translation>besposlen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="369" />
+        <location filename="../ui/main_window.py" line="421" />
         <source>Loaded {count} tracks</source>
         <translation>Učitano {count} zapisa</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="380" />
+        <location filename="../ui/main_window.py" line="432" />
         <source>Playlist: {count} titles</source>
         <translation>Popis za reprodukciju: {count} naslova</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="401" />
+        <location filename="../ui/main_window.py" line="453" />
         <source>Resume</source>
         <translation>Nastavi</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="819" />
-        <location filename="../ui/main_window.py" line="401" />
+        <location filename="../ui/main_window.py" line="874" />
+        <location filename="../ui/main_window.py" line="453" />
         <source>Pause</source>
         <translation>Pauza</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="820" />
-        <location filename="../ui/main_window.py" line="402" />
+        <location filename="../ui/main_window.py" line="875" />
+        <location filename="../ui/main_window.py" line="454" />
         <source>Stop</source>
         <translation>Stop</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="404" />
+        <location filename="../ui/main_window.py" line="456" />
         <source>Resume the paused Last.fm fetch</source>
         <translation>Nastavite pauzirano dohvaćanje Last.fm-a</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="406" />
+        <location filename="../ui/main_window.py" line="458" />
         <source>Pause the active Last.fm fetch</source>
         <translation>Pauzirajte aktivno dohvaćanje Last.fm-a</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="407" />
+        <location filename="../ui/main_window.py" line="459" />
         <source>Stop the active Last.fm fetch</source>
         <translation>Zaustavite aktivno dohvaćanje Last.fm-a</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="825" />
-        <location filename="../ui/main_window.py" line="417" />
+        <location filename="../ui/main_window.py" line="880" />
+        <location filename="../ui/main_window.py" line="469" />
         <source>Stop Downloads</source>
         <translation>Zaustavi preuzimanja</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="825" />
-        <location filename="../ui/main_window.py" line="421" />
+        <location filename="../ui/main_window.py" line="880" />
+        <location filename="../ui/main_window.py" line="473" />
         <source>Start Downloads</source>
         <translation>Pokreni preuzimanja</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="524" />
+        <location filename="../ui/main_window.py" line="576" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation>Ažurirano {artist} - {title}: {status}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="817" />
-        <location filename="../ui/main_window.py" line="541" />
+        <location filename="../ui/main_window.py" line="872" />
+        <location filename="../ui/main_window.py" line="593" />
         <source>Not playing</source>
         <translation>Ne reproducira se</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="801" />
-        <location filename="../ui/main_window.py" line="594" />
+        <location filename="../ui/main_window.py" line="853" />
+        <location filename="../ui/main_window.py" line="646" />
         <source>About myLastFmPlayer</source>
         <translation>O myLastFmPlayeru</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="600" />
+        <location filename="../ui/main_window.py" line="652" />
         <source>myLastFmPlayer {version}</source>
         <translation>myLastFmPlayer {version}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="601" />
+        <location filename="../ui/main_window.py" line="653" />
         <source>Author: Marcel Petrick &lt;a href="mailto:mail@marcelpetrick.it"&gt;mail@marcelpetrick.it&lt;/a&gt;</source>
         <translation>Autor: Marcel Petrick &lt;a href="mailto:mail@marcelpetrick.it"&gt;mail@marcelpetrick.it&lt;/a&gt;</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="605" />
+        <location filename="../ui/main_window.py" line="657" />
         <source>License: GNU GPLv3 or later.</source>
         <translation>Licenca: GNU GPLv3 ili novija.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="606" />
+        <location filename="../ui/main_window.py" line="658" />
         <source>This application fetches a user's public loved tracks from Last.fm, keeps local metadata, resolves playable sources through yt-dlp, downloads MP3 files, and plays them locally.</source>
         <translation>Ova aplikacija dohvaća korisnikove javne omiljene zapise s Last.fm-a, čuva lokalne metapodatke, pronalazi izvore za reprodukciju putem yt-dlp-a, preuzima MP3 datoteke i reproducira ih lokalno.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="611" />
+        <location filename="../ui/main_window.py" line="663" />
         <source>It is intended as a practical Linux desktop helper for rebuilding a personal loved-track collection without manually searching every song.</source>
         <translation>Namijenjena je kao praktičan Linux desktop alat za obnovu osobne zbirke omiljenih pjesama bez ručnog traženja svake pjesme.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="615" />
+        <location filename="../ui/main_window.py" line="667" />
         <source>Optional Last.fm scrobbling can connect the local playback workflow back to the user's Last.fm account.</source>
         <translation>Neobavezno Last.fm skroblanje može povezati lokalni tijek reprodukcije natrag s korisnikovim Last.fm računom.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="802" />
-        <location filename="../ui/main_window.py" line="625" />
+        <location filename="../ui/main_window.py" line="854" />
+        <location filename="../ui/main_window.py" line="677" />
         <source>Open Source Licenses</source>
         <translation>Licence otvorenog koda</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="631" />
+        <location filename="../ui/main_window.py" line="683" />
         <source>myLastFmPlayer is GPLv3-or-later software and uses these open-source libraries and external tools:</source>
         <translation>myLastFmPlayer je softver pod licencom GPLv3 ili novijom i koristi ove biblioteke otvorenog koda i vanjske alate:</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="695" />
-        <location filename="../ui/main_window.py" line="637" />
+        <location filename="../ui/main_window.py" line="747" />
+        <location filename="../ui/main_window.py" line="689" />
         <source>Python Software Foundation License; runtime for the application.</source>
         <translation>Python Software Foundation License; izvršno okruženje aplikacije.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="697" />
-        <location filename="../ui/main_window.py" line="641" />
+        <location filename="../ui/main_window.py" line="749" />
+        <location filename="../ui/main_window.py" line="693" />
         <source>GNU GPL v3; Python bindings for the Qt desktop interface.</source>
         <translation>GNU GPL v3; Python povezivanja za Qt desktop sučelje.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="698" />
-        <location filename="../ui/main_window.py" line="645" />
+        <location filename="../ui/main_window.py" line="750" />
+        <location filename="../ui/main_window.py" line="697" />
         <source>GNU LGPL v3 / GPL v3; cross-platform UI toolkit.</source>
         <translation>GNU LGPL v3 / GPL v3; višeplatformski UI alatni skup.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="700" />
-        <location filename="../ui/main_window.py" line="649" />
+        <location filename="../ui/main_window.py" line="752" />
+        <location filename="../ui/main_window.py" line="701" />
         <source>Apache License 2.0; HTTP client for Last.fm API calls.</source>
         <translation>Apache License 2.0; HTTP klijent za Last.fm API pozive.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="701" />
-        <location filename="../ui/main_window.py" line="653" />
+        <location filename="../ui/main_window.py" line="753" />
+        <location filename="../ui/main_window.py" line="705" />
         <source>Apache License 2.0; Last.fm scrobbling integration.</source>
         <translation>Apache License 2.0; integracija Last.fm skroblanja.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="702" />
-        <location filename="../ui/main_window.py" line="657" />
+        <location filename="../ui/main_window.py" line="754" />
+        <location filename="../ui/main_window.py" line="709" />
         <source>Unlicense; media lookup and download helper.</source>
         <translation>Unlicense; pomoćni alat za pretragu i preuzimanje medija.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="704" />
-        <location filename="../ui/main_window.py" line="661" />
+        <location filename="../ui/main_window.py" line="756" />
+        <location filename="../ui/main_window.py" line="713" />
         <source>LGPL/GPL family licenses depending on the installed build; audio conversion backend.</source>
         <translation>LGPL/GPL obitelj licenci ovisno o instaliranoj verziji; pozadinski alat za pretvorbu zvuka.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="666" />
+        <location filename="../ui/main_window.py" line="718" />
         <source>Development tools include {tools} under their respective open-source licenses.</source>
         <translation>Razvojni alati uključuju {tools} pod njihovim odgovarajućim licencama otvorenog koda.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="682" />
+        <location filename="../ui/main_window.py" line="734" />
         <source>This summary is informational; the complete license texts are provided by the installed projects and system packages.</source>
         <translation>Ovaj sažetak je informativan; potpune tekstove licenci pružaju instalirani projekti i sistemski paketi.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="798" />
+        <location filename="../ui/main_window.py" line="850" />
         <source>Fetch loved tracks</source>
         <translation>Dohvatite omiljene pjesme</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="799" />
+        <location filename="../ui/main_window.py" line="851" />
         <source>Preferences</source>
         <translation>Postavke</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="800" />
+        <location filename="../ui/main_window.py" line="852" />
         <source>Open data folder in file manager</source>
         <translation>Otvori mapu podataka u upravitelju datoteka</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="803" />
+        <location filename="../ui/main_window.py" line="855" />
         <source>Quit</source>
         <translation>Prestati</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="804" />
+        <location filename="../ui/main_window.py" line="856" />
         <source>Main</source>
         <translation>Glavni</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="805" />
+        <location filename="../ui/main_window.py" line="857" />
         <source>Theme</source>
         <translation>Tema</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="806" />
+        <location filename="../ui/main_window.py" line="858" />
         <source>Light</source>
         <translation>Svjetlo</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="807" />
+        <location filename="../ui/main_window.py" line="859" />
         <source>Dark</source>
         <translation>tamno</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="808" />
+        <location filename="../ui/main_window.py" line="860" />
         <source>Lilac</source>
         <translation>Lila</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="809" />
+        <location filename="../ui/main_window.py" line="861" />
         <source>Mint</source>
         <translation>Kovnica</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="810" />
+        <location filename="../ui/main_window.py" line="862" />
         <source>Language</source>
         <translation>Jezik</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="811" />
+        <location filename="../ui/main_window.py" line="863" />
         <source>Help</source>
         <translation>Pomoć</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="812" />
+        <location filename="../ui/main_window.py" line="864" />
         <source>Last.fm username</source>
         <translation>Last.fm korisničko ime</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="813" />
+        <location filename="../ui/main_window.py" line="865" />
         <source>Enter username</source>
         <translation>Unesite korisničko ime</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="814" />
+        <location filename="../ui/main_window.py" line="866" />
         <source>Fetch</source>
         <translation>Dohvati</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="815" />
+        <location filename="../ui/main_window.py" line="867" />
+        <source>Filter</source>
+        <translation>Filtar</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="868" />
+        <source>Artist or track title</source>
+        <translation>Izvođač ili naslov pjesme</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="869" />
+        <source>Reset</source>
+        <translation>Poništi</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="870" />
         <source>Playback</source>
         <translation>Reprodukcija</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="818" />
+        <location filename="../ui/main_window.py" line="873" />
         <source>Play</source>
         <translation>Igrati</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="821" />
+        <location filename="../ui/main_window.py" line="876" />
         <source>Randomize</source>
         <translation>Nasumično</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="822" />
+        <location filename="../ui/main_window.py" line="877" />
         <source>Playback position</source>
         <translation>Položaj reprodukcije</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="823" />
+        <location filename="../ui/main_window.py" line="878" />
         <source>Downloads</source>
         <translation>Preuzimanja</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="827" />
+        <location filename="../ui/main_window.py" line="882" />
         <source>Clear log</source>
         <translation>Obriši dnevnik</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="828" />
+        <location filename="../ui/main_window.py" line="883" />
         <source>Clear status updates and errors</source>
         <translation>Obriši ažuriranja statusa i pogreške</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="830" />
+        <location filename="../ui/main_window.py" line="885" />
         <source>Status updates and errors will appear here.</source>
         <translation>Ovdje će se pojaviti ažuriranja statusa i pogreške.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="837" />
+        <location filename="../ui/main_window.py" line="892" />
         <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
         <translation>Zavisnosti: yt-dlp i ffmpeg još nisu provjereni</translation>
     </message>

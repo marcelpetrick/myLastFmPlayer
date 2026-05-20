@@ -51,6 +51,35 @@ from my_lastfm_player.ui.track_table_model import (
 LOGGER = logging.getLogger(__name__)
 
 
+class TrackFilterProxyModel(QSortFilterProxyModel):
+    """Sort/filter proxy that matches filter text against artist or title."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._filter_text = ""
+
+    def set_track_filter_text(self, text: str) -> None:
+        """Apply a case-insensitive artist/title substring filter."""
+
+        normalized_text = text.casefold().strip()
+        if normalized_text == self._filter_text:
+            return
+        self._filter_text = normalized_text
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row: int, source_parent) -> bool:  # noqa: N802
+        if not self._filter_text:
+            return True
+        source_model = self.sourceModel()
+        if not isinstance(source_model, TrackTableModel):
+            return super().filterAcceptsRow(source_row, source_parent)
+        track = source_model.track_at(source_row)
+        return (
+            self._filter_text in track.artist.casefold()
+            or self._filter_text in track.title.casefold()
+        )
+
+
 class MainWindow(QMainWindow):
     """Initial MVP shell for the Last.fm player desktop UI."""
 
@@ -227,9 +256,26 @@ class MainWindow(QMainWindow):
 
         return frame
 
-    def _build_table(self) -> QTableView:
+    def _build_table(self) -> QWidget:
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        filter_layout = QHBoxLayout()
+        filter_layout.setContentsMargins(0, 0, 0, 0)
+        self.track_filter_label = QLabel()
+        self.track_filter_input = QLineEdit()
+        self.track_filter_input.setClearButtonEnabled(True)
+        self.track_filter_reset_button = QPushButton()
+        self.track_filter_input.textChanged.connect(self._set_track_filter_text)
+        self.track_filter_reset_button.clicked.connect(self.track_filter_input.clear)
+        filter_layout.addWidget(self.track_filter_label)
+        filter_layout.addWidget(self.track_filter_input, stretch=1)
+        filter_layout.addWidget(self.track_filter_reset_button)
+
         self.track_model = TrackTableModel()
-        self.track_sort_model = QSortFilterProxyModel(self)
+        self.track_sort_model = TrackFilterProxyModel(self)
         self.track_sort_model.setSourceModel(self.track_model)
         self.track_sort_model.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
@@ -253,7 +299,13 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        return self.track_table
+
+        layout.addLayout(filter_layout)
+        layout.addWidget(self.track_table, stretch=1)
+        return panel
+
+    def _set_track_filter_text(self, text: str) -> None:
+        self.track_sort_model.set_track_filter_text(text)
 
     def _show_track_context_menu(self, pos: QPoint) -> None:
         index = self.track_table.indexAt(pos)
@@ -812,6 +864,9 @@ class MainWindow(QMainWindow):
         self.username_label.setText(self.tr("Last.fm username"))
         self.username_input.setPlaceholderText(self.tr("Enter username"))
         self.fetch_button.setText(self.tr("Fetch"))
+        self.track_filter_label.setText(self.tr("Filter"))
+        self.track_filter_input.setPlaceholderText(self.tr("Artist or track title"))
+        self.track_filter_reset_button.setText(self.tr("Reset"))
         self.playback_group.setTitle(self.tr("Playback"))
         if self._now_playing_idle:
             self.now_playing_label.setText(self.tr("Not playing"))
