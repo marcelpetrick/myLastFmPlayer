@@ -860,6 +860,18 @@ def test_controlled_sleep_stops_when_control_callback_returns_false(monkeypatch)
     assert not _controlled_sleep(0.1, control_callback)
 
 
+def test_controlled_sleep_stops_before_first_sleep_when_control_is_false(monkeypatch) -> None:
+    sleep_calls: list[float] = []
+    monkeypatch.setattr("my_lastfm_player.lastfm.time.monotonic", lambda: 0.0)
+    monkeypatch.setattr(
+        "my_lastfm_player.lastfm.time.sleep",
+        lambda seconds: sleep_calls.append(seconds),
+    )
+
+    assert not _controlled_sleep(0.1, lambda: False)
+    assert sleep_calls == []
+
+
 def test_retryable_error_detection() -> None:
     assert _is_retryable_error(requests.ConnectionError("network"))
     assert _is_retryable_error(ValueError("bad json"))

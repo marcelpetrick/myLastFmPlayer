@@ -669,6 +669,59 @@ def test_controller_run_worker_tracks_thread_lifecycle(qapp, monkeypatch) -> Non
     assert thread.deleteLater in thread.finished.callbacks
 
 
+def test_controller_run_worker_connects_typed_worker_signals(qapp, monkeypatch) -> None:
+    from my_lastfm_player import controller as controller_module
+
+    class FakeFetchWorker(GenericWorker):
+        def __init__(self) -> None:
+            super().__init__()
+            self.tracks_updated = FakeSignal()
+            self.tracks_loaded = FakeSignal()
+            self.fetch_stopped = FakeSignal()
+
+    class FakeLookupWorker(GenericWorker):
+        def __init__(self) -> None:
+            super().__init__()
+            self.track_updated = FakeSignal()
+            self.tracks_resolved = FakeSignal()
+
+    class FakeDownloadWorker(GenericWorker):
+        def __init__(self) -> None:
+            super().__init__()
+            self.track_updated = FakeSignal()
+            self.tracks_downloaded = FakeSignal()
+
+    created_threads: list[FakeThread] = []
+
+    def fake_thread_factory(parent: object) -> FakeThread:
+        thread = FakeThread(parent)
+        created_threads.append(thread)
+        return thread
+
+    monkeypatch.setattr(controller_module, "QThread", fake_thread_factory)
+    monkeypatch.setattr(controller_module, "FetchLovedTracksWorker", FakeFetchWorker)
+    monkeypatch.setattr(controller_module, "LookupTracksWorker", FakeLookupWorker)
+    monkeypatch.setattr(controller_module, "DownloadTracksWorker", FakeDownloadWorker)
+    window = MainWindow()
+    controller = ApplicationController(window)
+
+    fetch_worker = FakeFetchWorker()
+    lookup_worker = FakeLookupWorker()
+    download_worker = FakeDownloadWorker()
+
+    controller._run_worker(fetch_worker)  # type: ignore[arg-type]
+    controller._run_worker(lookup_worker)  # type: ignore[arg-type]
+    controller._run_worker(download_worker)  # type: ignore[arg-type]
+
+    assert controller._handle_tracks_updated in fetch_worker.tracks_updated.callbacks
+    assert controller._handle_tracks_loaded in fetch_worker.tracks_loaded.callbacks
+    assert controller._handle_fetch_stopped in fetch_worker.fetch_stopped.callbacks
+    assert controller._handle_track_updated in lookup_worker.track_updated.callbacks
+    assert controller._handle_tracks_resolved in lookup_worker.tracks_resolved.callbacks
+    assert controller._handle_track_updated in download_worker.track_updated.callbacks
+    assert controller._handle_tracks_downloaded in download_worker.tracks_downloaded.callbacks
+
+
 def test_controller_play_on_unresolved_track_starts_priority_lookup(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("user")
@@ -1692,6 +1745,38 @@ def test_controller_load_cached_tracks_reports_when_no_cached_tracks_and_verify(
 
     assert result is False
     assert "No cached tracks found for user" in window.feedback_log.toPlainText()
+
+
+def test_controller_load_cached_tracks_returns_false_without_verify_message(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
+
+    result = controller.load_cached_tracks_for_entered_username()
+
+    assert result is False
+    assert "No cached tracks found" not in window.feedback_log.toPlainText()
+
+
+def test_controller_load_cached_tracks_uses_cache_without_online_verify(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(artist="A", title="T")
+    repository.save_tracks("user", [track])
+    controller = ApplicationController(window, repository=repository)
+
+    result = controller.load_cached_tracks_for_entered_username()
+
+    assert result is True
+    assert window.tracks() == [track]
+    assert "checking Last.fm before using them" not in window.feedback_log.toPlainText()
 
 
 def test_controller_load_cached_tracks_reports_count_when_verify_and_tracks_present(

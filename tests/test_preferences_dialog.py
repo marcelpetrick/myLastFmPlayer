@@ -39,6 +39,14 @@ class FakeSG:
         return "new_session_key", "testuser"
 
 
+class BrokenAuthSG:
+    def __init__(self, network) -> None:
+        pass
+
+    def get_web_auth_url(self) -> str:
+        raise RuntimeError("auth unavailable")
+
+
 def _make_svc(**kwargs) -> ScrobblingService:
     return ScrobblingService(
         api_key="key",
@@ -127,6 +135,21 @@ def test_preferences_dialog_authenticate_starts_auth(qapp, monkeypatch) -> None:
     assert svc.auth_in_progress
     assert opened == ["https://last.fm/api/auth/?token=tok"]
     assert not dialog.authorize_button.isHidden()
+
+
+def test_preferences_dialog_authenticate_failure_shows_error(qapp) -> None:
+    svc = ScrobblingService(
+        api_key="key",
+        api_secret="secret",
+        network_factory=lambda **kw: FakeNetwork(**kw),
+        sg_factory=BrokenAuthSG,
+    )
+    dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+
+    dialog._on_authenticate()
+
+    assert not svc.auth_in_progress
+    assert "Not connected" in dialog.status_label.text()
 
 
 def test_preferences_dialog_authorize_completes_auth(qapp, monkeypatch) -> None:
@@ -230,6 +253,16 @@ def test_preferences_dialog_download_concurrency_persists(qapp, monkeypatch) -> 
     dialog.concurrency_input.setValue(8)
 
     assert settings.concurrency == 8
+
+
+def test_preferences_dialog_keep_data_toggle_persists(qapp, monkeypatch) -> None:
+    settings = FakeSettings()
+    monkeypatch.setattr(preferences_module, "AppSettings", lambda: settings)
+
+    dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
+    dialog.keep_data_checkbox.setChecked(True)
+
+    assert settings.keep_data
 
 
 def test_preferences_dialog_uses_content_minimum_height(qapp) -> None:
