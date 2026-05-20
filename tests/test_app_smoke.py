@@ -5,8 +5,8 @@ import sys
 import types
 
 import pytest
-from PyQt6.QtCore import QEvent, QPointF, Qt, QTime
-from PyQt6.QtGui import QMouseEvent
+from PyQt6.QtCore import QEvent, QModelIndex, QPointF, Qt, QTime
+from PyQt6.QtGui import QMouseEvent, QStandardItemModel
 
 from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
@@ -16,6 +16,7 @@ from my_lastfm_player.themes import ThemeMode
 from my_lastfm_player.ui import main_window as main_window_module
 from my_lastfm_player.ui.main_window import (
     MainWindow,
+    TrackFilterProxyModel,
     application_title,
     format_feedback_message,
     format_playback_time,
@@ -24,8 +25,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.102"
-    assert __display_version__ == "0.0.102"
+    assert __version__ == "0.0.103"
+    assert __display_version__ == "0.0.103"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -62,7 +63,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.102"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.103"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -179,7 +180,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.102\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.103\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -289,7 +290,39 @@ def test_main_window_filter_is_case_insensitive_and_hard_filters(qapp) -> None:
 
     assert window.track_sort_model.rowCount() == 1
     assert window.track_sort_model.data(window.track_sort_model.index(0, 1)) == "Blue Song"
-    assert window.next_track_after(tracks[1].cache_key) is None
+    assert window.next_track_after(tracks[1].cache_key) == (0, tracks[0])
+
+
+def test_main_window_filter_handles_empty_visible_set_and_hidden_selection(qapp) -> None:
+    window = MainWindow()
+    tracks = [
+        Track(artist="Artist", title="Visible", status=TrackStatus.DOWNLOADED),
+        Track(artist="Other", title="Hidden", status=TrackStatus.DOWNLOADED),
+    ]
+    window.set_tracks(tracks)
+    window.track_filter_input.setText("missing")
+    window.track_sort_model.set_track_filter_text("missing")
+
+    assert window.track_sort_model.rowCount() == 0
+    assert window.next_track_after(tracks[0].cache_key) is None
+    assert (
+        window.random_track_excluding(tracks[0].cache_key, lambda candidates: candidates[0])
+        is None
+    )
+
+    window.track_filter_input.setText("visible")
+    window.select_track_row(1)
+
+    assert window.selected_track() is None
+
+
+def test_track_filter_proxy_falls_back_for_non_track_models(qapp) -> None:
+    proxy = TrackFilterProxyModel()
+    model = QStandardItemModel(1, 1)
+    proxy.setSourceModel(model)
+    proxy.set_track_filter_text("anything")
+
+    assert proxy.filterAcceptsRow(0, QModelIndex())
 
 
 def test_main_window_random_track_uses_full_track_list(qapp) -> None:
@@ -310,6 +343,27 @@ def test_main_window_random_track_uses_full_track_list(qapp) -> None:
 
     assert selected == (2, tracks[2])
     assert choices == [[(0, tracks[0]), (2, tracks[2])]]
+
+
+def test_main_window_random_track_uses_only_filtered_rows(qapp) -> None:
+    window = MainWindow()
+    tracks = [
+        Track(artist="Artist", title="One", status=TrackStatus.DOWNLOADED),
+        Track(artist="Artist", title="Two", status=TrackStatus.DOWNLOADED),
+        Track(artist="Other", title="Three", status=TrackStatus.DOWNLOADED),
+    ]
+    window.set_tracks(tracks)
+    window.track_filter_input.setText("artist")
+    choices: list[list[tuple[int, Track]]] = []
+
+    def choose(candidates: list[tuple[int, Track]]) -> tuple[int, Track]:
+        choices.append(candidates)
+        return candidates[-1]
+
+    selected = window.random_track_excluding(tracks[0].cache_key, choose)
+
+    assert selected == (1, tracks[1])
+    assert choices == [[(1, tracks[1])]]
 
 
 def test_main_window_randomize_toggle_emits_setting_change(qapp) -> None:

@@ -67,6 +67,11 @@ class TrackFilterProxyModel(QSortFilterProxyModel):
         self._filter_text = normalized_text
         self.invalidateFilter()
 
+    def has_track_filter(self) -> bool:
+        """Return whether a non-empty track filter is active."""
+
+        return bool(self._filter_text)
+
     def filterAcceptsRow(self, source_row: int, source_parent) -> bool:  # noqa: N802
         if not self._filter_text:
             return True
@@ -510,35 +515,50 @@ class MainWindow(QMainWindow):
         return source_index.row()
 
     def next_track_after(self, cache_key: str) -> tuple[int, Track] | None:
-        """Return the next source row after ``cache_key`` in sort order, wrapping at end."""
+        """Return the next visible source row after ``cache_key`` in sort order."""
 
-        for proxy_row in range(self.track_sort_model.rowCount()):
+        visible_row_count = self.track_sort_model.rowCount()
+        if visible_row_count == 0:
+            return None
+
+        for proxy_row in range(visible_row_count):
             proxy_index = self.track_sort_model.index(proxy_row, 0)
             source_index = self.track_sort_model.mapToSource(proxy_index)
             track = self.track_model.track_at(source_index.row())
             if track.cache_key != cache_key:
                 continue
             next_proxy_row = proxy_row + 1
-            if next_proxy_row >= self.track_sort_model.rowCount():
+            if next_proxy_row >= visible_row_count:
                 next_proxy_row = 0
             next_source_index = self.track_sort_model.mapToSource(
                 self.track_sort_model.index(next_proxy_row, 0)
             )
             next_source_row = next_source_index.row()
             return next_source_row, self.track_model.track_at(next_source_row)
-        return None
+
+        if not self.track_sort_model.has_track_filter():
+            return None
+
+        first_source_index = self.track_sort_model.mapToSource(self.track_sort_model.index(0, 0))
+        first_source_row = first_source_index.row()
+        return first_source_row, self.track_model.track_at(first_source_row)
 
     def random_track_excluding(
         self,
         cache_key: str,
         choice: Callable[[list[tuple[int, Track]]], tuple[int, Track]],
     ) -> tuple[int, Track] | None:
-        """Return a random source row from the full track list, excluding ``cache_key``."""
+        """Return a random visible source row from the current filter, excluding ``cache_key``."""
 
         candidates = [
-            (source_row, track)
-            for source_row, track in enumerate(self.track_model.tracks())
-            if track.cache_key != cache_key
+            (source_index.row(), track)
+            for proxy_row in range(self.track_sort_model.rowCount())
+            if (
+                source_index := self.track_sort_model.mapToSource(
+                    self.track_sort_model.index(proxy_row, 0)
+                )
+            ).isValid()
+            and (track := self.track_model.track_at(source_index.row())).cache_key != cache_key
         ]
         if not candidates:
             return None
