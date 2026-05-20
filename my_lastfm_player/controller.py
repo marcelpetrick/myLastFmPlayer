@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import random
 import time
 from collections.abc import Callable
 from dataclasses import replace
@@ -91,6 +92,7 @@ class ApplicationController(QObject):
         self._scrobble_submitted = False
         self._scrobble_seek_start_ms: int = 0
         self._playback_start_time: int | None = None
+        self._random = random.SystemRandom()
 
     @property
     def playback_service(self) -> PlaybackService:
@@ -119,6 +121,7 @@ class ApplicationController(QObject):
         self.window.stop_requested.connect(self.stop_playback)
         self.window.seek_requested.connect(self.seek_playback)
         self.window.language_changed.connect(self.check_dependencies)
+        self.window.randomize_playback_changed.connect(AppSettings().set_randomize_playback)
         self.window.preferences_requested.connect(self._show_preferences)
         self.window.file_cache_requested.connect(self.open_file_cache)
         self.window.quit_requested.connect(self._handle_quit)
@@ -1187,24 +1190,40 @@ class ApplicationController(QObject):
                 title=finished_track.title,
             )
         )
-        next_track = self.window.next_track_after(finished_track.cache_key)
+        next_track = self._next_playback_track(finished_track.cache_key)
         if next_track is None:
             self._report_user_action(
                 translate("ApplicationController", "Playback finished.")
             )
             return
 
+        randomize = self.window.randomize_playback()
         next_row, track = next_track
         self.window.select_track_row(next_row)
-        self._report_user_action(
-            translate(
-                "ApplicationController",
-                "Continuing with next track: {artist} - {title}.",
-                artist=track.artist,
-                title=track.title,
+        if randomize:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Continuing with random track: {artist} - {title}.",
+                    artist=track.artist,
+                    title=track.title,
+                )
             )
-        )
+        else:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Continuing with next track: {artist} - {title}.",
+                    artist=track.artist,
+                    title=track.title,
+                )
+            )
         self._play_track(track)
+
+    def _next_playback_track(self, finished_cache_key: str) -> tuple[int, Track] | None:
+        if self.window.randomize_playback():
+            return self.window.random_track_excluding(finished_cache_key, self._random.choice)
+        return self.window.next_track_after(finished_cache_key)
 
     def _complete_worker_run(self) -> None:
         self._running_worker_count = max(0, self._running_worker_count - 1)

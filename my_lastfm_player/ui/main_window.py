@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from html import escape
 
 from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QFrame,
@@ -64,6 +66,7 @@ class MainWindow(QMainWindow):
     seek_requested = pyqtSignal(int)
     language_changed = pyqtSignal()
     theme_requested = pyqtSignal(str)
+    randomize_playback_changed = pyqtSignal(bool)
     preferences_requested = pyqtSignal()
     file_cache_requested = pyqtSignal()
     quit_requested = pyqtSignal()
@@ -278,9 +281,11 @@ class MainWindow(QMainWindow):
         self.play_button = QPushButton()
         self.pause_button = QPushButton()
         self.stop_button = QPushButton()
+        self.randomize_checkbox = QCheckBox()
         self.play_button.clicked.connect(self.play_requested.emit)
         self.pause_button.clicked.connect(self.pause_requested.emit)
         self.stop_button.clicked.connect(self.stop_requested.emit)
+        self.randomize_checkbox.toggled.connect(self.randomize_playback_changed.emit)
         self.pause_button.setEnabled(False)
         self.stop_button.setEnabled(False)
         for button in (self.play_button, self.pause_button, self.stop_button):
@@ -311,6 +316,7 @@ class MainWindow(QMainWindow):
         playback_layout.addWidget(self.now_playing_label)
         playback_layout.addLayout(playback_button_layout)
         playback_layout.addLayout(playback_timeline_layout)
+        playback_layout.addWidget(self.randomize_checkbox)
 
         self.downloads_group = QGroupBox()
         self.downloads_layout = QVBoxLayout(self.downloads_group)
@@ -469,6 +475,34 @@ class MainWindow(QMainWindow):
             next_source_row = next_source_index.row()
             return next_source_row, self.track_model.track_at(next_source_row)
         return None
+
+    def random_track_excluding(
+        self,
+        cache_key: str,
+        choice: Callable[[list[tuple[int, Track]]], tuple[int, Track]],
+    ) -> tuple[int, Track] | None:
+        """Return a random source row from the full track list, excluding ``cache_key``."""
+
+        candidates = [
+            (source_row, track)
+            for source_row, track in enumerate(self.track_model.tracks())
+            if track.cache_key != cache_key
+        ]
+        if not candidates:
+            return None
+        return choice(candidates)
+
+    def randomize_playback(self) -> bool:
+        """Return whether automatic playback should continue with random tracks."""
+
+        return self.randomize_checkbox.isChecked()
+
+    def set_randomize_playback(self, enabled: bool) -> None:
+        """Set the random playback toggle without emitting persistence signals."""
+
+        self.randomize_checkbox.blockSignals(True)
+        self.randomize_checkbox.setChecked(enabled)
+        self.randomize_checkbox.blockSignals(False)
 
     def select_track_row(self, source_row: int) -> None:
         """Select ``source_row`` in the table while respecting the active sort order."""
@@ -784,6 +818,7 @@ class MainWindow(QMainWindow):
         self.play_button.setText(self.tr("Play"))
         self.pause_button.setText(self.tr("Pause"))
         self.stop_button.setText(self.tr("Stop"))
+        self.randomize_checkbox.setText(self.tr("Randomize"))
         self.playback_slider.setToolTip(self.tr("Playback position"))
         self.downloads_group.setTitle(self.tr("Downloads"))
         self.download_toggle_button.setText(

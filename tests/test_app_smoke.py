@@ -24,8 +24,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.99"
-    assert __display_version__ == "0.0.99"
+    assert __version__ == "0.0.100"
+    assert __display_version__ == "0.0.100"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -62,7 +62,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.99"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.100"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -97,6 +97,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
     saved_themes: list[ThemeMode] = []
     applied_themes: list[ThemeMode] = []
     selected_themes: list[str] = []
+    selected_randomize: list[bool] = []
 
     class FakeApplication:
         def __init__(self, _args: list[str]) -> None:
@@ -127,9 +128,13 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
         def __init__(self, **_kwargs) -> None:
             self.theme_requested = _FakeSignal()
             self.language_changed = _FakeSignal()
+            self.randomize_playback_changed = _FakeSignal()
 
         def set_theme_mode(self, mode: str) -> None:
             selected_themes.append(mode)
+
+        def set_randomize_playback(self, enabled: bool) -> None:
+            selected_randomize.append(enabled)
 
         def show(self) -> None:
             return None
@@ -147,6 +152,9 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
         def theme_mode(self) -> ThemeMode:
             return ThemeMode.MINT
+
+        def randomize_playback(self) -> bool:
+            return True
 
         def set_language_code(self, code: str) -> None:
             saved_languages.append(code)
@@ -171,9 +179,10 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.99\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.100\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
+    assert selected_randomize == [True]
     assert saved_languages == []
     assert saved_themes == []
 
@@ -237,6 +246,37 @@ def test_main_window_finds_next_track_in_current_sort_order(qapp) -> None:
     window.select_track_row(2)
 
     assert window.selected_track() == tracks[2]
+
+
+def test_main_window_random_track_uses_full_track_list(qapp) -> None:
+    window = MainWindow()
+    tracks = [
+        Track(artist="Zed", title="Last", status=TrackStatus.DOWNLOADED),
+        Track(artist="Alpha", title="First", status=TrackStatus.DOWNLOADED),
+        Track(artist="Middle", title="Second", status=TrackStatus.DOWNLOADED),
+    ]
+    window.set_tracks(tracks)
+    choices: list[list[tuple[int, Track]]] = []
+
+    def choose(candidates: list[tuple[int, Track]]) -> tuple[int, Track]:
+        choices.append(candidates)
+        return candidates[-1]
+
+    selected = window.random_track_excluding(tracks[1].cache_key, choose)
+
+    assert selected == (2, tracks[2])
+    assert choices == [[(0, tracks[0]), (2, tracks[2])]]
+
+
+def test_main_window_randomize_toggle_emits_setting_change(qapp) -> None:
+    window = MainWindow()
+    emissions: list[bool] = []
+    window.randomize_playback_changed.connect(emissions.append)
+
+    window.randomize_checkbox.setChecked(True)
+
+    assert window.randomize_playback()
+    assert emissions == [True]
 
 
 def test_main_window_updates_progress_and_feedback(qapp) -> None:

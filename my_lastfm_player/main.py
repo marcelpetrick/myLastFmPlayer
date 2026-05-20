@@ -29,6 +29,7 @@ def main() -> int:
     apply_theme(app, settings.theme_mode())
     window = MainWindow(translation_manager=translation_manager)
     window.set_theme_mode(settings.theme_mode().value)
+    window.set_randomize_playback(settings.randomize_playback())
     window.theme_requested.connect(lambda mode: _apply_and_save_theme(app, settings, mode))
     window.language_changed.connect(
         lambda: settings.set_language_code(translation_manager.current_language)

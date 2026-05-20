@@ -11,6 +11,7 @@ from my_lastfm_player.settings import (
     LANGUAGE_KEY,
     MAX_DOWNLOAD_CONCURRENCY,
     MIN_DOWNLOAD_CONCURRENCY,
+    RANDOMIZE_PLAYBACK_KEY,
     THEME_KEY,
     AppSettings,
 )
@@ -73,6 +74,25 @@ def test_keep_data_on_quit_defaults_to_false_and_persists(tmp_path: Path) -> Non
 
     reloaded = AppSettings(_ini_settings(path))
     assert reloaded.keep_data_on_quit() is True
+
+
+def test_randomize_playback_defaults_to_false_and_persists(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    settings = AppSettings(_ini_settings(path))
+
+    assert settings.randomize_playback() is False
+
+    settings.set_randomize_playback(True)
+
+    reloaded = AppSettings(_ini_settings(path))
+    assert reloaded.randomize_playback() is True
+
+
+def test_randomize_playback_reads_raw_settings_bool(tmp_path: Path) -> None:
+    raw = _ini_settings(tmp_path / "settings.ini")
+    raw.setValue(RANDOMIZE_PLAYBACK_KEY, True)
+
+    assert AppSettings(raw).randomize_playback() is True
 
 
 def test_ytdlp_cookies_browser_defaults_to_empty_and_persists(tmp_path: Path) -> None:

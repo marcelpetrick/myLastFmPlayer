@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 
 from PyQt6.QtCore import Qt
 
@@ -918,6 +919,66 @@ def test_controller_wraps_to_first_sorted_track_after_last_track_finishes(
     assert window.track_model.track_at(1).status == TrackStatus.DOWNLOADED
     assert window.track_model.playing_cache_key() == tracks[1].cache_key
     assert window.selected_track() == tracks[1]
+
+
+def test_controller_auto_plays_random_track_after_finished_when_enabled(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    audio_paths = {
+        "one": tmp_path / "one.mp3",
+        "two": tmp_path / "two.mp3",
+        "three": tmp_path / "three.mp3",
+    }
+    for audio_path in audio_paths.values():
+        audio_path.write_bytes(b"fake mp3")
+    tracks = [
+        Track(
+            artist="Artist",
+            title="One",
+            local_path=str(audio_paths["one"]),
+            status=TrackStatus.DOWNLOADED,
+        ),
+        Track(
+            artist="Artist",
+            title="Two",
+            local_path=str(audio_paths["two"]),
+            status=TrackStatus.DOWNLOADED,
+        ),
+        Track(
+            artist="Artist",
+            title="Three",
+            local_path=str(audio_paths["three"]),
+            status=TrackStatus.DOWNLOADED,
+        ),
+    ]
+    window.set_tracks(tracks)
+    window.select_track_row(0)
+    window.set_randomize_playback(True)
+    playback = FakePlaybackService()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        playback_service=playback,  # type: ignore[arg-type]
+    )
+    random_candidates: list[list[tuple[int, Track]]] = []
+
+    def choose(candidates: list[tuple[int, Track]]) -> tuple[int, Track]:
+        random_candidates.append(candidates)
+        return candidates[-1]
+
+    controller._random = SimpleNamespace(choice=choose)  # type: ignore[assignment]
+
+    controller.play_selected_track()
+    assert playback.finished_callback is not None
+    playback.finished_callback()
+
+    assert playback.events == ["play:One", "play:Three"]
+    assert random_candidates == [[(1, tracks[1]), (2, tracks[2])]]
+    assert window.selected_track() == tracks[2]
+    assert "Continuing with random track: Artist - Three." in window.feedback_log.toPlainText()
 
 
 def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:

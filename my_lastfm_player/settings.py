@@ -13,6 +13,7 @@ SCROBBLING_ENABLED_KEY = "lastfm/scrobblingenabled"
 YTDLP_BROWSER_KEY = "download/cookiesbrowser"
 DOWNLOAD_CONCURRENCY_KEY = "download/concurrency"
 KEEP_DATA_ON_QUIT_KEY = "privacy/keepdataonquit"
+RANDOMIZE_PLAYBACK_KEY = "playback/randomize"
 
 YTDLP_BROWSER_CHOICES = ["", "firefox", "chromium", "chrome", "brave"]
 DEFAULT_DOWNLOAD_CONCURRENCY = 2
@@ -99,6 +100,16 @@ class AppSettings:
         """Persist the keep-data-on-quit preference."""
 
         self._settings.setValue(KEEP_DATA_ON_QUIT_KEY, keep)
+
+    def randomize_playback(self) -> bool:
+        """Return True when playback should continue with a random track."""
+
+        return bool(self._settings.value(RANDOMIZE_PLAYBACK_KEY, False, bool))
+
+    def set_randomize_playback(self, enabled: bool) -> None:
+        """Persist whether playback should continue with a random track."""
+
+        self._settings.setValue(RANDOMIZE_PLAYBACK_KEY, enabled)
 
 
 def _clamp_download_concurrency(value: object) -> int:
