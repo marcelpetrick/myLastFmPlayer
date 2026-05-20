@@ -7,6 +7,7 @@ import pytest
 import requests
 from bs4 import BeautifulSoup
 
+from my_lastfm_player import lastfm as lastfm_module
 from my_lastfm_player.lastfm import (
     LASTFM_API_URL,
     LASTFM_BASE_URL,
@@ -25,6 +26,8 @@ from my_lastfm_player.lastfm import (
     _is_retryable_error,
     _parse_html_document,
     _parse_loved_at,
+    _parse_loved_tracks_api_payload,
+    _progress_message,
     parse_loved_tracks_page,
 )
 from my_lastfm_player.models import Track, TrackStatus
@@ -381,6 +384,56 @@ def test_api_client_raises_lastfm_error_for_api_error_payload() -> None:
         LastFmLovedTracksApiClient(api_key="test-key", session=session).fetch_page("missing", 1)
 
 
+def test_api_client_rejects_missing_api_key_and_invalid_page(monkeypatch) -> None:
+    monkeypatch.setattr(
+        lastfm_module,
+        "lastfm_api_credentials",
+        lambda: type("Credentials", (), {"api_key": ""})(),
+    )
+
+    with pytest.raises(LastFmError, match="API key"):
+        LastFmLovedTracksApiClient(api_key="").fetch_page("example", 1)
+
+    with pytest.raises(ValueError, match="page"):
+        LastFmLovedTracksApiClient(api_key="test-key").fetch_page("example", 0)
+
+
+def test_parse_loved_tracks_api_payload_rejects_invalid_top_level_shapes() -> None:
+    with pytest.raises(LastFmError, match="invalid response"):
+        _parse_loved_tracks_api_payload([], 1)
+
+    with pytest.raises(LastFmError, match="did not contain loved tracks"):
+        _parse_loved_tracks_api_payload({"lovedtracks": []}, 1)
+
+
+def test_parse_loved_tracks_api_payload_tolerates_bad_attrs_and_track_items() -> None:
+    page = _parse_loved_tracks_api_payload(
+        {
+            "lovedtracks": {
+                "@attr": "not a dict",
+                "track": [
+                    "bad item",
+                    {"name": "", "artist": "Artist"},
+                    {"name": "Title", "artist": 123},
+                    {"name": "Valid", "artist": "Artist", "date": {"uts": "bad"}},
+                    {"name": "No Date", "artist": "Artist", "date": {}},
+                    {"name": "Missing Date", "artist": "Artist"},
+                ],
+            }
+        },
+        4,
+    )
+
+    assert page.page == 4
+    assert page.total_pages is None
+    assert page.total_tracks is None
+    assert page.tracks == [
+        Track(artist="Artist", title="Valid"),
+        Track(artist="Artist", title="No Date"),
+        Track(artist="Artist", title="Missing Date"),
+    ]
+
+
 def test_api_client_retries_request_exception_then_succeeds() -> None:
     class FlakyApiSession:
         def __init__(self) -> None:
@@ -574,6 +627,34 @@ def test_scraper_returns_none_when_loved_track_count_is_missing() -> None:
     assert count is None
 
 
+def test_scraper_reports_progress_without_total_count() -> None:
+    session = ApiFakeSession(
+        {
+            1: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={
+                    "lovedtracks": {
+                        "@attr": {"page": "1", "totalPages": "1"},
+                        "track": {"name": "Title", "artist": "Artist"},
+                    }
+                },
+            ),
+        }
+    )
+    progress_events: list[FetchProgress] = []
+
+    tracks = LastFmLovedTracksScraper(
+        api_key="test-key",
+        session=session,
+        page_delay_seconds=0,
+    ).fetch_loved_tracks("example", progress_callback=progress_events.append)
+
+    assert tracks == [Track(artist="Artist", title="Title")]
+    assert progress_events[-1] == FetchProgress(1, "Fetched 1 tracks")
+    assert _progress_message(3, None) == "Fetched 3 tracks"
+
+
 def test_scraper_reports_cumulative_tracks_after_each_page() -> None:
     session = ApiFakeSession(
         {
@@ -647,6 +728,14 @@ def test_scraper_encodes_username_in_url() -> None:
     scraper = LastFmLovedTracksScraper()
 
     assert scraper.loved_tracks_url("user name/with slash") == (
+        "https://www.last.fm/user/user%20name%2Fwith%20slash/loved"
+    )
+
+
+def test_fetcher_encodes_username_in_url() -> None:
+    fetcher = LastFmLovedTracksFetcher(base_url="https://www.last.fm/")
+
+    assert fetcher.loved_tracks_url("user name/with slash") == (
         "https://www.last.fm/user/user%20name%2Fwith%20slash/loved"
     )
 
@@ -773,6 +862,7 @@ def test_controlled_sleep_stops_when_control_callback_returns_false(monkeypatch)
 
 def test_retryable_error_detection() -> None:
     assert _is_retryable_error(requests.ConnectionError("network"))
+    assert _is_retryable_error(ValueError("bad json"))
     assert _is_retryable_error(LastFmError("Last.fm returned HTTP status 503"))
     assert not _is_retryable_error(LastFmError("Last.fm returned HTTP status 404"))
 
@@ -817,6 +907,12 @@ def test_parse_loved_at_returns_none_for_invalid_date_format() -> None:
     )
     row = BeautifulSoup(html, "html.parser").find("tr")
     assert _parse_loved_at(row) is None
+
+
+def test_find_total_tracks_reads_explicit_data_attribute() -> None:
+    soup = BeautifulSoup('<main data-total-tracks="1,234"></main>', "html.parser")
+
+    assert _find_total_tracks(soup) == 1234
 
 
 def test_controlled_sleep_returns_true_after_deadline_has_elapsed(monkeypatch) -> None:

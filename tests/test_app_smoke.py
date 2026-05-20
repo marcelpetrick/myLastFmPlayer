@@ -24,8 +24,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.100"
-    assert __display_version__ == "0.0.100"
+    assert __version__ == "0.0.101"
+    assert __display_version__ == "0.0.101"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -62,7 +62,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.100"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.101"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -179,7 +179,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.100\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.101\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -596,6 +596,17 @@ def test_main_window_playback_timeline_formats_and_seeks(qapp) -> None:
     assert seeks == [90_000]
 
 
+def test_main_window_timeline_seek_is_ignored_without_duration(qapp) -> None:
+    window = MainWindow()
+    seeks: list[int] = []
+    window.seek_requested.connect(seeks.append)
+
+    window.playback_slider.setValue(0)
+    window.playback_slider.sliderReleased.emit()
+
+    assert seeks == []
+
+
 def test_main_window_playback_timeline_click_seeks_immediately(qapp) -> None:
     window = MainWindow()
     seeks: list[int] = []
@@ -661,3 +672,90 @@ def test_main_window_can_mark_persisted_theme_without_emitting_request(qapp) -> 
     assert not window.theme_light_action.isChecked()
     assert window.theme_lilac_action.isChecked()
     assert themes == []
+
+
+def test_main_window_ignores_theme_actions_without_string_data(qapp) -> None:
+    window = MainWindow()
+    themes: list[str] = []
+    window.theme_requested.connect(themes.append)
+
+    window._on_theme_action_triggered(window.help_menu.menuAction())
+
+    assert themes == []
+
+
+def test_main_window_set_language_updates_manager_actions_and_visible_text(qapp) -> None:
+    translation_manager = TranslationManager(qapp)
+    window = MainWindow(translation_manager)
+    changes: list[bool] = []
+    window.language_changed.connect(lambda: changes.append(True))
+
+    window.set_language("zh")
+
+    assert translation_manager.current_language == "zh"
+    assert window.language_actions["zh"].isChecked()
+    assert window.now_playing_label.text() == "未播放"
+    assert changes == [True]
+    window.set_language("en")
+
+
+def test_main_window_retranslate_refreshes_example_rows_and_idle_labels(qapp) -> None:
+    TranslationManager(qapp).set_language("en")
+    window = MainWindow()
+    window.dependency_label.clear()
+    window._last_progress_label = "Idle"
+    window._last_status_message = "Ready"
+
+    window.retranslate_ui()
+
+    assert window.track_model.rowCount() == 2
+    assert window.dependency_label.text() == "Dependencies: yt-dlp and ffmpeg not checked yet"
+    assert window.progress_bar.format() == "Idle"
+    assert window.statusBar().currentMessage() == "Ready"
+
+
+def test_main_window_context_menu_emits_retry_for_track(qapp, monkeypatch) -> None:
+    window = MainWindow()
+    retries: list[str] = []
+    window.retry_download_requested.connect(retries.append)
+    index = window.track_sort_model.index(0, 0)
+    pos = window.track_table.visualRect(index).center()
+
+    monkeypatch.setattr(
+        main_window_module.QMenu,
+        "exec",
+        lambda self, _global_pos: self.actions()[0],
+    )
+
+    window._show_track_context_menu(pos)
+
+    assert retries == [window.track_model.track_at(0).cache_key]
+
+
+def test_main_window_selection_and_random_fallbacks(qapp) -> None:
+    track = Track(artist="Only", title="Track")
+    window = MainWindow()
+    window.set_tracks([track])
+    window.track_table.selectRow(0)
+
+    assert window.selected_track_row() == 0
+    assert window.random_track_excluding(track.cache_key, lambda candidates: candidates[0]) is None
+
+
+def test_main_window_close_event_accepts_and_requests_quit(qapp) -> None:
+    class FakeCloseEvent:
+        def __init__(self) -> None:
+            self.accepted = False
+
+        def accept(self) -> None:
+            self.accepted = True
+
+    window = MainWindow()
+    event = FakeCloseEvent()
+    quits: list[bool] = []
+    window.quit_requested.connect(lambda: quits.append(True))
+
+    window.closeEvent(event)  # type: ignore[arg-type]
+
+    assert quits == [True]
+    assert event.accepted

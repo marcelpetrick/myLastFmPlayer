@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import pytest
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QFontMetrics, QPainter, QPixmap
+from PyQt6.QtWidgets import QApplication, QStyle, QStyleOptionViewItem
 
 from my_lastfm_player.models import Track, TrackStatus
-from my_lastfm_player.ui.track_table_model import TrackTableModel, example_tracks
+from my_lastfm_player.ui.track_table_model import (
+    ElidedTextDelegate,
+    TrackTableModel,
+    example_tracks,
+    translated_track_status,
+)
 
 
 def test_track_table_model_exposes_artist_title_and_status() -> None:
@@ -36,6 +42,7 @@ def test_track_table_model_returns_user_role_cache_key_and_edit_value() -> None:
     assert model.data(model.index(0, 0), Qt.ItemDataRole.EditRole) == "Artist"
     assert model.data(model.index(0, 0), Qt.ItemDataRole.UserRole) == track.cache_key
     assert model.data(model.index(0, 99)) is None
+    assert model._display_value(track, 99) is None
 
 
 def test_track_table_model_ignores_invalid_indexes_and_parent_rows() -> None:
@@ -162,6 +169,28 @@ def test_track_table_model_bolds_currently_playing_row() -> None:
     assert model.data(model.index(1, 0), Qt.ItemDataRole.FontRole) is None
 
 
+def test_elided_text_delegate_paints_selected_row(qapp) -> None:
+    model = TrackTableModel([Track(artist="Artist", title="A very long title")])
+    delegate = ElidedTextDelegate()
+    pixmap = QPixmap(160, 32)
+    pixmap.fill(Qt.GlobalColor.white)
+    painter = QPainter(pixmap)
+    option = QStyleOptionViewItem()
+    option.rect = pixmap.rect()
+    option.widget = None
+    option.state = QStyle.StateFlag.State_Selected
+    option.palette = QApplication.palette()
+    option.font = QApplication.font()
+    option.fontMetrics = QFontMetrics(option.font)
+
+    try:
+        delegate.paint(painter, option, model.index(0, 1))
+    finally:
+        painter.end()
+
+    assert not pixmap.isNull()
+
+
 def test_track_table_model_retranslate_emits_header_and_data_changes() -> None:
     model = TrackTableModel([Track(artist="Artist", title="Title")])
     headers: list[tuple[int, int]] = []
@@ -211,3 +240,10 @@ def test_download_file_details_returns_empty_for_downloaded_track_without_path_e
     model = TrackTableModel([track])
 
     assert model.data(model.index(0, 4)) == ""
+
+
+def test_translated_track_status_falls_back_to_status_value() -> None:
+    class CustomStatus:
+        value = "custom"
+
+    assert translated_track_status(CustomStatus()) == "custom"  # type: ignore[arg-type]

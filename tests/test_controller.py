@@ -1246,6 +1246,22 @@ def test_controller_playback_callbacks_update_timeline_once(qapp) -> None:
     assert window.total_time_label.text() == "3:00"
 
 
+def test_controller_creates_lazy_playback_service_and_connects_callbacks(
+    qapp,
+    monkeypatch,
+) -> None:
+    window = MainWindow()
+    monkeypatch.setattr(controller_module, "PlaybackService", FakePlaybackService)
+    controller = ApplicationController(window)
+
+    playback = controller.playback_service
+
+    assert isinstance(playback, FakePlaybackService)
+    assert playback.position_callback is not None
+    assert playback.duration_callback is not None
+    assert playback.finished_callback is not None
+
+
 def test_controller_helper_branches(qapp, tmp_path) -> None:
     window = MainWindow()
     downloaded = Track(artist="Artist", title="Downloaded", status=TrackStatus.DOWNLOADED)
@@ -1950,6 +1966,50 @@ def test_controller_play_prepared_track_plays_when_downloaded(qapp, tmp_path) ->
 
     assert playback.events == [f"play:{track.title}"]
     assert controller._pending_play_cache_key is None
+
+
+def test_controller_track_ready_starts_pending_play_priority_download(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(
+        artist="A",
+        title="T",
+        youtube_url="https://youtu.be/a",
+        status=TrackStatus.QUEUED,
+    )
+    controller = ApplicationController(window, repository=repository)
+    controller._pending_play_cache_key = track.cache_key
+    calls: list[tuple[str, str]] = []
+    controller._start_priority_download = lambda username, key: calls.append((username, key))  # type: ignore[method-assign]
+
+    controller._handle_track_ready_for_download("user", track)
+
+    assert calls == [("user", track.cache_key)]
+
+
+def test_controller_track_ready_starts_pending_retry_priority_download(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(
+        artist="A",
+        title="T",
+        youtube_url="https://youtu.be/a",
+        status=TrackStatus.QUEUED,
+    )
+    controller = ApplicationController(window, repository=repository)
+    controller._pending_retry_cache_key = track.cache_key
+    calls: list[tuple[str, str]] = []
+    controller._start_priority_download = lambda username, key: calls.append((username, key))  # type: ignore[method-assign]
+
+    controller._handle_track_ready_for_download("user", track)
+
+    assert calls == [("user", track.cache_key)]
 
 
 def test_controller_maybe_scrobble_does_nothing_when_no_current_track(qapp) -> None:

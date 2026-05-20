@@ -12,6 +12,8 @@ from my_lastfm_player.storage import (
     TRACKS_DIR_NAME,
     JsonTrackRepository,
     StorageError,
+    _atomic_write_json,
+    _read_json_file,
     default_data_dir,
     merge_track_updates,
     sanitize_path_component,
@@ -58,6 +60,14 @@ def test_repository_delete_tracks_removes_only_user_json(tmp_path: Path) -> None
     assert repository.load_tracks("second") == [Track(artist="Other", title="Track")]
 
 
+def test_repository_delete_tracks_is_noop_for_missing_user(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+
+    repository.delete_tracks("missing")
+
+    assert repository.load_tracks("missing") == []
+
+
 def test_repository_raises_storage_error_for_corrupt_user_json(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     path = repository.user_tracks_path("user")
@@ -66,6 +76,18 @@ def test_repository_raises_storage_error_for_corrupt_user_json(tmp_path: Path) -
 
     with pytest.raises(StorageError, match="invalid JSON"):
         repository.load_tracks("user")
+
+
+def test_read_json_file_wraps_oserror() -> None:
+    class UnreadablePath:
+        def open(self, *_args, **_kwargs):
+            raise OSError("permission denied")
+
+        def __str__(self) -> str:
+            return "/blocked.json"
+
+    with pytest.raises(StorageError, match="Could not read /blocked.json"):
+        _read_json_file(UnreadablePath())  # type: ignore[arg-type]
 
 
 def test_repository_raises_storage_error_for_wrong_user_json_shape(tmp_path: Path) -> None:
@@ -434,3 +456,23 @@ def test_wipe_tolerates_oserror_without_raising(tmp_path: Path, caplog) -> None:
 def test_wipe_is_idempotent_when_nothing_exists(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     repository.wipe()  # must not raise
+
+
+def test_atomic_write_json_wraps_replace_error_and_cleans_temp(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    target = tmp_path / "data.json"
+    real_replace = Path.replace
+
+    def failing_replace(self: Path, target_path: Path) -> Path:
+        if target_path == target:
+            raise OSError("disk full")
+        return real_replace(self, target_path)
+
+    monkeypatch.setattr(Path, "replace", failing_replace)
+
+    with pytest.raises(StorageError, match="Could not write"):
+        _atomic_write_json(target, {"key": "value"})
+
+    assert not list(tmp_path.glob(".data.json.*.tmp"))
