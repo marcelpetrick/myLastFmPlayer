@@ -15,7 +15,7 @@ dynamic = ["version"]
 dependencies = [
     "pylast>=7.0.2",
     "PyQt6>=6.11.0",
-    "requests>=2.34.0",
+    "requests>=2.34.2",
 ]
 
 [project.optional-dependencies]
@@ -25,7 +25,7 @@ dev = [
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
     "pylint>=4.0.5",
-    "ruff>=0.15.12",
+    "ruff>=0.15.13",
     "sphinx>=9.1.0",
 ]
 
