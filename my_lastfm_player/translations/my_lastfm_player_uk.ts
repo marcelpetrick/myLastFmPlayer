@@ -755,6 +755,11 @@
     </message>
     <message>
         <location filename="../ui/main_window.py" line="876" />
+        <source>Next</source>
+        <translation>Далі</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="876" />
         <source>Randomize</source>
         <translation>Випадково</translation>
     </message>

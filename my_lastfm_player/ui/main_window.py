@@ -97,6 +97,7 @@ class MainWindow(QMainWindow):
     play_requested = pyqtSignal()
     pause_requested = pyqtSignal()
     stop_requested = pyqtSignal()
+    next_requested = pyqtSignal()
     seek_requested = pyqtSignal(int)
     language_changed = pyqtSignal()
     theme_requested = pyqtSignal(str)
@@ -338,14 +339,17 @@ class MainWindow(QMainWindow):
         self.play_button = QPushButton()
         self.pause_button = QPushButton()
         self.stop_button = QPushButton()
+        self.next_button = QPushButton()
         self.randomize_checkbox = QCheckBox()
         self.play_button.clicked.connect(self.play_requested.emit)
         self.pause_button.clicked.connect(self.pause_requested.emit)
         self.stop_button.clicked.connect(self.stop_requested.emit)
+        self.next_button.clicked.connect(self.next_requested.emit)
         self.randomize_checkbox.toggled.connect(self.randomize_playback_changed.emit)
         self.pause_button.setEnabled(False)
         self.stop_button.setEnabled(False)
-        for button in (self.play_button, self.pause_button, self.stop_button):
+        self.next_button.setEnabled(False)
+        for button in (self.play_button, self.pause_button, self.stop_button, self.next_button):
             playback_button_layout.addWidget(button)
 
         playback_timeline_layout = QHBoxLayout()
@@ -810,12 +814,13 @@ class MainWindow(QMainWindow):
         """Update playback button states.
 
         When ``active`` is ``True`` (playing or paused) Play is disabled and
-        Pause/Stop are enabled.  When ``False`` (idle) only Play is enabled.
+        Pause/Stop/Next are enabled.  When ``False`` (idle) only Play is enabled.
         """
 
         self.play_button.setEnabled(not active)
         self.pause_button.setEnabled(active)
         self.stop_button.setEnabled(active)
+        self.next_button.setEnabled(active)
 
     def _emit_timeline_seek(self) -> None:
         if self._playback_duration_ms <= 0:
@@ -893,6 +898,7 @@ class MainWindow(QMainWindow):
         self.play_button.setText(self.tr("Play"))
         self.pause_button.setText(self.tr("Pause"))
         self.stop_button.setText(self.tr("Stop"))
+        self.next_button.setText(self.tr("Next"))
         self.randomize_checkbox.setText(self.tr("Randomize"))
         self.playback_slider.setToolTip(self.tr("Playback position"))
         self.downloads_group.setTitle(self.tr("Downloads"))

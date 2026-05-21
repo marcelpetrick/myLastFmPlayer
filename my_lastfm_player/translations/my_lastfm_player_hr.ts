@@ -755,6 +755,11 @@
     </message>
     <message>
         <location filename="../ui/main_window.py" line="876" />
+        <source>Next</source>
+        <translation>Sljedeće</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="876" />
         <source>Randomize</source>
         <translation>Nasumično</translation>
     </message>

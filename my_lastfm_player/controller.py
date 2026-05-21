@@ -119,6 +119,7 @@ class ApplicationController(QObject):
         self.window.play_requested.connect(self.play_selected_track)
         self.window.pause_requested.connect(self.pause_playback)
         self.window.stop_requested.connect(self.stop_playback)
+        self.window.next_requested.connect(self.play_next_track)
         self.window.seek_requested.connect(self.seek_playback)
         self.window.language_changed.connect(self.check_dependencies)
         self.window.randomize_playback_changed.connect(AppSettings().set_randomize_playback)
@@ -646,6 +647,18 @@ class ApplicationController(QObject):
         self._scrobble_submitted = False
         self._playback_start_time = None
         self._report_user_action(translate("ApplicationController", "Playback stopped."))
+
+    def play_next_track(self) -> None:
+        """Skip active playback to the next track using normal continuation rules."""
+
+        current_track = self.playback_service.current_track
+        if current_track is None:
+            self.window.append_feedback(
+                translate("ApplicationController", "No track is currently playing.")
+            )
+            return
+
+        self._continue_playback_from(current_track.cache_key)
 
     def seek_playback(self, position_ms: int) -> None:
         """Seek active playback to ``position_ms`` and refresh the timeline."""
@@ -1197,10 +1210,22 @@ class ApplicationController(QObject):
             )
             return
 
-        randomize = self.window.randomize_playback()
+        self._continue_playback_with(next_track)
+
+    def _continue_playback_from(self, cache_key: str) -> None:
+        next_track = self._next_playback_track(cache_key)
+        if next_track is None:
+            self._report_user_action(
+                translate("ApplicationController", "Playback finished.")
+            )
+            return
+
+        self._continue_playback_with(next_track)
+
+    def _continue_playback_with(self, next_track: tuple[int, Track]) -> None:
         next_row, track = next_track
         self.window.select_track_row(next_row)
-        if randomize:
+        if self.window.randomize_playback():
             self._report_user_action(
                 translate(
                     "ApplicationController",
@@ -1209,15 +1234,17 @@ class ApplicationController(QObject):
                     title=track.title,
                 )
             )
-        else:
-            self._report_user_action(
-                translate(
-                    "ApplicationController",
-                    "Continuing with next track: {artist} - {title}.",
-                    artist=track.artist,
-                    title=track.title,
-                )
+            self._play_track(track)
+            return
+
+        self._report_user_action(
+            translate(
+                "ApplicationController",
+                "Continuing with next track: {artist} - {title}.",
+                artist=track.artist,
+                title=track.title,
             )
+        )
         self._play_track(track)
 
     def _next_playback_track(self, finished_cache_key: str) -> tuple[int, Track] | None:

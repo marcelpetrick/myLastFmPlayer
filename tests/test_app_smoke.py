@@ -25,8 +25,8 @@ from my_lastfm_player.version import display_version
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.105"
-    assert __display_version__ == "0.0.105"
+    assert __version__ == "0.0.106"
+    assert __display_version__ == "0.0.106"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -63,7 +63,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.105"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.106"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -180,7 +180,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.105\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.106\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -650,13 +650,15 @@ def test_main_window_playback_controls_emit_signals(qapp) -> None:
     window.play_requested.connect(lambda: events.append("play"))
     window.pause_requested.connect(lambda: events.append("pause"))
     window.stop_requested.connect(lambda: events.append("stop"))
+    window.next_requested.connect(lambda: events.append("next"))
 
     window.play_button.click()
     window.set_playback_controls(active=True)
     window.pause_button.click()
     window.stop_button.click()
+    window.next_button.click()
 
-    assert events == ["play", "pause", "stop"]
+    assert events == ["play", "pause", "stop", "next"]
 
 
 def test_main_window_double_clicking_track_requests_playback(qapp) -> None:
