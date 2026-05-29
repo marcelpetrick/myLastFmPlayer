@@ -35,8 +35,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.107"
-    assert __display_version__ == "0.0.107"
+    assert __version__ == "0.0.108"
+    assert __display_version__ == "0.0.108"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -73,7 +73,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.107"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.108"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -190,7 +190,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.107\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.108\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -675,9 +675,13 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
     window = MainWindow()
     requested_pages: list[str] = []
     window.artist_page_requested.connect(requested_pages.append)
+    controls_layout = window.artist_image_label.parentWidget().layout()
 
     window.set_artist_image(png_bytes(), "https://www.last.fm/music/Artist")
 
+    assert controls_layout.itemAt(0).widget() is window.playback_group
+    assert controls_layout.itemAt(1).widget() is window.artist_image_label
+    assert controls_layout.itemAt(2).widget() is window.downloads_group
     assert not window.artist_image_label.isHidden()
     assert window.artist_image_label.pixmap() is not None
 

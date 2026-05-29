@@ -381,7 +381,6 @@ class MainWindow(QMainWindow):
 
         self.playback_group = QGroupBox()
         playback_layout = QVBoxLayout(self.playback_group)
-        now_playing_layout = QHBoxLayout()
         playback_button_layout = QHBoxLayout()
         self.artist_image_label = ArtistImageLabel()
         self.artist_image_label.artist_page_requested.connect(self.artist_page_requested.emit)
@@ -423,9 +422,7 @@ class MainWindow(QMainWindow):
         self.now_playing_label = QLabel()
         self.now_playing_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        now_playing_layout.addWidget(self.artist_image_label)
-        now_playing_layout.addWidget(self.now_playing_label, stretch=1)
-        playback_layout.addLayout(now_playing_layout)
+        playback_layout.addWidget(self.now_playing_label)
         playback_layout.addLayout(playback_button_layout)
         playback_layout.addLayout(playback_timeline_layout)
         playback_layout.addWidget(self.randomize_checkbox)
@@ -437,6 +434,7 @@ class MainWindow(QMainWindow):
         self.downloads_layout.addWidget(self.download_toggle_button)
 
         layout.addWidget(self.playback_group)
+        layout.addWidget(self.artist_image_label)
         layout.addWidget(self.downloads_group)
         layout.addStretch(1)
 
