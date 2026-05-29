@@ -25,6 +25,7 @@ from my_lastfm_player.lastfm import (
     _controlled_sleep,
     _find_next_page_url,
     _find_total_tracks,
+    _is_lastfm_placeholder_image_url,
     _is_retryable_error,
     _parse_artist_image_payload,
     _parse_html_document,
@@ -33,6 +34,7 @@ from my_lastfm_player.lastfm import (
     _progress_message,
     _raise_for_unsuccessful_artist_response,
     _select_artist_image_url,
+    _select_artist_page_image_url,
     parse_loved_tracks_page,
 )
 from my_lastfm_player.models import Track, TrackStatus
@@ -425,8 +427,10 @@ def test_api_client_rejects_missing_api_key_and_invalid_page(monkeypatch) -> Non
         LastFmLovedTracksApiClient(api_key="test-key").fetch_page("example", 0)
 
 
-def test_artist_info_client_fetches_artist_page_and_largest_image() -> None:
-    image_url = "https://last.fm/image.jpg"
+def test_artist_info_client_fetches_artist_page_and_page_metadata_image() -> None:
+    api_image_url = "https://last.fm/api-image.jpg"
+    page_image_url = "https://last.fm/page-image.jpg"
+    page_url = "https://www.last.fm/music/API+Artist"
     session = ArtistInfoSession(
         {
             LASTFM_API_URL: FakeResponse(
@@ -435,15 +439,19 @@ def test_artist_info_client_fetches_artist_page_and_largest_image() -> None:
                 json_payload={
                     "artist": {
                         "name": "API Artist",
-                        "url": "https://www.last.fm/music/API+Artist",
+                        "url": page_url,
                         "image": [
                             {"#text": "https://last.fm/small.jpg", "size": "small"},
-                            {"#text": image_url, "size": "extralarge"},
+                            {"#text": api_image_url, "size": "extralarge"},
                         ],
                     }
                 },
             ),
-            image_url: FakeResponse("", image_url, content=b"image-bytes"),
+            page_url: FakeResponse(
+                f'<meta property="og:image" content="{page_image_url}">',
+                page_url,
+            ),
+            page_image_url: FakeResponse("", page_image_url, content=b"image-bytes"),
         }
     )
 
@@ -455,23 +463,26 @@ def test_artist_info_client_fetches_artist_page_and_largest_image() -> None:
 
     assert artist_image == ArtistImage(
         artist="Requested Artist",
-        page_url="https://www.last.fm/music/API+Artist",
-        image_url=image_url,
+        page_url=page_url,
+        image_url=page_image_url,
         image_bytes=b"image-bytes",
     )
     assert session.requests[0][1]["method"] == "artist.getInfo"
     assert session.requests[0][1]["artist"] == "Requested Artist"
-    assert session.requests[1] == (image_url, None)
+    assert session.requests[1] == (page_url, None)
+    assert session.requests[2] == (page_image_url, None)
 
 
 def test_artist_info_client_handles_missing_image_and_fallback_url() -> None:
+    page_url = "https://www.last.fm/music/Artist%20Name"
     session = ArtistInfoSession(
         {
             LASTFM_API_URL: FakeResponse(
                 "",
                 LASTFM_API_URL,
                 json_payload={"artist": {"name": "Artist", "image": []}},
-            )
+            ),
+            page_url: FakeResponse("", page_url),
         }
     )
 
@@ -481,7 +492,7 @@ def test_artist_info_client_handles_missing_image_and_fallback_url() -> None:
 
     assert artist_image == ArtistImage(
         artist="Artist Name",
-        page_url="https://www.last.fm/music/Artist%20Name",
+        page_url=page_url,
     )
 
 
@@ -515,6 +526,7 @@ def test_artist_info_client_rejects_empty_artist() -> None:
 
 def test_artist_info_client_retries_artist_info_and_handles_image_errors() -> None:
     image_url = "https://last.fm/image.jpg"
+    page_url = "https://www.last.fm/music/Artist"
 
     class FlakyArtistSession:
         def __init__(self) -> None:
@@ -537,11 +549,13 @@ def test_artist_info_client_retries_artist_info_and_handles_image_errors() -> No
                     url,
                     json_payload={
                         "artist": {
-                            "url": "https://www.last.fm/music/Artist",
+                            "url": page_url,
                             "image": [{"#text": image_url, "size": "large"}],
                         }
                     },
                 )
+            if url == page_url:
+                raise requests.ConnectionError("temporary page failure")
             return FakeResponse("", url, status_code=404)
 
     artist_image = LastFmArtistInfoClient(
@@ -553,13 +567,14 @@ def test_artist_info_client_retries_artist_info_and_handles_image_errors() -> No
 
     assert artist_image == ArtistImage(
         artist="Artist",
-        page_url="https://www.last.fm/music/Artist",
+        page_url=page_url,
         image_url=image_url,
     )
 
 
 def test_artist_info_client_uses_text_body_when_image_content_is_empty() -> None:
     image_url = "https://last.fm/image.svg"
+    page_url = "https://www.last.fm/music/Artist"
     session = ArtistInfoSession(
         {
             LASTFM_API_URL: FakeResponse(
@@ -567,11 +582,12 @@ def test_artist_info_client_uses_text_body_when_image_content_is_empty() -> None
                 LASTFM_API_URL,
                 json_payload={
                     "artist": {
-                        "url": "https://www.last.fm/music/Artist",
+                        "url": page_url,
                         "image": [{"#text": image_url, "size": "large"}],
                     }
                 },
             ),
+            page_url: FakeResponse("", page_url),
             image_url: FakeResponse("<svg />", image_url, content=b""),
         }
     )
@@ -601,6 +617,68 @@ def test_artist_image_payload_parser_handles_invalid_shapes_and_sizes() -> None:
         )
         == "https://last.fm/custom.jpg"
     )
+
+
+def test_artist_info_client_ignores_lastfm_placeholder_star_image() -> None:
+    page_url = "https://www.last.fm/music/Artist"
+    placeholder_url = "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png"
+    session = ArtistInfoSession(
+        {
+            LASTFM_API_URL: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={
+                    "artist": {
+                        "url": page_url,
+                        "image": [{"#text": placeholder_url, "size": "mega"}],
+                    }
+                },
+            ),
+            page_url: FakeResponse("", page_url),
+        }
+    )
+
+    artist_image = LastFmArtistInfoClient(api_key="test-key", session=session).fetch_artist_image(
+        "Artist"
+    )
+
+    assert artist_image == ArtistImage(artist="Artist", page_url=page_url, image_url=None)
+    assert session.requests == [
+        (
+            LASTFM_API_URL,
+            {
+                "method": "artist.getInfo",
+                "artist": "Artist",
+                "api_key": "test-key",
+                "format": "json",
+            },
+        ),
+        (page_url, None),
+    ]
+
+
+def test_artist_page_image_parser_prefers_social_metadata_and_ignores_placeholder() -> None:
+    page_url = "https://www.last.fm/music/Artist"
+    real_image_url = "https://lastfm.freetls.fastly.net/i/u/ar0/real.jpg"
+    html = f"""
+    <meta property="og:image" content="https://lastfm.freetls.fastly.net/i/u/ar0/2a96cbd8b46e442fc41c2b86b821562f.png">
+    <meta name="twitter:image" content="{real_image_url}">
+    """
+
+    assert _select_artist_page_image_url(html, page_url) == real_image_url
+    assert _is_lastfm_placeholder_image_url("https://last.fm/2a96cbd8b46e442fc41c2b86b821562f.png")
+
+
+def test_artist_page_image_parser_uses_header_background_image() -> None:
+    page_url = "https://www.last.fm/music/Artist"
+    html = """
+    <div
+        class="header-new-background-image"
+        style="background-image: url(/i/u/ar0/artist.jpg);"
+    ></div>
+    """
+
+    assert _select_artist_page_image_url(html, page_url) == "https://www.last.fm/i/u/ar0/artist.jpg"
 
 
 def test_raise_for_unsuccessful_artist_response_reports_http_status() -> None:

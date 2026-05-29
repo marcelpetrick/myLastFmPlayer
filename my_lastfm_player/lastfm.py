@@ -36,6 +36,9 @@ LASTFM_HEADERS = {
     "Accept": "application/json,text/html;q=0.8,*/*;q=0.5",
     "Accept-Language": "en-US,en;q=0.9",
 }
+LASTFM_PLACEHOLDER_IMAGE_MARKERS = (
+    "2a96cbd8b46e442fc41c2b86b821562f",
+)
 LOGGER = logging.getLogger(__name__)
 TOTAL_COUNT_PATTERNS = (
     re.compile(r"([\d,]+)\s+loved\s+tracks", re.IGNORECASE),
@@ -249,15 +252,24 @@ class LastFmArtistInfoClient:
 
         payload = self._fetch_artist_info_payload(artist_name)
         artist_image = _parse_artist_image_payload(payload, artist_name)
-        if artist_image.image_url is None:
-            return artist_image
+        image_url = self._select_artist_photo_url(artist_image)
+        if image_url is None:
+            return ArtistImage(artist=artist_image.artist, page_url=artist_image.page_url)
 
         return ArtistImage(
             artist=artist_image.artist,
             page_url=artist_image.page_url,
-            image_url=artist_image.image_url,
-            image_bytes=self._fetch_image_bytes(artist_image.image_url),
+            image_url=image_url,
+            image_bytes=self._fetch_image_bytes(image_url),
         )
+
+    def _select_artist_photo_url(self, artist_image: ArtistImage) -> str | None:
+        page_image_url = self._fetch_artist_page_image_url(artist_image.page_url)
+        if page_image_url is not None:
+            return page_image_url
+        if _is_lastfm_placeholder_image_url(artist_image.image_url):
+            return None
+        return artist_image.image_url
 
     def _fetch_artist_info_payload(self, artist: str) -> object:
         params: dict[str, object] = {
@@ -313,6 +325,19 @@ class LastFmArtistInfoClient:
             return content
         text = getattr(response, "text", "")
         return text.encode("utf-8") if isinstance(text, str) and text else None
+
+    def _fetch_artist_page_image_url(self, page_url: str) -> str | None:
+        try:
+            response = self.session.get(page_url, timeout=REQUEST_TIMEOUT_SECONDS)
+            _raise_for_unsuccessful_artist_response(response, page_url)
+        except (LastFmError, requests.RequestException) as error:
+            _log_warning("Could not fetch Last.fm artist page image from %s: %s", page_url, error)
+            return None
+
+        text = getattr(response, "text", "")
+        if not isinstance(text, str) or not text:
+            return None
+        return _select_artist_page_image_url(text, page_url)
 
 
 class LastFmLovedTracksFetcher:
@@ -688,6 +713,45 @@ def _select_artist_image_url(images: object) -> str | None:
         if size in candidates:
             return candidates[size]
     return next(iter(candidates.values()), None)
+
+
+def _select_artist_page_image_url(html: str, page_url: str) -> str | None:
+    soup = _parse_html_document(html)
+    selectors = (
+        'meta[property="og:image"]',
+        'meta[name="twitter:image"]',
+        ".header-new-background-image",
+    )
+    for selector in selectors:
+        element = soup.select_one(selector)
+        if element is None:
+            continue
+        image_url = element.get("content")
+        if not isinstance(image_url, str) or not image_url:
+            style = element.get("style")
+            image_url = _extract_css_background_image_url(style) if isinstance(style, str) else None
+        if (
+            isinstance(image_url, str)
+            and image_url
+            and not _is_lastfm_placeholder_image_url(image_url)
+        ):
+            return urljoin(page_url, image_url)
+    return None
+
+
+def _extract_css_background_image_url(style: str) -> str | None:
+    match = re.search(
+        r"background-image\s*:\s*url\((?P<quote>['\"]?)(?P<url>.+?)(?P=quote)\)",
+        style,
+    )
+    return match.group("url") if match else None
+
+
+def _is_lastfm_placeholder_image_url(image_url: str | None) -> bool:
+    if not image_url:
+        return False
+    normalized_url = image_url.casefold()
+    return any(marker.casefold() in normalized_url for marker in LASTFM_PLACEHOLDER_IMAGE_MARKERS)
 
 
 def _raise_for_unsuccessful_artist_response(response: requests.Response, url: str) -> None:
