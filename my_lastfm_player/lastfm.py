@@ -102,6 +102,16 @@ class LovedTracksApiPage:
 
 
 @dataclass(frozen=True, slots=True)
+class ArtistImage:
+    """Last.fm artist image metadata and downloaded image bytes."""
+
+    artist: str
+    page_url: str
+    image_url: str | None = None
+    image_bytes: bytes | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class FetchProgress:
     """Progress event emitted while fetching paginated loved tracks."""
 
@@ -207,6 +217,102 @@ class LastFmLovedTracksApiClient:
                 f"Last.fm returned HTTP status {status_code}"
             )
         response.raise_for_status()
+
+
+class LastFmArtistInfoClient:
+    """HTTP client for Last.fm's ``artist.getInfo`` JSON API."""
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        session: HttpSession | None = None,
+        api_url: str = LASTFM_API_URL,
+        retry_attempts: int = LASTFM_RETRY_ATTEMPTS,
+        retry_delay_seconds: float = LASTFM_RETRY_DELAY_SECONDS,
+    ) -> None:
+        self.api_key = (api_key or lastfm_api_credentials().api_key).strip()
+        self.session = session or requests.Session()
+        self.api_url = api_url
+        self.retry_attempts = retry_attempts
+        self.retry_delay_seconds = retry_delay_seconds
+        if isinstance(self.session, requests.Session):
+            self.session.headers.update(LASTFM_HEADERS)
+
+    def fetch_artist_image(self, artist: str) -> ArtistImage:
+        """Fetch artist page metadata and a representative image for ``artist``."""
+
+        artist_name = artist.strip()
+        if not artist_name:
+            raise ValueError("Last.fm artist must not be empty")
+        if not self.api_key:
+            raise LastFmError("Last.fm API key is not configured")
+
+        payload = self._fetch_artist_info_payload(artist_name)
+        artist_image = _parse_artist_image_payload(payload, artist_name)
+        if artist_image.image_url is None:
+            return artist_image
+
+        return ArtistImage(
+            artist=artist_image.artist,
+            page_url=artist_image.page_url,
+            image_url=artist_image.image_url,
+            image_bytes=self._fetch_image_bytes(artist_image.image_url),
+        )
+
+    def _fetch_artist_info_payload(self, artist: str) -> object:
+        params: dict[str, object] = {
+            "method": "artist.getInfo",
+            "artist": artist,
+            "api_key": self.api_key,
+            "format": "json",
+        }
+        attempts = max(1, self.retry_attempts)
+        last_error: LastFmError | None = None
+
+        for attempt in range(1, attempts + 1):
+            _log_info(
+                "Fetching Last.fm artist info for %s (attempt %s/%s)",
+                artist,
+                attempt,
+                attempts,
+            )
+            try:
+                response = self.session.get(
+                    self.api_url,
+                    params=params,
+                    timeout=REQUEST_TIMEOUT_SECONDS,
+                )
+                _raise_for_unsuccessful_artist_response(response, self.api_url)
+                return response.json()
+            except (LastFmError, requests.RequestException, ValueError) as error:
+                last_error = _to_lastfm_error(self.api_url, error)
+                _log_warning(
+                    "Last.fm artist info attempt %s/%s failed for %s: %s",
+                    attempt,
+                    attempts,
+                    artist,
+                    last_error,
+                )
+                if attempt < attempts and _is_retryable_error(error):
+                    time.sleep(self.retry_delay_seconds)
+                    continue
+                raise last_error from error
+
+        raise last_error or LastFmError(f"Could not fetch Last.fm artist info from {self.api_url}")
+
+    def _fetch_image_bytes(self, image_url: str) -> bytes | None:
+        try:
+            response = self.session.get(image_url, timeout=REQUEST_TIMEOUT_SECONDS)
+            _raise_for_unsuccessful_artist_response(response, image_url)
+        except (LastFmError, requests.RequestException) as error:
+            _log_warning("Could not fetch Last.fm artist image from %s: %s", image_url, error)
+            return None
+
+        content = getattr(response, "content", b"")
+        if isinstance(content, bytes) and content:
+            return content
+        text = getattr(response, "text", "")
+        return text.encode("utf-8") if isinstance(text, str) and text else None
 
 
 class LastFmLovedTracksFetcher:
@@ -537,6 +643,61 @@ def _parse_loved_track_api_item(item: object) -> Track | None:
         lastfm_url=lastfm_url,
         loved_at=_parse_api_loved_at(item.get("date")),
     )
+
+
+def _parse_artist_image_payload(payload: object, requested_artist: str) -> ArtistImage:
+    if not isinstance(payload, dict):
+        raise LastFmError("Last.fm API returned an invalid artist response")
+    if "error" in payload:
+        message = payload.get("message") or "unknown Last.fm API error"
+        raise LastFmError(f"Last.fm API error: {message}")
+
+    artist = payload.get("artist")
+    if not isinstance(artist, dict):
+        raise LastFmError("Last.fm API response did not contain artist information")
+
+    artist_name = _clean_text(requested_artist)
+    page_url = artist.get("url")
+    page_url = (
+        page_url
+        if isinstance(page_url, str) and page_url
+        else f"{LASTFM_BASE_URL}/music/{quote(artist_name, safe='')}"
+    )
+    return ArtistImage(
+        artist=artist_name,
+        page_url=page_url,
+        image_url=_select_artist_image_url(artist.get("image")),
+    )
+
+
+def _select_artist_image_url(images: object) -> str | None:
+    if not isinstance(images, list):
+        return None
+
+    ranked_sizes = ("mega", "extralarge", "large", "medium", "small")
+    candidates: dict[str, str] = {}
+    for item in images:
+        if not isinstance(item, dict):
+            continue
+        image_url = item.get("#text")
+        size = item.get("size")
+        if isinstance(image_url, str) and image_url and isinstance(size, str):
+            candidates[size.casefold()] = image_url
+
+    for size in ranked_sizes:
+        if size in candidates:
+            return candidates[size]
+    return next(iter(candidates.values()), None)
+
+
+def _raise_for_unsuccessful_artist_response(response: requests.Response, url: str) -> None:
+    status_code = response.status_code
+    if status_code >= 400:
+        raise LastFmError(
+            f"Could not fetch Last.fm artist information from {url}: "
+            f"Last.fm returned HTTP status {status_code}"
+        )
+    response.raise_for_status()
 
 
 def _parse_api_artist(value: object) -> str:

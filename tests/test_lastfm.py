@@ -11,8 +11,10 @@ from my_lastfm_player import lastfm as lastfm_module
 from my_lastfm_player.lastfm import (
     LASTFM_API_URL,
     LASTFM_BASE_URL,
+    ArtistImage,
     FetchedHtmlPage,
     FetchProgress,
+    LastFmArtistInfoClient,
     LastFmError,
     LastFmLovedTracksApiClient,
     LastFmLovedTracksFetcher,
@@ -24,10 +26,13 @@ from my_lastfm_player.lastfm import (
     _find_next_page_url,
     _find_total_tracks,
     _is_retryable_error,
+    _parse_artist_image_payload,
     _parse_html_document,
     _parse_loved_at,
     _parse_loved_tracks_api_payload,
     _progress_message,
+    _raise_for_unsuccessful_artist_response,
+    _select_artist_image_url,
     parse_loved_tracks_page,
 )
 from my_lastfm_player.models import Track, TrackStatus
@@ -43,11 +48,13 @@ class FakeResponse:
         url: str,
         status_code: int = 200,
         json_payload: object | None = None,
+        content: bytes | None = None,
     ) -> None:
         self.text = text
         self.url = url
         self.status_code = status_code
         self.json_payload = json_payload
+        self.content = content if content is not None else text.encode("utf-8")
 
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
@@ -104,6 +111,26 @@ class SequencedSession:
         if not self.responses:
             raise requests.ConnectionError(f"No fake response for {url}")
         return self.responses.pop(0)
+
+
+class ArtistInfoSession:
+    def __init__(self, responses: dict[str, FakeResponse]) -> None:
+        self.responses = responses
+        self.requests: list[tuple[str, dict[str, object] | None]] = []
+
+    def get(
+        self,
+        url: str,
+        *,
+        params: dict[str, object] | None = None,
+        timeout: int,
+    ) -> FakeResponse:
+        del timeout
+        self.requests.append((url, params))
+        response = self.responses.get(url)
+        if response is None:
+            raise requests.ConnectionError(f"No fake response for {url}")
+        return response
 
 
 def read_fixture(name: str) -> str:
@@ -396,6 +423,191 @@ def test_api_client_rejects_missing_api_key_and_invalid_page(monkeypatch) -> Non
 
     with pytest.raises(ValueError, match="page"):
         LastFmLovedTracksApiClient(api_key="test-key").fetch_page("example", 0)
+
+
+def test_artist_info_client_fetches_artist_page_and_largest_image() -> None:
+    image_url = "https://last.fm/image.jpg"
+    session = ArtistInfoSession(
+        {
+            LASTFM_API_URL: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={
+                    "artist": {
+                        "name": "API Artist",
+                        "url": "https://www.last.fm/music/API+Artist",
+                        "image": [
+                            {"#text": "https://last.fm/small.jpg", "size": "small"},
+                            {"#text": image_url, "size": "extralarge"},
+                        ],
+                    }
+                },
+            ),
+            image_url: FakeResponse("", image_url, content=b"image-bytes"),
+        }
+    )
+
+    artist_image = LastFmArtistInfoClient(
+        api_key="test-key",
+        session=session,
+        retry_delay_seconds=0,
+    ).fetch_artist_image("Requested Artist")
+
+    assert artist_image == ArtistImage(
+        artist="Requested Artist",
+        page_url="https://www.last.fm/music/API+Artist",
+        image_url=image_url,
+        image_bytes=b"image-bytes",
+    )
+    assert session.requests[0][1]["method"] == "artist.getInfo"
+    assert session.requests[0][1]["artist"] == "Requested Artist"
+    assert session.requests[1] == (image_url, None)
+
+
+def test_artist_info_client_handles_missing_image_and_fallback_url() -> None:
+    session = ArtistInfoSession(
+        {
+            LASTFM_API_URL: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={"artist": {"name": "Artist", "image": []}},
+            )
+        }
+    )
+
+    artist_image = LastFmArtistInfoClient(api_key="test-key", session=session).fetch_artist_image(
+        "Artist Name"
+    )
+
+    assert artist_image == ArtistImage(
+        artist="Artist Name",
+        page_url="https://www.last.fm/music/Artist%20Name",
+    )
+
+
+def test_artist_info_client_rejects_errors_and_missing_api_key(monkeypatch) -> None:
+    monkeypatch.setattr(
+        lastfm_module,
+        "lastfm_api_credentials",
+        lambda: type("Credentials", (), {"api_key": ""})(),
+    )
+
+    with pytest.raises(LastFmError, match="API key"):
+        LastFmArtistInfoClient(api_key="").fetch_artist_image("Artist")
+
+    session = ArtistInfoSession(
+        {
+            LASTFM_API_URL: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={"error": 6, "message": "Artist not found"},
+            )
+        }
+    )
+    with pytest.raises(LastFmError, match="Artist not found"):
+        LastFmArtistInfoClient(api_key="test-key", session=session).fetch_artist_image("Missing")
+
+
+def test_artist_info_client_rejects_empty_artist() -> None:
+    with pytest.raises(ValueError, match="artist"):
+        LastFmArtistInfoClient(api_key="test-key").fetch_artist_image(" ")
+
+
+def test_artist_info_client_retries_artist_info_and_handles_image_errors() -> None:
+    image_url = "https://last.fm/image.jpg"
+
+    class FlakyArtistSession:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get(
+            self,
+            url: str,
+            *,
+            params: dict[str, object] | None = None,
+            timeout: int,
+        ) -> FakeResponse:
+            del timeout
+            if params is not None:
+                self.calls += 1
+                if self.calls == 1:
+                    raise requests.ConnectionError("temporary network failure")
+                return FakeResponse(
+                    "",
+                    url,
+                    json_payload={
+                        "artist": {
+                            "url": "https://www.last.fm/music/Artist",
+                            "image": [{"#text": image_url, "size": "large"}],
+                        }
+                    },
+                )
+            return FakeResponse("", url, status_code=404)
+
+    artist_image = LastFmArtistInfoClient(
+        api_key="test-key",
+        session=FlakyArtistSession(),
+        retry_attempts=2,
+        retry_delay_seconds=0,
+    ).fetch_artist_image("Artist")
+
+    assert artist_image == ArtistImage(
+        artist="Artist",
+        page_url="https://www.last.fm/music/Artist",
+        image_url=image_url,
+    )
+
+
+def test_artist_info_client_uses_text_body_when_image_content_is_empty() -> None:
+    image_url = "https://last.fm/image.svg"
+    session = ArtistInfoSession(
+        {
+            LASTFM_API_URL: FakeResponse(
+                "",
+                LASTFM_API_URL,
+                json_payload={
+                    "artist": {
+                        "url": "https://www.last.fm/music/Artist",
+                        "image": [{"#text": image_url, "size": "large"}],
+                    }
+                },
+            ),
+            image_url: FakeResponse("<svg />", image_url, content=b""),
+        }
+    )
+
+    artist_image = LastFmArtistInfoClient(api_key="test-key", session=session).fetch_artist_image(
+        "Artist"
+    )
+
+    assert artist_image.image_bytes == b"<svg />"
+
+
+def test_artist_image_payload_parser_handles_invalid_shapes_and_sizes() -> None:
+    with pytest.raises(LastFmError, match="invalid artist response"):
+        _parse_artist_image_payload([], "Artist")
+
+    with pytest.raises(LastFmError, match="artist information"):
+        _parse_artist_image_payload({"artist": []}, "Artist")
+
+    assert _select_artist_image_url("bad") is None
+    assert (
+        _select_artist_image_url(
+            [
+                "bad item",
+                {"#text": "", "size": "large"},
+                {"#text": "https://last.fm/custom.jpg", "size": "custom"},
+            ]
+        )
+        == "https://last.fm/custom.jpg"
+    )
+
+
+def test_raise_for_unsuccessful_artist_response_reports_http_status() -> None:
+    response = FakeResponse("", "https://last.fm/api", status_code=500)
+
+    with pytest.raises(LastFmError, match="HTTP status 500"):
+        _raise_for_unsuccessful_artist_response(response, "https://last.fm/api")
 
 
 def test_parse_loved_tracks_api_payload_rejects_invalid_top_level_shapes() -> None:

@@ -59,6 +59,16 @@
         <translation>Nije moguće otvoriti mapu podataka: {path}</translation>
     </message>
     <message>
+        <location filename="../controller.py" line="306" />
+        <source>Could not open artist page: {url}</source>
+        <translation>Nije moguće otvoriti stranicu izvođača: {url}</translation>
+    </message>
+    <message>
+        <location filename="../controller.py" line="1053" />
+        <source>Last.fm returned invalid artist image data.</source>
+        <translation>Last.fm je vratio nevažeće podatke slike izvođača.</translation>
+    </message>
+    <message>
         <location filename="../controller.py" line="308" />
         <source>Last.fm scrobbling is disabled because {api_key_env}/{api_secret_env} are not configured and no bundled credentials are available.</source>
         <translation>Listanje po Last.fm-u je onemogućeno jer {api_key_env}/{api_secret_env} nisu konfigurirani i nisu dostupne skupne vjerodajnice.</translation>
@@ -762,6 +772,11 @@
         <location filename="../ui/main_window.py" line="876" />
         <source>Randomize</source>
         <translation>Nasumično</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="877" />
+        <source>Open artist page on Last.fm</source>
+        <translation>Otvori stranicu izvođača na Last.fm-u</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="877" />

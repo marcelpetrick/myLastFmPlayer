@@ -8,11 +8,38 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from my_lastfm_player.download import DEFAULT_CONCURRENCY, DownloadManager
 from my_lastfm_player.i18n import translate
-from my_lastfm_player.lastfm import FetchProgress, LastFmLovedTracksScraper
+from my_lastfm_player.lastfm import FetchProgress, LastFmArtistInfoClient, LastFmLovedTracksScraper
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.youtube import YouTubeResolver
 
 LOGGER = logging.getLogger(__name__)
+
+
+class ArtistImageWorker(QObject):
+    """Qt worker that fetches Last.fm artist image metadata in the background."""
+
+    artist_image_loaded = pyqtSignal(object)
+    error = pyqtSignal(str)
+    finished = pyqtSignal()
+
+    def __init__(self, artist: str, client: LastFmArtistInfoClient) -> None:
+        super().__init__()
+        self.artist = artist
+        self.client = client
+
+    @pyqtSlot()
+    def run(self) -> None:
+        """Fetch artist image information and emit the result."""
+
+        try:
+            LOGGER.info("Worker started fetching artist image for %s", self.artist)
+            self.artist_image_loaded.emit(self.client.fetch_artist_image(self.artist))
+        except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
+            LOGGER.exception("Artist image fetch failed for %s", self.artist)
+            self.error.emit(str(error))
+        finally:
+            LOGGER.info("Worker finished fetching artist image for %s", self.artist)
+            self.finished.emit()
 
 
 class FetchLovedTracksWorker(QObject):

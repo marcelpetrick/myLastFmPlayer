@@ -5,8 +5,8 @@ import sys
 import types
 
 import pytest
-from PyQt6.QtCore import QEvent, QModelIndex, QPointF, Qt, QTime
-from PyQt6.QtGui import QMouseEvent, QStandardItemModel
+from PyQt6.QtCore import QBuffer, QByteArray, QEvent, QIODevice, QModelIndex, QPointF, Qt, QTime
+from PyQt6.QtGui import QColor, QMouseEvent, QPixmap, QStandardItemModel
 
 from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
@@ -24,9 +24,19 @@ from my_lastfm_player.ui.main_window import (
 from my_lastfm_player.version import display_version
 
 
+def png_bytes() -> bytes:
+    image = QPixmap(1, 1)
+    image.fill(QColor("#336699"))
+    data = QByteArray()
+    buffer = QBuffer(data)
+    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+    image.save(buffer, "PNG")
+    return bytes(data)
+
+
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.106"
-    assert __display_version__ == "0.0.106"
+    assert __version__ == "0.0.107"
+    assert __display_version__ == "0.0.107"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -63,7 +73,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.106"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.107"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -180,7 +190,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.106\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.107\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -659,6 +669,53 @@ def test_main_window_playback_controls_emit_signals(qapp) -> None:
     window.next_button.click()
 
     assert events == ["play", "pause", "stop", "next"]
+
+
+def test_main_window_artist_image_is_clickable(qapp) -> None:
+    window = MainWindow()
+    requested_pages: list[str] = []
+    window.artist_page_requested.connect(requested_pages.append)
+
+    window.set_artist_image(png_bytes(), "https://www.last.fm/music/Artist")
+
+    assert not window.artist_image_label.isHidden()
+    assert window.artist_image_label.pixmap() is not None
+
+    event = QMouseEvent(
+        QEvent.Type.MouseButtonPress,
+        QPointF(4, 4),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    window.artist_image_label.mousePressEvent(event)
+
+    assert requested_pages == ["https://www.last.fm/music/Artist"]
+
+    window.set_artist_image(None, None)
+
+    assert window.artist_image_label.isHidden()
+
+
+def test_main_window_artist_image_ignores_invalid_data_and_non_left_clicks(qapp) -> None:
+    window = MainWindow()
+    requested_pages: list[str] = []
+    window.artist_page_requested.connect(requested_pages.append)
+
+    window.set_artist_image(b"invalid image", "https://www.last.fm/music/Artist")
+
+    assert window.artist_image_label.isHidden()
+
+    event = QMouseEvent(
+        QEvent.Type.MouseButtonPress,
+        QPointF(4, 4),
+        Qt.MouseButton.RightButton,
+        Qt.MouseButton.RightButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    window.artist_image_label.mousePressEvent(event)
+
+    assert requested_pages == []
 
 
 def test_main_window_double_clicking_track_requests_playback(qapp) -> None:

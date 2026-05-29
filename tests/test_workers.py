@@ -3,10 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from my_lastfm_player.download import DownloadManager
-from my_lastfm_player.lastfm import FetchProgress
+from my_lastfm_player.lastfm import ArtistImage, FetchProgress
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.workers import (
+    ArtistImageWorker,
     DownloadTracksWorker,
     FetchLovedTracksWorker,
     LookupTracksWorker,
@@ -65,6 +66,63 @@ class FakeResolver:
             track_update_callback(self.tracks[0])
         repository.save_tracks(username, self.tracks)
         return self.tracks
+
+
+class FakeArtistInfoClient:
+    def __init__(
+        self,
+        artist_image: ArtistImage | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self.artist_image = artist_image
+        self.error = error
+        self.artists: list[str] = []
+
+    def fetch_artist_image(self, artist: str) -> ArtistImage:
+        self.artists.append(artist)
+        if self.error is not None:
+            raise self.error
+        assert self.artist_image is not None
+        return self.artist_image
+
+
+def test_artist_image_worker_emits_image_and_finished() -> None:
+    artist_image = ArtistImage(
+        artist="Artist",
+        page_url="https://www.last.fm/music/Artist",
+        image_url="https://last.fm/image.jpg",
+        image_bytes=b"image",
+    )
+    client = FakeArtistInfoClient(artist_image)
+    worker = ArtistImageWorker("Artist", client)  # type: ignore[arg-type]
+    loaded_events: list[ArtistImage] = []
+    finished_events: list[bool] = []
+
+    worker.artist_image_loaded.connect(loaded_events.append)
+    worker.finished.connect(lambda: finished_events.append(True))
+
+    worker.run()
+
+    assert client.artists == ["Artist"]
+    assert loaded_events == [artist_image]
+    assert finished_events == [True]
+
+
+def test_artist_image_worker_emits_error_and_finished() -> None:
+    worker = ArtistImageWorker(
+        "Artist",
+        FakeArtistInfoClient(error=RuntimeError("artist failed")),  # type: ignore[arg-type]
+    )
+    errors: list[str] = []
+    finished_events: list[bool] = []
+
+    worker.error.connect(errors.append)
+    worker.finished.connect(lambda: finished_events.append(True))
+
+    worker.run()
+
+    assert errors == ["artist failed"]
+    assert finished_events == [True]
 
 
 def test_fetch_worker_emits_progress_tracks_and_finished(tmp_path: Path) -> None:

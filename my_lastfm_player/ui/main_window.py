@@ -5,7 +5,7 @@ from collections.abc import Callable
 from html import escape
 
 from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
-from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent
+from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent, QPixmap
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -49,6 +49,7 @@ from my_lastfm_player.ui.track_table_model import (
 )
 
 LOGGER = logging.getLogger(__name__)
+ARTIST_IMAGE_SIZE = 120
 
 
 class TrackFilterProxyModel(QSortFilterProxyModel):
@@ -85,6 +86,50 @@ class TrackFilterProxyModel(QSortFilterProxyModel):
         )
 
 
+class ArtistImageLabel(QLabel):
+    """Clickable artist image label that emits the stored Last.fm page URL."""
+
+    artist_page_requested = pyqtSignal(str)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._page_url: str | None = None
+        self.setFixedSize(ARTIST_IMAGE_SIZE, ARTIST_IMAGE_SIZE)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setScaledContents(False)
+        self.hide()
+
+    def set_artist_image(self, image_bytes: bytes | None, page_url: str | None) -> None:
+        """Show ``image_bytes`` and make the label clickable for ``page_url``."""
+
+        self._page_url = page_url if page_url and image_bytes else None
+        self.clear()
+        if not image_bytes:
+            self.hide()
+            return
+
+        pixmap = QPixmap()
+        if not pixmap.loadFromData(image_bytes):
+            self.hide()
+            return
+        self.setPixmap(
+            pixmap.scaled(
+                self.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.show()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        if self._page_url and event.button() == Qt.MouseButton.LeftButton:
+            self.artist_page_requested.emit(self._page_url)
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+
 class MainWindow(QMainWindow):
     """Initial MVP shell for the Last.fm player desktop UI."""
 
@@ -99,6 +144,7 @@ class MainWindow(QMainWindow):
     stop_requested = pyqtSignal()
     next_requested = pyqtSignal()
     seek_requested = pyqtSignal(int)
+    artist_page_requested = pyqtSignal(str)
     language_changed = pyqtSignal()
     theme_requested = pyqtSignal(str)
     randomize_playback_changed = pyqtSignal(bool)
@@ -335,7 +381,10 @@ class MainWindow(QMainWindow):
 
         self.playback_group = QGroupBox()
         playback_layout = QVBoxLayout(self.playback_group)
+        now_playing_layout = QHBoxLayout()
         playback_button_layout = QHBoxLayout()
+        self.artist_image_label = ArtistImageLabel()
+        self.artist_image_label.artist_page_requested.connect(self.artist_page_requested.emit)
         self.play_button = QPushButton()
         self.pause_button = QPushButton()
         self.stop_button = QPushButton()
@@ -374,7 +423,9 @@ class MainWindow(QMainWindow):
         self.now_playing_label = QLabel()
         self.now_playing_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        playback_layout.addWidget(self.now_playing_label)
+        now_playing_layout.addWidget(self.artist_image_label)
+        now_playing_layout.addWidget(self.now_playing_label, stretch=1)
+        playback_layout.addLayout(now_playing_layout)
         playback_layout.addLayout(playback_button_layout)
         playback_layout.addLayout(playback_timeline_layout)
         playback_layout.addWidget(self.randomize_checkbox)
@@ -618,6 +669,11 @@ class MainWindow(QMainWindow):
         else:
             self._now_playing_idle = False
             self.now_playing_label.setText(f"{track.artist} — {track.title}")
+
+    def set_artist_image(self, image_bytes: bytes | None, page_url: str | None) -> None:
+        """Show a clickable Last.fm artist image near the playback controls."""
+
+        self.artist_image_label.set_artist_image(image_bytes, page_url)
 
     def tracks(self) -> list[Track]:
         """Return a copy of the tracks currently visible in the table."""
@@ -900,6 +956,7 @@ class MainWindow(QMainWindow):
         self.stop_button.setText(self.tr("Stop"))
         self.next_button.setText(self.tr("Next"))
         self.randomize_checkbox.setText(self.tr("Randomize"))
+        self.artist_image_label.setToolTip(self.tr("Open artist page on Last.fm"))
         self.playback_slider.setToolTip(self.tr("Playback position"))
         self.downloads_group.setTitle(self.tr("Downloads"))
         self.download_toggle_button.setText(

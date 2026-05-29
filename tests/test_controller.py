@@ -9,6 +9,7 @@ from my_lastfm_player import controller as controller_module
 from my_lastfm_player.app_credentials import LastFmApiCredentials
 from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.dependencies import DependencyCheckResult
+from my_lastfm_player.lastfm import ArtistImage
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
@@ -67,6 +68,27 @@ class FakeThread:
 
     def quit(self) -> None:
         self.quit_called = True
+
+    def deleteLater(self) -> None:
+        self.deleted = True
+
+
+class FakeArtistImageWorker:
+    def __init__(self, artist: str, client: object) -> None:
+        self.artist = artist
+        self.client = client
+        self.artist_image_loaded = FakeSignal()
+        self.error = FakeSignal()
+        self.finished = FakeSignal()
+        self.moved_to_thread = None
+        self.deleted = False
+        self.ran = False
+
+    def moveToThread(self, thread: object) -> None:
+        self.moved_to_thread = thread
+
+    def run(self) -> None:
+        self.ran = True
 
     def deleteLater(self) -> None:
         self.deleted = True
@@ -722,6 +744,33 @@ def test_controller_run_worker_connects_typed_worker_signals(qapp, monkeypatch) 
     assert controller._handle_tracks_downloaded in download_worker.tracks_downloaded.callbacks
 
 
+def test_controller_run_artist_image_worker_tracks_lifecycle(qapp, monkeypatch) -> None:
+    created_threads: list[FakeThread] = []
+
+    def fake_thread_factory(parent: object) -> FakeThread:
+        thread = FakeThread(parent)
+        created_threads.append(thread)
+        return thread
+
+    monkeypatch.setattr(controller_module, "QThread", fake_thread_factory)
+    window = MainWindow()
+    controller = ApplicationController(window)
+    worker = FakeArtistImageWorker("Artist", object())
+
+    controller._run_artist_image_worker(worker)  # type: ignore[arg-type]
+    thread = created_threads[0]
+
+    assert worker.moved_to_thread is thread
+    assert thread.started_flag
+    assert controller._active_threads == [thread]
+    assert controller._active_artist_image_workers == [worker]
+    assert worker.run in thread.started.callbacks
+    assert controller._handle_artist_image_loaded in worker.artist_image_loaded.callbacks
+    assert controller._handle_artist_image_error in worker.error.callbacks
+    assert thread.quit in worker.finished.callbacks
+    assert worker.deleteLater in worker.finished.callbacks
+
+
 def test_controller_play_on_unresolved_track_starts_priority_lookup(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("user")
@@ -872,6 +921,122 @@ def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
     assert window.track_model.playing_cache_key() == track.cache_key
     assert window.playback_slider.maximum() == 180_000
     assert "Playing Artist - Title." in window.feedback_log.toPlainText()
+
+
+def test_controller_fetches_artist_image_when_playback_starts(qapp, tmp_path) -> None:
+    window = MainWindow()
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
+    track = Track(
+        artist="Artist",
+        title="Title",
+        local_path=str(audio_path),
+        status=TrackStatus.DOWNLOADED,
+    )
+    window.set_tracks([track])
+    window.track_table.selectRow(0)
+    playback = FakePlaybackService()
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_info_client=object(),  # type: ignore[arg-type]
+        artist_image_worker_factory=FakeArtistImageWorker,  # type: ignore[arg-type]
+    )
+    workers: list[FakeArtistImageWorker] = []
+    controller._run_artist_image_worker = workers.append  # type: ignore[method-assign]
+
+    controller.play_selected_track()
+
+    assert len(workers) == 1
+    assert workers[0].artist == "Artist"
+
+
+def test_controller_shows_cached_artist_image_and_opens_artist_page(
+    qapp,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    opened_urls: list[str] = []
+    monkeypatch.setattr(
+        controller_module.QDesktopServices,
+        "openUrl",
+        lambda url: opened_urls.append(url.toString()) or True,
+    )
+    window = MainWindow()
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
+    track = Track(
+        artist="Artist",
+        title="Title",
+        local_path=str(audio_path),
+        status=TrackStatus.DOWNLOADED,
+    )
+    window.set_tracks([track])
+    window.track_table.selectRow(0)
+    playback = FakePlaybackService()
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_info_client=object(),  # type: ignore[arg-type]
+        artist_image_worker_factory=FakeArtistImageWorker,  # type: ignore[arg-type]
+    )
+    artist_image = ArtistImage(
+        artist="Artist",
+        page_url="https://www.last.fm/music/Artist",
+        image_url="https://last.fm/image.jpg",
+        image_bytes=b"not-a-real-image",
+    )
+    controller._artist_image_cache["Artist"] = artist_image
+    controller._run_artist_image_worker = lambda _worker: None  # type: ignore[method-assign]
+    image_calls: list[tuple[bytes | None, str | None]] = []
+
+    def capture_artist_image(image_bytes: bytes | None, page_url: str | None) -> None:
+        image_calls.append((image_bytes, page_url))
+
+    window.set_artist_image = capture_artist_image  # type: ignore[method-assign]
+
+    controller.play_selected_track()
+    controller.open_artist_page("https://www.last.fm/music/Artist")
+
+    assert image_calls == [(artist_image.image_bytes, artist_image.page_url)]
+    assert opened_urls == ["https://www.last.fm/music/Artist"]
+
+
+def test_controller_ignores_stale_artist_image_results(qapp) -> None:
+    window = MainWindow()
+    playback = FakePlaybackService()
+    playback.current_track = Track(artist="Current", title="Title")
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+
+    controller._handle_artist_image_loaded(
+        ArtistImage(
+            artist="Previous",
+            page_url="https://www.last.fm/music/Previous",
+            image_bytes=b"image",
+        )
+    )
+
+    assert window.artist_image_label.isHidden()
+
+
+def test_controller_handles_artist_image_edge_cases(qapp, monkeypatch) -> None:
+    monkeypatch.setattr(controller_module.QDesktopServices, "openUrl", lambda _url: False)
+    window = MainWindow()
+    image_calls: list[tuple[bytes | None, str | None]] = []
+    window.set_artist_image = lambda image, url: image_calls.append((image, url))  # type: ignore[method-assign]
+    controller = ApplicationController(window)
+
+    controller.open_artist_page("https://www.last.fm/music/Artist")
+    controller._handle_artist_image_loaded(object())
+    controller._show_artist_image(None)
+    worker = FakeArtistImageWorker("Artist", object())
+    controller._active_artist_image_workers.append(worker)  # type: ignore[arg-type]
+    controller._forget_artist_image_worker(worker)  # type: ignore[arg-type]
+
+    feedback = window.feedback_log.toPlainText()
+    assert "Could not open artist page:" in feedback
+    assert image_calls == [(None, None)]
+    assert controller._active_artist_image_workers == []
 
 
 def test_controller_auto_plays_next_track_after_finished_in_sort_order(

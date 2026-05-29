@@ -18,7 +18,12 @@ from my_lastfm_player.app_credentials import (
 from my_lastfm_player.dependencies import DependencyCheckResult, check_external_dependencies
 from my_lastfm_player.download import DownloadManager
 from my_lastfm_player.i18n import translate
-from my_lastfm_player.lastfm import LastFmError, LastFmLovedTracksScraper
+from my_lastfm_player.lastfm import (
+    ArtistImage,
+    LastFmArtistInfoClient,
+    LastFmError,
+    LastFmLovedTracksScraper,
+)
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.playback import PlaybackError, PlaybackService
 from my_lastfm_player.scrobbling import SCROBBLE_THRESHOLD, ScrobblingService
@@ -26,6 +31,7 @@ from my_lastfm_player.settings import AppSettings
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import (
+    ArtistImageWorker,
     DownloadTracksWorker,
     FetchLovedTracksWorker,
     LookupTracksWorker,
@@ -47,6 +53,7 @@ DownloadWorkerFactory = Callable[
     [str, DownloadManager, JsonTrackRepository, int, str | None, int | None],
     DownloadTracksWorker,
 ]
+ArtistImageWorkerFactory = Callable[[str, LastFmArtistInfoClient], ArtistImageWorker]
 WorkflowWorker = FetchLovedTracksWorker | LookupTracksWorker | DownloadTracksWorker
 
 
@@ -61,10 +68,12 @@ class ApplicationController(QObject):
         youtube_resolver: YouTubeResolver | None = None,
         download_manager: DownloadManager | None = None,
         playback_service: PlaybackService | None = None,
+        artist_info_client: LastFmArtistInfoClient | None = None,
         dependency_checker: DependencyChecker = check_external_dependencies,
         fetch_worker_factory: FetchWorkerFactory = FetchLovedTracksWorker,
         lookup_worker_factory: LookupWorkerFactory = LookupTracksWorker,
         download_worker_factory: DownloadWorkerFactory = DownloadTracksWorker,
+        artist_image_worker_factory: ArtistImageWorkerFactory = ArtistImageWorker,
     ) -> None:
         super().__init__(window)
         self.window = window
@@ -73,12 +82,20 @@ class ApplicationController(QObject):
         self.youtube_resolver = youtube_resolver or YouTubeResolver()
         self.download_manager = download_manager or DownloadManager()
         self._playback_service = playback_service
+        self.artist_info_client = artist_info_client or LastFmArtistInfoClient()
+        self._artist_images_enabled = (
+            playback_service is None
+            or artist_info_client is not None
+            or artist_image_worker_factory is not ArtistImageWorker
+        )
         self.dependency_checker = dependency_checker
         self.fetch_worker_factory = fetch_worker_factory
         self.lookup_worker_factory = lookup_worker_factory
         self.download_worker_factory = download_worker_factory
+        self.artist_image_worker_factory = artist_image_worker_factory
         self._active_threads: list[QThread] = []
         self._active_workers: list[WorkflowWorker] = []
+        self._active_artist_image_workers: list[ArtistImageWorker] = []
         self._running_worker_count = 0
         self._pending_play_cache_key: str | None = None
         self._pending_retry_cache_key: str | None = None
@@ -92,6 +109,7 @@ class ApplicationController(QObject):
         self._scrobble_submitted = False
         self._scrobble_seek_start_ms: int = 0
         self._playback_start_time: int | None = None
+        self._artist_image_cache: dict[str, ArtistImage | None] = {}
         self._random = random.SystemRandom()
 
     @property
@@ -121,6 +139,7 @@ class ApplicationController(QObject):
         self.window.stop_requested.connect(self.stop_playback)
         self.window.next_requested.connect(self.play_next_track)
         self.window.seek_requested.connect(self.seek_playback)
+        self.window.artist_page_requested.connect(self.open_artist_page)
         self.window.language_changed.connect(self.check_dependencies)
         self.window.randomize_playback_changed.connect(AppSettings().set_randomize_playback)
         self.window.preferences_requested.connect(self._show_preferences)
@@ -301,6 +320,18 @@ class ApplicationController(QObject):
                 path=data_dir,
             )
         )
+
+    def open_artist_page(self, url: str) -> None:
+        """Open an artist Last.fm page in the user's default browser."""
+
+        if not QDesktopServices.openUrl(QUrl(url)):
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Could not open artist page: {url}",
+                    url=url,
+                )
+            )
 
     def _init_scrobbling(self) -> None:
         app_credentials = lastfm_api_credentials()
@@ -642,6 +673,7 @@ class ApplicationController(QObject):
 
         self.window.set_playing_track(None)
         self.window.set_now_playing(None)
+        self.window.set_artist_image(None, None)
         self.window.reset_playback_timeline()
         self.window.set_playback_controls(active=False)
         self._scrobble_submitted = False
@@ -718,6 +750,23 @@ class ApplicationController(QObject):
             len(self._active_threads),
             len(self._active_workers),
         )
+        thread.start()
+
+    def _run_artist_image_worker(self, worker: ArtistImageWorker) -> None:
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.artist_image_loaded.connect(self._handle_artist_image_loaded)
+        worker.error.connect(self._handle_artist_image_error)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(lambda: self._forget_thread(thread))
+        thread.finished.connect(lambda worker=worker: self._forget_artist_image_worker(worker))
+
+        self._active_threads.append(thread)
+        self._active_artist_image_workers.append(worker)
+        LOGGER.info("Starting artist image worker for %s", worker.artist)
         thread.start()
 
     def _handle_tracks_loaded(self, username: str, tracks: object) -> None:
@@ -969,6 +1018,7 @@ class ApplicationController(QObject):
             self.playback_service.position_ms(),
             self.playback_service.duration_ms(),
         )
+        self._load_artist_image(track.artist)
         self._scrobble_submitted = False
         self._scrobble_seek_start_ms = 0
         self._playback_start_time = int(time.time())
@@ -991,6 +1041,41 @@ class ApplicationController(QObject):
                 title=track.title,
             )
         )
+
+    def _load_artist_image(self, artist: str) -> None:
+        if not self._artist_images_enabled:
+            return
+
+        cached_image = self._artist_image_cache.get(artist)
+        if artist in self._artist_image_cache:
+            self._show_artist_image(cached_image)
+            return
+
+        self.window.set_artist_image(None, None)
+        worker = self.artist_image_worker_factory(artist, self.artist_info_client)
+        self._run_artist_image_worker(worker)
+
+    def _handle_artist_image_loaded(self, artist_image: object) -> None:
+        if not isinstance(artist_image, ArtistImage):
+            self._handle_artist_image_error(
+                translate("ApplicationController", "Last.fm returned invalid artist image data.")
+            )
+            return
+
+        self._artist_image_cache[artist_image.artist] = artist_image
+        current_track = self.playback_service.current_track
+        if current_track is None or current_track.artist != artist_image.artist:
+            return
+        self._show_artist_image(artist_image)
+
+    def _handle_artist_image_error(self, message: str) -> None:
+        LOGGER.warning("Artist image lookup failed: %s", message)
+
+    def _show_artist_image(self, artist_image: ArtistImage | None) -> None:
+        if artist_image is None:
+            self.window.set_artist_image(None, None)
+            return
+        self.window.set_artist_image(artist_image.image_bytes, artist_image.page_url)
 
     def _can_prepare_for_playback(self, track: Track) -> bool:
         return (
@@ -1191,6 +1276,7 @@ class ApplicationController(QObject):
 
         self.window.set_playing_track(None)
         self.window.set_now_playing(None)
+        self.window.set_artist_image(None, None)
         self.window.reset_playback_timeline()
         self.window.set_playback_controls(active=False)
         self._scrobble_submitted = False
@@ -1276,3 +1362,11 @@ class ApplicationController(QObject):
         if worker in self._active_workers:
             self._active_workers.remove(worker)
         LOGGER.info("Worker released; active_workers=%d", len(self._active_workers))
+
+    def _forget_artist_image_worker(self, worker: ArtistImageWorker) -> None:
+        if worker in self._active_artist_image_workers:
+            self._active_artist_image_workers.remove(worker)
+        LOGGER.info(
+            "Artist image worker released; active_artist_image_workers=%d",
+            len(self._active_artist_image_workers),
+        )

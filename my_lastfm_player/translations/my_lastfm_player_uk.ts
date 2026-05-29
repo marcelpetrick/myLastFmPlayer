@@ -59,6 +59,16 @@
         <translation>Не вдалося відкрити теку даних: {path}</translation>
     </message>
     <message>
+        <location filename="../controller.py" line="306" />
+        <source>Could not open artist page: {url}</source>
+        <translation>Не вдалося відкрити сторінку виконавця: {url}</translation>
+    </message>
+    <message>
+        <location filename="../controller.py" line="1053" />
+        <source>Last.fm returned invalid artist image data.</source>
+        <translation>Last.fm повернув недійсні дані зображення виконавця.</translation>
+    </message>
+    <message>
         <location filename="../controller.py" line="308" />
         <source>Last.fm scrobbling is disabled because {api_key_env}/{api_secret_env} are not configured and no bundled credentials are available.</source>
         <translation>Прокручування Last.fm вимкнено, оскільки {api_key_env}/{api_secret_env} не налаштовано та недоступні пакетні облікові дані.</translation>
@@ -762,6 +772,11 @@
         <location filename="../ui/main_window.py" line="876" />
         <source>Randomize</source>
         <translation>Випадково</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="877" />
+        <source>Open artist page on Last.fm</source>
+        <translation>Відкрити сторінку виконавця на Last.fm</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="877" />

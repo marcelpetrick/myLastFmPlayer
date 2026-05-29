@@ -28,7 +28,7 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "exclude-members": (
-        "download_requested,download_stop_requested,retry_download_requested,error,fetch_pause_requested,fetch_requested,file_cache_requested,"
+        "artist_image_loaded,artist_page_requested,download_requested,download_stop_requested,retry_download_requested,error,fetch_pause_requested,fetch_requested,file_cache_requested,"
         "fetch_stop_requested,fetch_stopped,finished,language_changed,next_requested,pause_requested,"
         "play_requested,preferences_requested,progress,quit_requested,randomize_playback_changed,seek_requested,stop_requested,"
         "theme_requested,track_updated,tracks_downloaded,"

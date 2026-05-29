@@ -59,6 +59,16 @@
         <translation>无法打开数据文件夹：{path}</translation>
     </message>
     <message>
+        <location filename="../controller.py" line="306" />
+        <source>Could not open artist page: {url}</source>
+        <translation>无法打开艺术家页面：{url}</translation>
+    </message>
+    <message>
+        <location filename="../controller.py" line="1053" />
+        <source>Last.fm returned invalid artist image data.</source>
+        <translation>Last.fm 返回了无效的艺术家图片数据。</translation>
+    </message>
+    <message>
         <location filename="../controller.py" line="308" />
         <source>Last.fm scrobbling is disabled because {api_key_env}/{api_secret_env} are not configured and no bundled credentials are available.</source>
         <translation>Last.fm 记录已禁用，因为未配置 {api_key_env}/{api_secret_env} 并且没有可用的捆绑凭据。</translation>
@@ -762,6 +772,11 @@
         <location filename="../ui/main_window.py" line="876" />
         <source>Randomize</source>
         <translation>随机播放</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="877" />
+        <source>Open artist page on Last.fm</source>
+        <translation>在 Last.fm 打开艺术家页面</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="877" />
