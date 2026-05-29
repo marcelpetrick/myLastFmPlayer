@@ -6,42 +6,42 @@
     <message>
         <location filename="../controller.py" line="175" />
         <source>No cached tracks found for {username}; fetching from Last.fm.</source>
-        <translation>找不到 {username} 的缓存曲目； 从 Last.fm 获取。</translation>
+        <translation>未找到 {username} 的缓存曲目；正在从 Last.fm 获取。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="186" />
         <source>Found {count} cached tracks for {username}; checking Last.fm before using them.</source>
-        <translation>找到 {username} 的 {count} 条缓存曲目； 在使用它们之前检查 Last.fm。</translation>
+        <translation>找到 {username} 的 {count} 首缓存曲目；使用前正在检查 Last.fm。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="206" />
         <source>Loaded {count} cached tracks for {username}; skipped Last.fm fetch.</source>
-        <translation>已为 {username} 加载 {count} 首缓存曲目； 跳过 Last.fm 获取。</translation>
+        <translation>已为 {username} 加载 {count} 首缓存曲目；已跳过 Last.fm 获取。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="220" />
         <source>Could not verify Last.fm loved-track count for {username}; using {count} cached tracks: {error}</source>
-        <translation>无法验证 {username} 的 Last.fm 喜爱曲目计数； 使用 {count} 个缓存曲目：{error}</translation>
+        <translation>无法验证 {username} 的 Last.fm 喜爱曲目数量；将使用 {count} 首缓存曲目：{error}</translation>
     </message>
     <message>
         <location filename="../controller.py" line="233" />
         <source>Could not read Last.fm loved-track count for {username}; fetching fresh data instead of trusting {count} cached tracks.</source>
-        <translation>无法读取 {username} 的 Last.fm 喜爱曲目计数； 获取新数据而不是信任 {count} 个缓存曲目。</translation>
+        <translation>无法读取 {username} 的 Last.fm 喜爱曲目数量；将重新获取数据，而不使用 {count} 首缓存曲目。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="245" />
         <source>Last.fm reports {online_count} loved tracks for {username}; cached track count matches.</source>
-        <translation>Last.fm 报告了 {online_count} 个喜欢 {username} 的曲目； 缓存的曲目计数匹配。</translation>
+        <translation>Last.fm 显示 {username} 有 {online_count} 首喜爱曲目；缓存曲目数量匹配。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="256" />
         <source>Last.fm reports {online_count} loved tracks for {username}, but the cache has {cached_count}; fetching fresh data.</source>
-        <translation>Last.fm 报告 {username} 有 {online_count} 个喜欢的曲目，但缓存有 {cached_count}； 获取新数据。</translation>
+        <translation>Last.fm 显示 {username} 有 {online_count} 首喜爱曲目，但缓存中有 {cached_count} 首；正在重新获取数据。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="281" />
         <source>Dependency check finished: {message}</source>
-        <translation>依赖性检查完成：{message}</translation>
+        <translation>依赖项检查完成：{message}</translation>
     </message>
     <message>
         <location filename="../controller.py" line="298" />
@@ -66,77 +66,77 @@
     <message>
         <location filename="../controller.py" line="340" />
         <source>Last.fm scrobbling is disabled because {api_key_env}/{api_secret_env} are not configured and no bundled credentials are available.</source>
-        <translation>Last.fm 记录已禁用，因为未配置 {api_key_env}/{api_secret_env} 并且没有可用的捆绑凭据。</translation>
+        <translation>Last.fm 播放记录同步已禁用，因为未配置 {api_key_env}/{api_secret_env}，且没有可用的内置凭据。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="355" />
         <source>Loaded Last.fm scrobbling settings; stored session key is {state}.</source>
-        <translation>加载 Last.fm 乱码设置； 存储的会话密钥是{state}。</translation>
+        <translation>已加载 Last.fm 播放记录同步设置；已保存的会话密钥状态为 {state}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="359" />
         <source>present</source>
-        <translation>展示</translation>
+        <translation>存在</translation>
     </message>
     <message>
         <location filename="../controller.py" line="361" />
         <source>missing</source>
-        <translation>丢失的</translation>
+        <translation>缺失</translation>
     </message>
     <message>
         <location filename="../controller.py" line="375" />
         <source>Connected Last.fm scrobbling as {username}.</source>
-        <translation>以 {username} 身份连接 Last.fm。</translation>
+        <translation>已以 {username} 身份连接 Last.fm 播放记录同步。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="383" />
         <source>Stored Last.fm session key could not be verified; scrobbling remains disconnected.</source>
-        <translation>无法验证存储的 Last.fm 会话密钥； 乱写保持断开状态。</translation>
+        <translation>无法验证已保存的 Last.fm 会话密钥；播放记录同步仍处于断开状态。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="393" />
         <source>Opening preferences.</source>
-        <translation>打开首选项。</translation>
+        <translation>正在打开偏好设置。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="407" />
         <source>Preferences closed; no Last.fm scrobbling service is active.</source>
-        <translation>偏好设置已关闭； 没有 Last.fm 乱码服务处于活动状态。</translation>
+        <translation>偏好设置已关闭；没有活动的 Last.fm 播放记录同步服务。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="416" />
         <source>Saved Last.fm scrobbling preferences for {username}.</source>
-        <translation>已保存 {username} 的 Last.fm 乱码首选项。</translation>
+        <translation>已保存 {username} 的 Last.fm 播放记录同步偏好设置。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="420" />
         <source>no user</source>
-        <translation>没有用户</translation>
+        <translation>无用户</translation>
     </message>
     <message>
         <location filename="../controller.py" line="431" />
         <source>Enter a Last.fm username before fetching tracks.</source>
-        <translation>在获取曲目之前输入 Last.fm 用户名。</translation>
+        <translation>获取曲目前请输入 Last.fm 用户名。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="442" />
         <source>Loaded cached tracks</source>
-        <translation>加载缓存曲目</translation>
+        <translation>已加载缓存曲目</translation>
     </message>
     <message>
         <location filename="../controller.py" line="459" />
         <source>Could not reach Last.fm for {username}: {error}</source>
-        <translation>无法访问 {username} 的 Last.fm：{error}</translation>
+        <translation>无法为 {username} 访问 Last.fm：{error}</translation>
     </message>
     <message>
         <location filename="../controller.py" line="473" />
         <source>Starting fresh Last.fm fetch for {username}; {count} tracks expected.</source>
-        <translation>开始对 {username} 进行新的 Last.fm 提取；预计 {count} 首曲目。</translation>
+        <translation>开始为 {username} 重新从 Last.fm 获取；预计 {count} 首曲目。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="482" />
         <source>Starting fresh Last.fm fetch for {username}.</source>
-        <translation>开始对 {username} 进行新的 Last.fm 提取。</translation>
+        <translation>开始为 {username} 重新从 Last.fm 获取。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="491" />
@@ -146,7 +146,7 @@
     <message>
         <location filename="../controller.py" line="507" />
         <source>Fetch resumed.</source>
-        <translation>恢复恢复。</translation>
+        <translation>获取已恢复。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="513" />
@@ -161,18 +161,18 @@
     <message>
         <location filename="../controller.py" line="537" />
         <source>Enter a Last.fm username before resolving tracks.</source>
-        <translation>在解析曲目之前输入 Last.fm 用户名。</translation>
+        <translation>解析曲目前请输入 Last.fm 用户名。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="546" />
         <source>Starting YouTube lookup for {username}; priority={priority}, limit={limit}.</source>
-        <translation>开始在 YouTube 上查找 {username}； 优先级={priority}，限制={limit}。</translation>
+        <translation>开始为 {username} 查找 YouTube 来源；优先级={priority}，限制={limit}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="606" />
         <location filename="../controller.py" line="552" />
         <source>none</source>
-        <translation>没有任何</translation>
+        <translation>无</translation>
     </message>
     <message>
         <location filename="../controller.py" line="610" />
@@ -183,17 +183,17 @@
     <message>
         <location filename="../controller.py" line="562" />
         <source>Starting YouTube lookup</source>
-        <translation>开始 YouTube 查找</translation>
+        <translation>开始查找 YouTube 来源</translation>
     </message>
     <message>
         <location filename="../controller.py" line="585" />
         <source>Enter a Last.fm username before downloading tracks.</source>
-        <translation>下载曲目之前输入 Last.fm 用户名。</translation>
+        <translation>下载曲目前请输入 Last.fm 用户名。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="599" />
         <source>Starting downloads for {username}; concurrency={concurrency}, priority={priority}, limit={limit}.</source>
-        <translation>开始下载 {username}； 并发={concurrency}，优先级={priority}，限制={limit}。</translation>
+        <translation>开始为 {username} 下载；并发数={concurrency}，优先级={priority}，限制={limit}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="615" />
@@ -208,33 +208,33 @@
     <message>
         <location filename="../controller.py" line="652" />
         <source>Playback resumed.</source>
-        <translation>播放恢复。</translation>
+        <translation>播放已恢复。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="661" />
         <source>Playback paused.</source>
-        <translation>播放暂停。</translation>
+        <translation>播放已暂停。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="689" />
         <location filename="../controller.py" line="670" />
         <source>No track is currently playing.</source>
-        <translation>当前没有播放任何曲目。</translation>
+        <translation>当前没有正在播放的曲目。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="681" />
         <source>Playback stopped.</source>
-        <translation>播放停止。</translation>
+        <translation>播放已停止。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="710" />
         <source>Seeked playback to {seconds} seconds.</source>
-        <translation>寻求播放到 {seconds} 秒。</translation>
+        <translation>已将播放位置跳转到 {seconds} 秒。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="775" />
         <source>Fetch for {username} returned invalid track data.</source>
-        <translation>获取 {username} 返回了无效的曲目数据。</translation>
+        <translation>为 {username} 获取时返回了无效曲目数据。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="785" />
@@ -244,22 +244,22 @@
     <message>
         <location filename="../controller.py" line="808" />
         <source>Stopped fetch for {username} returned invalid data.</source>
-        <translation>停止获取 {username} 返回了无效数据。</translation>
+        <translation>停止为 {username} 获取后返回了无效数据。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="818" />
         <source>Stopped fetch for {username} after {count} tracks.</source>
-        <translation>在 {count} 个曲目之后停止提取 {username}。</translation>
+        <translation>为 {username} 获取到 {count} 首曲目后已停止。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="829" />
         <source>Fetch for {username} returned invalid partial data.</source>
-        <translation>获取 {username} 返回了无效的部分数据。</translation>
+        <translation>为 {username} 获取时返回了无效的部分数据。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="840" />
         <source>Fetch progress for {username}: {count} tracks are visible now.</source>
-        <translation>获取 {username} 的进度：现在可以看到 {count} 条曲目。</translation>
+        <translation>{username} 的获取进度：当前已显示 {count} 首曲目。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="848" />
@@ -269,52 +269,52 @@
     <message>
         <location filename="../controller.py" line="867" />
         <source>Workflow for {username} returned an invalid track update.</source>
-        <translation>{username} 的工作流程返回了无效的曲目更新。</translation>
+        <translation>{username} 的工作流程返回了无效曲目更新。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="877" />
         <source>Track update from {username}: {artist} - {title} is now {status}.</source>
-        <translation>来自 {username} 的曲目更新：{artist} - {title} 现在为 {status}。</translation>
+        <translation>{username} 的曲目更新：{artist} - {title} 现在为 {status}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="892" />
         <source>Lookup for {username} returned invalid track data.</source>
-        <translation>查找 {username} 返回了无效的曲目数据。</translation>
+        <translation>为 {username} 查找时返回了无效曲目数据。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="908" />
         <source>Resolved YouTube URLs for {resolved_count}/{count} tracks; {not_found_count} were not found.</source>
-        <translation>已解析 {resolved_count}/{count} 首曲目的 YouTube 网址； 未找到 {not_found_count}。</translation>
+        <translation>已为 {resolved_count}/{count} 首曲目解析 YouTube 网址；{not_found_count} 首未找到。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="932" />
         <source>No queued tracks are ready for download.</source>
-        <translation>没有排队的曲目可供下载。</translation>
+        <translation>队列中没有可下载的曲目。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="943" />
         <source>Download for {username} returned invalid track data.</source>
-        <translation>{username} 的下载返回了无效的曲目数据。</translation>
+        <translation>为 {username} 下载时返回了无效曲目数据。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="963" />
         <source>Download run for {username} finished: {downloaded_count}/{count} tracks downloaded, {failed_count} failed.</source>
-        <translation>{username} 的下载运行已完成：已下载 {downloaded_count}/{count} 个曲目，{failed_count} 失败。</translation>
+        <translation>{username} 的下载任务已完成：已下载 {downloaded_count}/{count} 首曲目，{failed_count} 首失败。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="990" />
         <source>Failed</source>
-        <translation>失败的</translation>
+        <translation>失败</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1028" />
         <source>Updating Last.fm now-playing for {artist} - {title}.</source>
-        <translation>正在更新 {artist} - {title} 正在播放的 Last.fm。</translation>
+        <translation>正在向 Last.fm 更新当前播放：{artist} - {title}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1037" />
         <source>Playing {artist} - {title}.</source>
-        <translation>正在播放{artist} - {title}。</translation>
+        <translation>正在播放 {artist} - {title}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1061" />
@@ -324,17 +324,17 @@
     <message>
         <location filename="../controller.py" line="1091" />
         <source>Enter a Last.fm username before preparing playback.</source>
-        <translation>在准备播放之前输入 Last.fm 用户名。</translation>
+        <translation>准备播放前请输入 Last.fm 用户名。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1100" />
         <source>Preparing {artist} - {title} for playback.</source>
-        <translation>正在准备播放 {artist} - {title}。</translation>
+        <translation>正在准备 {artist} - {title} 以供播放。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1117" />
         <source>Starting automatic YouTube lookup for {count} fetched tracks.</source>
-        <translation>开始自动 YouTube 查找 {count} 个提取的曲目。</translation>
+        <translation>开始为 {count} 首已获取曲目自动查找 YouTube 来源。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1133" />
@@ -354,7 +354,7 @@
     <message>
         <location filename="../controller.py" line="1173" />
         <source>Starting automatic download queue for resolved tracks.</source>
-        <translation>启动已解析曲目的自动下载队列。</translation>
+        <translation>正在为已解析的曲目启动自动下载队列。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1181" />
@@ -364,12 +364,12 @@
     <message>
         <location filename="../controller.py" line="1255" />
         <source>Submitting Last.fm scrobble for {artist} - {title}.</source>
-        <translation>正在提交 {artist} - {title} 的 Last.fm scrobble。</translation>
+        <translation>正在向 Last.fm 提交播放记录：{artist} - {title}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1285" />
         <source>Finished playback for {artist} - {title}.</source>
-        <translation>已完成播放{artist} - {title}。</translation>
+        <translation>已完成播放 {artist} - {title}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1305" />
@@ -380,17 +380,17 @@
     <message>
         <location filename="../controller.py" line="1316" />
         <source>Continuing with random track: {artist} - {title}.</source>
-        <translation>继续随机曲目：{artist} - {title}。</translation>
+        <translation>继续播放随机曲目：{artist} - {title}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1327" />
         <source>Continuing with next track: {artist} - {title}.</source>
-        <translation>继续下一首曲目：{artist} - {title}。</translation>
+        <translation>继续播放下一首曲目：{artist} - {title}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1347" />
         <source>All background work is finished; controls are enabled again.</source>
-        <translation>全部后台工作完成； 控件再次启用。</translation>
+        <translation>全部后台任务已完成；控件已重新启用。</translation>
     </message>
     <message>
         <source>Could not open file cache: {error}</source>
@@ -417,7 +417,7 @@
     <message>
         <location filename="../dependencies.py" line="30" />
         <source>Dependencies installed: {tools}</source>
-        <translation>安装的依赖项：{tools}</translation>
+        <translation>已安装依赖项：{tools}</translation>
     </message>
     <message>
         <location filename="../dependencies.py" line="35" />
@@ -429,7 +429,7 @@
     <message>
         <location filename="../download.py" line="124" />
         <source>Queued {count} downloads</source>
-        <translation>已排队 {count} 个下载</translation>
+        <translation>已加入 {count} 个下载任务</translation>
     </message>
     <message>
         <location filename="../download.py" line="153" />
@@ -441,12 +441,12 @@
     <message>
         <location filename="../workers.py" line="79" />
         <source>Looking up Last.fm user {username}</source>
-        <translation>查找 Last.fm 用户 {username}</translation>
+        <translation>正在查找 Last.fm 用户 {username}</translation>
     </message>
     <message>
         <location filename="../workers.py" line="95" />
         <source>Stopped fetch after {count} tracks</source>
-        <translation>在 {count} 个曲目后停止获取</translation>
+        <translation>获取到 {count} 首曲目后已停止</translation>
     </message>
     <message>
         <location filename="../workers.py" line="105" />
@@ -475,12 +475,12 @@
     <message>
         <location filename="../workers.py" line="183" />
         <source>Resolving YouTube URLs for {username}</source>
-        <translation>解析 {username} 的 YouTube 网址</translation>
+        <translation>正在为 {username} 解析 YouTube 网址</translation>
     </message>
     <message>
         <location filename="../workers.py" line="199" />
         <source>Resolved {count} tracks</source>
-        <translation>已解决 {count} 个曲目</translation>
+        <translation>已解析 {count} 首曲目</translation>
     </message>
 </context><context>
     <name>MainWindow</name>
@@ -488,7 +488,7 @@
         <location filename="../ui/main_window.py" line="1007" />
         <location filename="../ui/main_window.py" line="187" />
         <source>Ready</source>
-        <translation>准备好</translation>
+        <translation>就绪</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="385" />
@@ -499,7 +499,7 @@
         <location filename="../ui/main_window.py" line="1000" />
         <location filename="../ui/main_window.py" line="478" />
         <source>Idle</source>
-        <translation>闲置的</translation>
+        <translation>空闲</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="502" />
@@ -509,7 +509,7 @@
     <message>
         <location filename="../ui/main_window.py" line="513" />
         <source>Playlist: {count} titles</source>
-        <translation>播放列表：{count} 个标题</translation>
+        <translation>播放列表：{count} 首曲目</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="534" />
@@ -558,7 +558,7 @@
     <message>
         <location filename="../ui/main_window.py" line="672" />
         <source>Updated {artist} - {title}: {status}</source>
-        <translation>更新了{artist} - {title}：{status}</translation>
+        <translation>已更新 {artist} - {title}：{status}</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="974" />
@@ -595,12 +595,12 @@
     <message>
         <location filename="../ui/main_window.py" line="764" />
         <source>It is intended as a practical Linux desktop helper for rebuilding a personal loved-track collection without manually searching every song.</source>
-        <translation>它旨在作为实用的 Linux 桌面助手，用于重建个人喜爱曲目收藏，而不必手动搜索每一首歌。</translation>
+        <translation>它可作为实用的 Linux 桌面助手，帮助重建个人喜爱曲目收藏，而不必手动搜索每一首歌。</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="768" />
         <source>Optional Last.fm scrobbling can connect the local playback workflow back to the user's Last.fm account.</source>
-        <translation>可选的 Last.fm scrobbling 可以把本地播放流程重新连接到用户的 Last.fm 帐户。</translation>
+        <translation>可选的 Last.fm 播放记录同步可将本地播放流程连接回用户的 Last.fm 账户。</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="956" />
@@ -641,7 +641,7 @@
         <location filename="../ui/main_window.py" line="854" />
         <location filename="../ui/main_window.py" line="806" />
         <source>Apache License 2.0; Last.fm scrobbling integration.</source>
-        <translation>Apache License 2.0；Last.fm scrobbling 集成。</translation>
+        <translation>Apache License 2.0；Last.fm 播放记录同步集成。</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="855" />
@@ -668,7 +668,7 @@
     <message>
         <location filename="../ui/main_window.py" line="952" />
         <source>Fetch loved tracks</source>
-        <translation>获取喜爱的曲目</translation>
+        <translation>获取喜爱曲目</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="953" />
@@ -683,12 +683,12 @@
     <message>
         <location filename="../ui/main_window.py" line="957" />
         <source>Quit</source>
-        <translation>辞职</translation>
+        <translation>退出</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="958" />
         <source>Main</source>
-        <translation>主要的</translation>
+        <translation>主界面</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="959" />
@@ -698,22 +698,22 @@
     <message>
         <location filename="../ui/main_window.py" line="960" />
         <source>Light</source>
-        <translation>光</translation>
+        <translation>浅色</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="961" />
         <source>Dark</source>
-        <translation>黑暗的</translation>
+        <translation>深色</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="962" />
         <source>Lilac</source>
-        <translation>紫丁香</translation>
+        <translation>淡紫</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="963" />
         <source>Mint</source>
-        <translation>薄荷</translation>
+        <translation>薄荷绿</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="964" />
@@ -738,7 +738,7 @@
     <message>
         <location filename="../ui/main_window.py" line="968" />
         <source>Fetch</source>
-        <translation>拿来</translation>
+        <translation>获取</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="969" />
@@ -748,7 +748,7 @@
     <message>
         <location filename="../ui/main_window.py" line="970" />
         <source>Artist or track title</source>
-        <translation>艺术家或曲目标题</translation>
+        <translation>艺术家或曲名</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="971" />
@@ -758,12 +758,12 @@
     <message>
         <location filename="../ui/main_window.py" line="972" />
         <source>Playback</source>
-        <translation>回放</translation>
+        <translation>播放</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="975" />
         <source>Play</source>
-        <translation>玩</translation>
+        <translation>播放</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="978" />
@@ -813,7 +813,7 @@
     <message>
         <location filename="../ui/main_window.py" line="997" />
         <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
-        <translation>依赖项： yt-dlp 和 ffmpeg 尚未检查</translation>
+        <translation>依赖项：yt-dlp 和 ffmpeg 尚未检查</translation>
     </message>
     <message>
         <source>MIT License; legacy Last.fm HTML parser support.</source>
@@ -896,7 +896,7 @@
     <message>
         <location filename="../ui/preferences_dialog.py" line="157" />
         <source>Authenticate with Last.fm</source>
-        <translation>使用 Last.fm 进行身份验证</translation>
+        <translation>通过 Last.fm 进行身份验证</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="158" />
@@ -906,22 +906,22 @@
     <message>
         <location filename="../ui/preferences_dialog.py" line="159" />
         <source>Disconnect</source>
-        <translation>断开</translation>
+        <translation>断开连接</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="160" />
         <source>Scrobbling</source>
-        <translation>乱写乱画</translation>
+        <translation>播放记录同步</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="161" />
         <source>Enable scrobbling</source>
-        <translation>启用乱码</translation>
+        <translation>启用播放记录同步</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="163" />
         <source>Submits to Last.fm after 33% of each track has been played.</source>
-        <translation>每首曲目播放 33% 后提交到 Last.fm。</translation>
+        <translation>每首曲目播放 33% 后将播放记录提交到 Last.fm。</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="165" />
@@ -941,7 +941,7 @@
     <message>
         <location filename="../ui/preferences_dialog.py" line="169" />
         <source>Select the browser whose YouTube login cookies yt-dlp should use. Required for age-restricted videos. You must be signed into YouTube in the selected browser. Parallel download changes apply to new work.</source>
-        <translation>选择 yt-dlp 应使用其 YouTube 登录 Cookie 的浏览器。年龄受限视频需要此设置。你必须已在所选浏览器中登录 YouTube。并行下载的更改会应用于新的任务。</translation>
+        <translation>选择 yt-dlp 要使用哪一浏览器中的 YouTube 登录 Cookie。年龄受限视频需要此设置。你必须已在所选浏览器中登录 YouTube。并行下载的更改会应用于新任务。</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="176" />
@@ -957,33 +957,33 @@
         <location filename="../ui/preferences_dialog.py" line="183" />
         <source>⚠ API credentials not configured.
 Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
-        <translation>⚠ 未配置 API 凭据。 
+        <translation>⚠ 未配置 API 凭据。
 设置 LASTFM_API_KEY 和 LASTFM_API_SECRET 环境变量。</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="202" />
         <source>🟢 Connected as {username}</source>
-        <translation>🟢 以 {username} 连接</translation>
+        <translation>🟢 已以 {username} 身份连接</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="211" />
         <source>🔵 Browser opened — authorize the app, then click «I've authorized».</source>
-        <translation>🔵 浏览器已打开 — 授权该应用程序，然后单击“我已授权”。</translation>
+        <translation>🔵 浏览器已打开 — 请授权此应用，然后点击“我已授权”。</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="217" />
         <source>🔴 Not connected</source>
-        <translation>🔴未连接</translation>
+        <translation>🔴 未连接</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="240" />
         <source>⚠ Could not start authentication. Check API credentials.</source>
-        <translation>⚠ 无法启动身份验证。 检查 API 凭据。</translation>
+        <translation>⚠ 无法启动身份验证。请检查 API 凭据。</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="251" />
         <source>⚠ Authorization not confirmed yet. Authorize in the browser, then try again.</source>
-        <translation>⚠ 授权尚未确认。 在浏览器中授权，然后重试。</translation>
+        <translation>⚠ 授权尚未确认。请先在浏览器中授权，然后重试。</translation>
     </message>
     <message>
         <source>Submits to Last.fm after 10 % of each track has been played.</source>
@@ -999,17 +999,17 @@ Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
     <message>
         <location filename="../ui/track_table_model.py" line="96" />
         <source>Title</source>
-        <translation>标题</translation>
+        <translation>曲名</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="98" />
         <source>Loved at</source>
-        <translation>喜欢时间</translation>
+        <translation>标记喜爱时间</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="100" />
         <source>Status</source>
-        <translation>地位</translation>
+        <translation>状态</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="102" />
@@ -1034,7 +1034,7 @@ Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
     <message>
         <location filename="../ui/track_table_model.py" line="201" />
         <source>Waiting for implementation</source>
-        <translation>等待实施</translation>
+        <translation>等待实现</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="210" />
@@ -1044,12 +1044,12 @@ Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
     <message>
         <location filename="../ui/track_table_model.py" line="212" />
         <source>Queued</source>
-        <translation>排队</translation>
+        <translation>已排队</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="214" />
         <source>Searching</source>
-        <translation>搜寻中</translation>
+        <translation>正在搜索</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="216" />
@@ -1064,7 +1064,7 @@ Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
     <message>
         <location filename="../ui/track_table_model.py" line="220" />
         <source>Failed</source>
-        <translation>失败的</translation>
+        <translation>失败</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="222" />
@@ -1081,16 +1081,16 @@ Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
     <message>
         <location filename="../youtube.py" line="91" />
         <source>Searching {done}/{total}: {artist} - {title}</source>
-        <translation>搜索{done}/{total}：{artist} - {title}</translation>
+        <translation>正在搜索 {done}/{total}：{artist} - {title}</translation>
     </message>
     <message>
         <location filename="../youtube.py" line="236" />
         <source>Resolved {done}/{total}: {artist} - {title}</source>
-        <translation>已解析{done}/{total}：{artist} - {title}</translation>
+        <translation>已解析 {done}/{total}：{artist} - {title}</translation>
     </message>
     <message>
         <location filename="../youtube.py" line="244" />
         <source>No YouTube result {done}/{total}: {artist} - {title}</source>
-        <translation>没有 YouTube 结果{done}/{total}：{artist} - {title}</translation>
+        <translation>未找到 YouTube 结果 {done}/{total}：{artist} - {title}</translation>
     </message>
 </context></TS>
