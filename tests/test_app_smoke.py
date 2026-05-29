@@ -7,6 +7,7 @@ import types
 import pytest
 from PyQt6.QtCore import QBuffer, QByteArray, QEvent, QIODevice, QModelIndex, QPointF, Qt, QTime
 from PyQt6.QtGui import QColor, QMouseEvent, QPixmap, QStandardItemModel
+from PyQt6.QtWidgets import QSizePolicy
 
 from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
@@ -35,8 +36,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.109"
-    assert __display_version__ == "0.0.109"
+    assert __version__ == "0.0.110"
+    assert __display_version__ == "0.0.110"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -73,7 +74,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.109"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.110"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -190,7 +191,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.109\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.110\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -675,13 +676,26 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
     window = MainWindow()
     requested_pages: list[str] = []
     window.artist_page_requested.connect(requested_pages.append)
-    controls_layout = window.artist_image_label.parentWidget().layout()
+    controls_layout = window.artist_image_group.parentWidget().layout()
 
     window.set_artist_image(png_bytes(), "https://www.last.fm/music/Artist")
 
     assert controls_layout.itemAt(0).widget() is window.playback_group
-    assert controls_layout.itemAt(1).widget() is window.artist_image_label
+    assert controls_layout.itemAt(1).widget() is window.artist_image_group
     assert controls_layout.itemAt(2).widget() is window.downloads_group
+    assert controls_layout.stretch(1) == 1
+    assert window.artist_image_group.title() == "Artist"
+    assert (
+        window.artist_image_group.sizePolicy().horizontalPolicy()
+        == QSizePolicy.Policy.Expanding
+    )
+    assert window.playback_group.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Minimum
+    assert window.downloads_group.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Minimum
+    assert window.artist_image_label.parentWidget() is window.artist_image_group
+    assert (
+        window.artist_image_label.sizePolicy().horizontalPolicy()
+        == QSizePolicy.Policy.Expanding
+    )
     assert not window.artist_image_label.isHidden()
     assert window.artist_image_label.pixmap() is not None
 

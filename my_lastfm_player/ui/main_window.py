@@ -5,7 +5,7 @@ from collections.abc import Callable
 from html import escape
 
 from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
-from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent, QPixmap
+from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent, QPixmap, QResizeEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QSlider,
     QTableView,
     QTextBrowser,
@@ -94,7 +95,9 @@ class ArtistImageLabel(QLabel):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._page_url: str | None = None
-        self.setFixedSize(ARTIST_IMAGE_SIZE, ARTIST_IMAGE_SIZE)
+        self._source_pixmap: QPixmap | None = None
+        self.setMinimumSize(ARTIST_IMAGE_SIZE, ARTIST_IMAGE_SIZE)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setScaledContents(False)
         self.hide()
@@ -104,6 +107,7 @@ class ArtistImageLabel(QLabel):
 
         self._page_url = page_url if page_url and image_bytes else None
         self.clear()
+        self._source_pixmap = None
         if not image_bytes:
             self.hide()
             return
@@ -112,15 +116,14 @@ class ArtistImageLabel(QLabel):
         if not pixmap.loadFromData(image_bytes):
             self.hide()
             return
-        self.setPixmap(
-            pixmap.scaled(
-                self.size(),
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-        )
+        self._source_pixmap = pixmap
+        self._update_scaled_pixmap()
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.show()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._update_scaled_pixmap()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if self._page_url and event.button() == Qt.MouseButton.LeftButton:
@@ -128,6 +131,17 @@ class ArtistImageLabel(QLabel):
             event.accept()
             return
         super().mousePressEvent(event)
+
+    def _update_scaled_pixmap(self) -> None:
+        if self._source_pixmap is None or self.width() <= 0 or self.height() <= 0:
+            return
+        self.setPixmap(
+            self._source_pixmap.scaled(
+                self.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
 
 
 class MainWindow(QMainWindow):
@@ -380,6 +394,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(12)
 
         self.playback_group = QGroupBox()
+        self.playback_group.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
         playback_layout = QVBoxLayout(self.playback_group)
         playback_button_layout = QHBoxLayout()
         self.artist_image_label = ArtistImageLabel()
@@ -427,16 +442,24 @@ class MainWindow(QMainWindow):
         playback_layout.addLayout(playback_timeline_layout)
         playback_layout.addWidget(self.randomize_checkbox)
 
+        self.artist_image_group = QGroupBox()
+        self.artist_image_group.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
+        artist_image_layout = QVBoxLayout(self.artist_image_group)
+        artist_image_layout.addWidget(self.artist_image_label, stretch=1)
+
         self.downloads_group = QGroupBox()
+        self.downloads_group.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
         self.downloads_layout = QVBoxLayout(self.downloads_group)
         self.download_toggle_button = QPushButton()
         self.download_toggle_button.clicked.connect(self.download_requested.emit)
         self.downloads_layout.addWidget(self.download_toggle_button)
 
         layout.addWidget(self.playback_group)
-        layout.addWidget(self.artist_image_label)
+        layout.addWidget(self.artist_image_group, stretch=1)
         layout.addWidget(self.downloads_group)
-        layout.addStretch(1)
 
         return panel
 
@@ -954,6 +977,7 @@ class MainWindow(QMainWindow):
         self.stop_button.setText(self.tr("Stop"))
         self.next_button.setText(self.tr("Next"))
         self.randomize_checkbox.setText(self.tr("Randomize"))
+        self.artist_image_group.setTitle(self.tr("Artist"))
         self.artist_image_label.setToolTip(self.tr("Open artist page on Last.fm"))
         self.playback_slider.setToolTip(self.tr("Playback position"))
         self.downloads_group.setTitle(self.tr("Downloads"))
