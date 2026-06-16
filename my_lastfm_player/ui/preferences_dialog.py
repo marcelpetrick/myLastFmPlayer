@@ -43,7 +43,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         self._refresh()
         self._fit_to_content()
 
-    def _build_ui(self) -> None:
+    def _build_ui(self) -> None:  # pylint: disable=too-many-statements
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
         layout.setContentsMargins(16, 16, 16, 16)

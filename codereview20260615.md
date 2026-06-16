@@ -8,7 +8,7 @@
 2. **Main window is also a god object and owns too much non-view logic.**
    `my_lastfm_player/ui/main_window.py:147` defines an 870-line `MainWindow`. It builds menus, layout, filtering, table selection, playback controls, feedback logging, about text, license text, timeline seeking, language switching, and state formatting in one class through `my_lastfm_player/ui/main_window.py:1016`. The UI layer therefore contains policy and content that should be split into smaller widgets, presenters, or view-model helpers.
 
-3. **Pylint is configured to ignore the exact complexity signals this codebase needs.**
+3. FIXED: **Pylint is configured to ignore the exact complexity signals this codebase needs.**
    `pyproject.toml:80` starts a broad `disable` list that includes `too-many-arguments`, `too-many-branches`, `too-many-instance-attributes`, `too-many-lines`, `too-many-locals`, `too-many-public-methods`, and `too-many-statements` through `pyproject.toml:101`. Those disabled checks would flag the controller and main window problems above, so the quality gate has been tuned to pass around architectural debt instead of making it visible.
 
 4. FIXED: **The dependency check misses a command the code actually invokes.**

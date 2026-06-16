@@ -388,7 +388,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         if menu.exec(self.track_table.viewport().mapToGlobal(pos)) == retry_action:
             self.retry_download_requested.emit(cache_key)
 
-    def _build_controls_panel(self) -> QWidget:
+    def _build_controls_panel(self) -> QWidget:  # pylint: disable=too-many-statements
         panel = QWidget()
         layout = QHBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
