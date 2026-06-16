@@ -21,10 +21,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "build>=1.5.0",
-    "pytest>=9.0.3",
+    "pytest>=9.1.0",
     "pytest-cov>=7.1.0",
-    "pylint>=4.0.5",
-    "ruff>=0.15.13",
+    "pylint>=4.0.6",
+    "ruff>=0.15.17",
     "sphinx>=9.1.0",
 ]
 
