@@ -14,6 +14,7 @@ from my_lastfm_player.storage import JsonTrackRepository
 LOGGER = logging.getLogger(__name__)
 
 YTDLP_SEARCH_PREFIX = "ytsearch1:"
+LOOKUP_TIMEOUT_SECONDS = 120
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 ProgressCallback = Callable[[int, str], None]
@@ -168,7 +169,12 @@ class YouTubeResolver:
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
+                timeout=LOOKUP_TIMEOUT_SECONDS,
             )
+        except subprocess.TimeoutExpired as error:
+            raise YouTubeLookupError(
+                f"{self.executable} lookup timed out after {LOOKUP_TIMEOUT_SECONDS}s"
+            ) from error
         except OSError as error:
             raise YouTubeLookupError(f"Could not run {self.executable}: {error}") from error
 

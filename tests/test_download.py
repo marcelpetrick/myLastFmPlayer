@@ -479,3 +479,43 @@ def test_bit_rate_to_kbps_returns_none_for_non_numeric_input() -> None:
 def test_bit_rate_to_kbps_returns_none_for_non_positive_values() -> None:
     assert _bit_rate_to_kbps(0) is None
     assert _bit_rate_to_kbps(-1000) is None
+
+
+def test_download_manager_marks_failed_on_timeout(tmp_path: Path) -> None:
+    def timeout_runner(command, **_kwargs):
+        raise subprocess.TimeoutExpired(command, 600)
+
+    manager = DownloadManager(
+        command_runner=timeout_runner,
+        max_retries=1,
+        backoff_factory=lambda: 0,
+        sleeper=lambda _: None,
+    )
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/example",
+        status=TrackStatus.QUEUED,
+    )
+
+    tracks = manager.download_tracks([track], tmp_path)
+
+    assert tracks[0].status == TrackStatus.FAILED
+    assert "timed out" in tracks[0].error.lower()
+
+
+def test_probe_audio_file_returns_path_type_when_ffprobe_times_out(
+    monkeypatch, tmp_path: Path
+) -> None:
+    audio_path = tmp_path / "Artist - Title.mp3"
+    audio_path.touch()
+
+    def raise_timeout(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(["ffprobe"], 30)
+
+    monkeypatch.setattr(subprocess, "run", raise_timeout)
+
+    file_type, bitrate = _probe_audio_file(audio_path)
+
+    assert file_type == "MP3"
+    assert bitrate is None

@@ -329,3 +329,11 @@ def test_resolve_and_store_tracks_keeps_existing_download_state(tmp_path: Path) 
 def test_percent_handles_zero_total_and_caps_before_complete() -> None:
     assert _percent(0, 0) == 100
     assert _percent(999, 1000) == 99
+
+
+def test_search_first_result_raises_on_timeout() -> None:
+    def timeout_runner(command, **_kwargs):
+        raise subprocess.TimeoutExpired(command, 120)
+
+    with pytest.raises(YouTubeLookupError, match="timed out"):
+        YouTubeResolver(command_runner=timeout_runner).search_first_result("query")

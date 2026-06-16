@@ -20,6 +20,8 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_CONCURRENCY = 2
 MAX_RETRIES = 3
 BACKOFF_RANGE_SECONDS = (1.0, 5.0)
+DOWNLOAD_TIMEOUT_SECONDS = 600
+PROBE_TIMEOUT_SECONDS = 30
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 Sleeper = Callable[[float], None]
@@ -223,7 +225,12 @@ class DownloadManager:
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
+                timeout=DOWNLOAD_TIMEOUT_SECONDS,
             )
+        except subprocess.TimeoutExpired as error:
+            raise DownloadError(
+                f"{self.executable} download timed out after {DOWNLOAD_TIMEOUT_SECONDS}s"
+            ) from error
         except OSError as error:
             raise DownloadError(f"Could not run {self.executable}: {error}") from error
 
@@ -276,8 +283,9 @@ def _probe_audio_file(path: Path) -> tuple[str | None, int | None]:
             capture_output=True,
             text=True,
             encoding="utf-8",
+            timeout=PROBE_TIMEOUT_SECONDS,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return file_type, None
 
     if completed.returncode != 0:

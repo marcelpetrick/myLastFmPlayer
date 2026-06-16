@@ -14,7 +14,7 @@
 4. FIXED: **The dependency check misses a command the code actually invokes.**
    `my_lastfm_player/dependencies.py:536` requires only `yt-dlp` and `ffmpeg`, but `my_lastfm_player/download.py:264` invokes `ffprobe` directly. A system can pass the startup dependency check and still fail to show audio metadata because `ffprobe` is absent.
 
-5. **External subprocesses have no timeout or cancellation boundary.**
+5. FIXED: **External subprocesses have no timeout or cancellation boundary.**
    `my_lastfm_player/youtube.py:485` runs `yt-dlp` lookup with `subprocess.run` but no `timeout`. `my_lastfm_player/download.py:218` does the same for downloads, and `my_lastfm_player/download.py:264` does it again for `ffprobe`. If `yt-dlp` or `ffprobe` hangs, the worker thread can hang indefinitely and the UI only sees a stuck workflow.
 
 6. **Stopping downloads is not real cancellation and can leave workers blocked.**
