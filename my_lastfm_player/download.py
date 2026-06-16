@@ -104,7 +104,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         repository.save_download_cache(merged_tracks)
         return merged_tracks
 
-    def download_tracks(  # pylint: disable=too-many-arguments
+    def download_tracks(  # pylint: disable=too-many-arguments,too-many-locals
         self,
         tracks: list[Track],
         downloads_dir: Path,

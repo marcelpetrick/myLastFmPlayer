@@ -51,7 +51,7 @@ class YouTubeResolver:
             return replace(track, youtube_url=None, status=TrackStatus.NOT_FOUND)
         return replace(track, youtube_url=search_result, status=TrackStatus.QUEUED, error=None)
 
-    def resolve_tracks(
+    def resolve_tracks(  # pylint: disable=too-many-locals
         self,
         tracks: list[Track],
         progress_callback: ProgressCallback | None = None,
