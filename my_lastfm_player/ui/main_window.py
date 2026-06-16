@@ -1013,7 +1013,7 @@ class MainWindow(QMainWindow):
             self._set_example_tracks()
         if not self.dependency_label.text():
             self.dependency_label.setText(
-                self.tr("Dependencies: yt-dlp and ffmpeg not checked yet")
+                self.tr("Dependencies: yt-dlp, ffmpeg, and ffprobe not checked yet")
             )
         if self._last_progress_label == "Idle":
             self.progress_bar.setFormat(self.tr("Idle"))

@@ -812,8 +812,8 @@
     </message>
     <message>
         <location filename="../ui/main_window.py" line="997" />
-        <source>Dependencies: yt-dlp and ffmpeg not checked yet</source>
-        <translation>Ovisnosti: yt-dlp i ffmpeg još nisu provjereni</translation>
+        <source>Dependencies: yt-dlp, ffmpeg, and ffprobe not checked yet</source>
+        <translation>Ovisnosti: yt-dlp, ffmpeg i ffprobe još nisu provjereni</translation>
     </message>
     <message>
         <source>MIT License; legacy Last.fm HTML parser support.</source>

@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from my_lastfm_player.dependencies import DependencyCheckResult, check_external_dependencies
+from my_lastfm_player.dependencies import (
+    REQUIRED_EXTERNAL_TOOLS,
+    DependencyCheckResult,
+    check_external_dependencies,
+)
+
+
+def test_required_external_tools_includes_ffprobe() -> None:
+    assert "ffprobe" in REQUIRED_EXTERNAL_TOOLS
+    assert "yt-dlp" in REQUIRED_EXTERNAL_TOOLS
+    assert "ffmpeg" in REQUIRED_EXTERNAL_TOOLS
 
 
 def test_dependency_check_reports_installed_and_missing_tools() -> None:

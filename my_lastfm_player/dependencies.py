@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from my_lastfm_player.i18n import translate
 
-REQUIRED_EXTERNAL_TOOLS = ("yt-dlp", "ffmpeg")
+REQUIRED_EXTERNAL_TOOLS = ("yt-dlp", "ffmpeg", "ffprobe")
 
 
 @dataclass(frozen=True, slots=True)
