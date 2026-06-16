@@ -17,7 +17,7 @@
 5. FIXED: **External subprocesses have no timeout or cancellation boundary.**
    `my_lastfm_player/youtube.py:485` runs `yt-dlp` lookup with `subprocess.run` but no `timeout`. `my_lastfm_player/download.py:218` does the same for downloads, and `my_lastfm_player/download.py:264` does it again for `ffprobe`. If `yt-dlp` or `ffprobe` hangs, the worker thread can hang indefinitely and the UI only sees a stuck workflow.
 
-6. **Stopping downloads is not real cancellation and can leave workers blocked.**
+6. FIXED: **Stopping downloads is not real cancellation and can leave workers blocked.**
    `my_lastfm_player/controller.py:1125` handles stop by setting flags, calling `DownloadManager.pause()`, and updating the button. `my_lastfm_player/download.py:58` implements pause by clearing an event, while `my_lastfm_player/download.py:167` waits on that event before attempts. There is no stop token passed into active downloads and no subprocess termination, so stop can pause future attempts while already-submitted futures keep running or block before retry.
 
 7. **Workflow orchestration can start overlapping lookup/download work from partial fetch updates.**

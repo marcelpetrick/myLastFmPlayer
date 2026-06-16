@@ -1132,7 +1132,7 @@ class ApplicationController(QObject):
 
         self._download_worker_active = False
         self._download_stop_requested = True
-        self.download_manager.pause()
+        self.download_manager.stop()
         self.window.set_download_active(False)
         self._report_user_action(
             translate("ApplicationController", "Downloads stopped by user.")

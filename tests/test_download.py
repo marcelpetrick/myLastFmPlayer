@@ -187,6 +187,61 @@ def test_download_manager_pause_and_resume_toggle_queue_state() -> None:
 
     manager.resume()
     assert manager._resume_event.is_set()
+    assert not manager._stop_requested
+
+
+def test_download_manager_stop_wakes_blocked_threads_and_marks_failed(tmp_path: Path) -> None:
+    blocked = threading.Event()
+    released = threading.Event()
+
+    def blocking_runner(command, **_kwargs):
+        blocked.set()
+        released.wait(timeout=2)
+        raise subprocess.TimeoutExpired(command, 600)
+
+    manager = DownloadManager(
+        command_runner=blocking_runner,
+        max_retries=1,
+        backoff_factory=lambda: 0,
+        sleeper=lambda _: None,
+    )
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/example",
+        status=TrackStatus.QUEUED,
+    )
+
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(manager.download_tracks, [track], tmp_path)
+        blocked.wait(timeout=2)
+        released.set()
+        tracks = future.result(timeout=5)
+
+    assert tracks[0].status == TrackStatus.FAILED
+
+
+def test_download_manager_stop_aborts_pending_retries(tmp_path: Path) -> None:
+    manager = DownloadManager(
+        command_runner=FakeRunner(return_codes=[1]),
+        max_retries=3,
+        backoff_factory=lambda: 0,
+        sleeper=lambda _: None,
+    )
+    manager.stop()
+    track = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/example",
+        status=TrackStatus.QUEUED,
+    )
+
+    tracks = manager.download_tracks([track], tmp_path)
+
+    assert tracks[0].status == TrackStatus.FAILED
+    assert "stopped" in tracks[0].error.lower()
 
 
 def test_download_manager_reports_zero_candidates(tmp_path: Path) -> None:

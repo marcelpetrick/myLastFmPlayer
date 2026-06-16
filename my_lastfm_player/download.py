@@ -56,6 +56,7 @@ class DownloadManager:
         self.sleeper = sleeper
         self._resume_event = Event()
         self._resume_event.set()
+        self._stop_requested = False
 
     def pause(self) -> None:
         """Pause the queue before the next retry or download starts."""
@@ -64,9 +65,17 @@ class DownloadManager:
         self._resume_event.clear()
 
     def resume(self) -> None:
-        """Resume a paused queue."""
+        """Resume a paused queue and clear any pending stop request."""
 
         LOGGER.info("Download queue resumed")
+        self._stop_requested = False
+        self._resume_event.set()
+
+    def stop(self) -> None:
+        """Cancel pending downloads and wake any threads blocked on pause."""
+
+        LOGGER.info("Download queue stopped")
+        self._stop_requested = True
         self._resume_event.set()
 
     def download_and_store_tracks(
@@ -168,6 +177,8 @@ class DownloadManager:
 
         for attempt in range(1, self.max_retries + 1):
             self._resume_event.wait()
+            if self._stop_requested:
+                return replace(current_track, status=TrackStatus.FAILED, error="Download stopped.")
             try:
                 local_path = self._download_track(current_track, downloads_dir)
                 file_type, bitrate_kbps = _probe_audio_file(local_path)

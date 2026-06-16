@@ -601,13 +601,13 @@ def test_controller_starts_download_after_successful_lookup(qapp, tmp_path) -> N
     assert calls == ["example"]
 
 
-def test_controller_stop_downloads_pauses_manager_and_clears_ui(qapp) -> None:
+def test_controller_stop_downloads_stops_manager_and_clears_ui(qapp) -> None:
     window = MainWindow()
-    paused: list[bool] = []
+    stopped: list[bool] = []
 
     class FakeManager:
-        def pause(self) -> None:
-            paused.append(True)
+        def stop(self) -> None:
+            stopped.append(True)
 
         def resume(self) -> None:
             pass
@@ -618,7 +618,7 @@ def test_controller_stop_downloads_pauses_manager_and_clears_ui(qapp) -> None:
 
     controller.stop_downloads()
 
-    assert paused == [True]
+    assert stopped == [True]
     assert not controller._download_worker_active
     assert controller._download_stop_requested
     assert window.download_toggle_button.text() == "Start Downloads"
