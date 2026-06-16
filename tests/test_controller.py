@@ -1565,6 +1565,89 @@ def test_controller_reports_no_selection_and_no_active_playback(qapp) -> None:
     assert feedback.count("No track is currently playing.") == 2
 
 
+def test_controller_plays_first_downloaded_track_when_nothing_is_selected(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    fetched_path = tmp_path / "one.mp3"
+    fetched_path.write_bytes(b"fake mp3")
+    downloaded_path = tmp_path / "two.mp3"
+    downloaded_path.write_bytes(b"fake mp3")
+    tracks = [
+        Track(artist="Artist", title="Fetched", status=TrackStatus.FETCHED),
+        Track(
+            artist="Artist",
+            title="First Downloaded",
+            local_path=str(fetched_path),
+            status=TrackStatus.DOWNLOADED,
+        ),
+        Track(
+            artist="Artist",
+            title="Second Downloaded",
+            local_path=str(downloaded_path),
+            status=TrackStatus.DOWNLOADED,
+        ),
+    ]
+    window.set_tracks(tracks)
+    playback = FakePlaybackService()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        playback_service=playback,  # type: ignore[arg-type]
+    )
+
+    controller.play_selected_track()
+
+    assert playback.events == ["play:First Downloaded"]
+    assert window.selected_track() == tracks[1]
+    assert "Playing Artist - First Downloaded." in window.feedback_log.toPlainText()
+
+
+def test_controller_plays_random_downloaded_track_when_nothing_is_selected_and_randomize_on(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    audio_paths = [tmp_path / "one.mp3", tmp_path / "two.mp3"]
+    for p in audio_paths:
+        p.write_bytes(b"fake mp3")
+    tracks = [
+        Track(
+            artist="Artist",
+            title="One",
+            local_path=str(audio_paths[0]),
+            status=TrackStatus.DOWNLOADED,
+        ),
+        Track(
+            artist="Artist",
+            title="Two",
+            local_path=str(audio_paths[1]),
+            status=TrackStatus.DOWNLOADED,
+        ),
+    ]
+    window.set_tracks(tracks)
+    window.set_randomize_playback(True)
+    playback = FakePlaybackService()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        playback_service=playback,  # type: ignore[arg-type]
+    )
+    random_candidates: list[list[tuple[int, Track]]] = []
+
+    def choose(candidates: list[tuple[int, Track]]) -> tuple[int, Track]:
+        random_candidates.append(candidates)
+        return candidates[-1]
+
+    controller._random = SimpleNamespace(choice=choose)  # type: ignore[assignment]
+
+    controller.play_selected_track()
+
+    assert playback.events == ["play:Two"]
+    assert random_candidates == [[(0, tracks[0]), (1, tracks[1])]]
+    assert window.selected_track() == tracks[1]
+    assert "Playing Artist - Two." in window.feedback_log.toPlainText()
+
+
 def test_controller_handles_invalid_worker_payloads(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)

@@ -33,7 +33,7 @@ from PyQt6.QtWidgets import (
 
 from my_lastfm_player import __display_version__
 from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, SUPPORTED_LANGUAGES, TranslationManager
-from my_lastfm_player.models import Track
+from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.ui.flags import flag_icon
 from my_lastfm_player.ui.icons import (
     folder_icon,
@@ -639,6 +639,25 @@ class MainWindow(QMainWindow):
         if not candidates:
             return None
         return choice(candidates)
+
+    def first_or_random_downloaded_track(
+        self,
+        choice: Callable[[list[tuple[int, Track]]], tuple[int, Track]] | None = None,
+    ) -> tuple[int, Track] | None:
+        """Return the first visible downloaded track, or a random one when ``choice`` is given."""
+        candidates: list[tuple[int, Track]] = []
+        for proxy_row in range(self.track_sort_model.rowCount()):
+            source_index = self.track_sort_model.mapToSource(
+                self.track_sort_model.index(proxy_row, 0)
+            )
+            if not source_index.isValid():
+                continue
+            track = self.track_model.track_at(source_index.row())
+            if track.status is TrackStatus.DOWNLOADED:
+                if choice is None:
+                    return source_index.row(), track
+                candidates.append((source_index.row(), track))
+        return choice(candidates) if candidates else None
 
     def randomize_playback(self) -> bool:
         """Return whether automatic playback should continue with random tracks."""

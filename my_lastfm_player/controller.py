@@ -632,10 +632,15 @@ class ApplicationController(QObject):
 
         selected_track = self.window.selected_track()
         if selected_track is None:
-            self.window.append_feedback(
-                translate("ApplicationController", "Select a downloaded track before playing.")
-            )
-            return
+            choice = self._random.choice if self.window.randomize_playback() else None
+            fallback = self.window.first_or_random_downloaded_track(choice)
+            if fallback is None:
+                self.window.append_feedback(
+                    translate("ApplicationController", "Select a downloaded track before playing.")
+                )
+                return
+            row, selected_track = fallback
+            self.window.select_track_row(row)
 
         self._play_track(selected_track)
 
