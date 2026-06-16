@@ -1,46 +1,32 @@
 from __future__ import annotations
 
-import builtins
 from pathlib import Path
 
 import pytest
 import requests
-from bs4 import BeautifulSoup
 
 from my_lastfm_player import lastfm as lastfm_module
 from my_lastfm_player.lastfm import (
     LASTFM_API_URL,
-    LASTFM_BASE_URL,
     ArtistImage,
-    FetchedHtmlPage,
     FetchProgress,
     LastFmArtistInfoClient,
     LastFmError,
     LastFmLovedTracksApiClient,
-    LastFmLovedTracksFetcher,
-    LastFmLovedTracksParser,
     LastFmLovedTracksScraper,
     LovedTracksApiPage,
-    LovedTracksPage,
     _controlled_sleep,
-    _find_next_page_url,
-    _find_total_tracks,
     _is_lastfm_placeholder_image_url,
     _is_retryable_error,
     _parse_artist_image_payload,
-    _parse_html_document,
-    _parse_loved_at,
     _parse_loved_tracks_api_payload,
     _progress_message,
     _raise_for_unsuccessful_artist_response,
     _select_artist_image_url,
     _select_artist_page_image_url,
-    parse_loved_tracks_page,
 )
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
-
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 class FakeResponse:
@@ -68,19 +54,6 @@ class FakeResponse:
         return self.json_payload
 
 
-class FakeSession:
-    def __init__(self, responses: dict[str, FakeResponse]) -> None:
-        self.responses = responses
-        self.requested_urls: list[str] = []
-
-    def get(self, url: str, *, timeout: int) -> FakeResponse:
-        self.requested_urls.append(url)
-        response = self.responses.get(url)
-        if response is None:
-            raise requests.ConnectionError(f"No fake response for {url}")
-        return response
-
-
 class ApiFakeSession:
     def __init__(self, responses: dict[int, FakeResponse]) -> None:
         self.responses = responses
@@ -103,18 +76,6 @@ class ApiFakeSession:
         return response
 
 
-class SequencedSession:
-    def __init__(self, responses: list[FakeResponse]) -> None:
-        self.responses = responses
-        self.requested_urls: list[str] = []
-
-    def get(self, url: str, *, timeout: int) -> FakeResponse:
-        self.requested_urls.append(url)
-        if not self.responses:
-            raise requests.ConnectionError(f"No fake response for {url}")
-        return self.responses.pop(0)
-
-
 class ArtistInfoSession:
     def __init__(self, responses: dict[str, FakeResponse]) -> None:
         self.responses = responses
@@ -133,10 +94,6 @@ class ArtistInfoSession:
         if response is None:
             raise requests.ConnectionError(f"No fake response for {url}")
         return response
-
-
-def read_fixture(name: str) -> str:
-    return (FIXTURES_DIR / name).read_text(encoding="utf-8")
 
 
 def api_loved_payload(page: int, total_pages: int = 2, total: int = 3) -> dict[str, object]:
@@ -174,161 +131,6 @@ def api_loved_payload(page: int, total_pages: int = 2, total: int = 3) -> dict[s
             "track": tracks.get(page, []),
         }
     }
-
-
-def test_parse_loved_tracks_page_extracts_tracks_and_next_url() -> None:
-    page = parse_loved_tracks_page(
-        read_fixture("lastfm_loved_page_1.html"),
-        "https://www.last.fm/user/example/loved",
-    )
-
-    assert page == LovedTracksPage(
-        tracks=[
-            Track(
-                artist="Guns N' Roses",
-                title="Down on the Farm",
-                lastfm_url="https://www.last.fm/music/Guns+N%27+Roses/_/Down+on+the+Farm",
-                loved_at="20230421-151400",
-            ),
-            Track(
-                artist="Nelly Furtado",
-                title="Say It Right",
-                lastfm_url="https://www.last.fm/music/Nelly+Furtado/_/Say+It+Right",
-                loved_at="20221105-083000",
-            ),
-        ],
-        next_url="https://www.last.fm/user/example/loved?page=2",
-        total_tracks=3,
-    )
-
-
-def test_loved_tracks_parser_extracts_fixture_html_with_beautifulsoup() -> None:
-    parser = LastFmLovedTracksParser()
-
-    page = parser.parse(
-        read_fixture("lastfm_loved_page_1.html"),
-        "https://www.last.fm/user/example/loved",
-    )
-
-    assert [track.artist for track in page.tracks] == ["Guns N' Roses", "Nelly Furtado"]
-    assert [track.title for track in page.tracks] == ["Down on the Farm", "Say It Right"]
-    assert page.total_tracks == 3
-    assert page.next_url == "https://www.last.fm/user/example/loved?page=2"
-
-
-def test_legacy_html_parser_reports_missing_beautifulsoup(monkeypatch) -> None:
-    real_import = builtins.__import__
-
-    def fake_import(name, globals_=None, locals_=None, fromlist=(), level=0):
-        if name == "bs4":
-            raise ImportError("blocked")
-        return real_import(name, globals_, locals_, fromlist, level)
-
-    monkeypatch.setattr(builtins, "__import__", fake_import)
-
-    with pytest.raises(LastFmError, match="legacy Last.fm HTML parsing"):
-        _parse_html_document("<html></html>")
-
-
-def test_parse_loved_tracks_page_handles_missing_next_page() -> None:
-    page = parse_loved_tracks_page(
-        read_fixture("lastfm_loved_page_2.html"),
-        "https://www.last.fm/user/example/loved?page=2",
-    )
-
-    assert page.next_url is None
-    assert page.tracks == [
-        Track(
-            artist="The Killers",
-            title="Smile Like You Mean It",
-            lastfm_url="https://www.last.fm/music/The+Killers/_/Smile+Like+You+Mean+It",
-            loved_at="20210710-224500",
-        )
-    ]
-
-
-def test_parse_loved_tracks_page_skips_incomplete_rows() -> None:
-    page = parse_loved_tracks_page(
-        """
-        <table>
-          <tr class="chartlist-row">
-            <td class="chartlist-name"><a href="/music/A/_/B">B</a></td>
-          </tr>
-        </table>
-        """,
-        "https://www.last.fm/user/example/loved",
-    )
-
-    assert page.tracks == []
-
-
-def test_parse_loved_tracks_page_uses_fallback_table_rows_and_skips_blank_text() -> None:
-    page = parse_loved_tracks_page(
-        """
-        <table>
-          <tr>
-            <td class="chartlist-name"><a href="/music/A/_/T">  Track   Name  </a></td>
-            <td class="chartlist-artist"><a> Artist   Name </a></td>
-          </tr>
-          <tr>
-            <td class="chartlist-name"><a href="/music/A/_/Blank">   </a></td>
-            <td class="chartlist-artist"><a>Artist</a></td>
-          </tr>
-        </table>
-        """,
-        "https://www.last.fm/user/example/loved",
-    )
-
-    assert page.tracks == [
-        Track(
-            artist="Artist Name",
-            title="Track Name",
-            lastfm_url="https://www.last.fm/music/A/_/T",
-        )
-    ]
-
-
-def test_parse_loved_tracks_page_handles_next_link_variants() -> None:
-    page = parse_loved_tracks_page(
-        """
-        <html>
-          <a class="pagination-next" href="/user/example/loved?page=2">Next</a>
-          <span>loved tracks (1,234)</span>
-        </html>
-        """,
-        "https://www.last.fm/user/example/loved",
-    )
-
-    assert page.next_url == "https://www.last.fm/user/example/loved?page=2"
-    assert page.total_tracks == 1234
-
-
-def test_find_next_page_url_ignores_disabled_or_invalid_links() -> None:
-    page_url = "https://www.last.fm/user/example/loved"
-
-    for html in (
-        '<a rel="next" class="disabled" href="/next">Next</a>',
-        '<a rel="next" aria-disabled="true" href="/next">Next</a>',
-        '<a rel="next">Next</a>',
-        '<span class="pagination-next"><a href="">Next</a></span>',
-    ):
-        assert _find_next_page_url(BeautifulSoup(html, "html.parser"), page_url) is None
-
-
-def test_find_total_tracks_handles_data_attribute_and_invalid_count() -> None:
-    assert (
-        _find_total_tracks(
-            BeautifulSoup('<div data-total-tracks="2,345"></div>', "html.parser")
-        )
-        == 2345
-    )
-    assert _find_total_tracks(BeautifulSoup("<div>no loved count</div>", "html.parser")) is None
-    assert (
-        _find_total_tracks(
-            BeautifulSoup('<div data-total-tracks="many"></div>', "html.parser")
-        )
-        is None
-    )
 
 
 def test_api_client_fetches_loved_tracks_with_loved_at_metadata() -> None:
@@ -777,86 +579,6 @@ def test_scraper_fetches_paginated_loved_tracks_through_api() -> None:
     assert [request[1]["page"] for request in session.requests] == [1, 2]
 
 
-def test_fetcher_fetches_html_documents() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    html = read_fixture("lastfm_loved_page_1.html")
-    session = FakeSession({first_url: FakeResponse(html, first_url)})
-
-    fetched_page = LastFmLovedTracksFetcher(session=session).fetch_page(first_url)
-
-    assert fetched_page == FetchedHtmlPage(url=first_url, html=html)
-    assert session.requested_urls == [first_url]
-
-
-def test_fetcher_retries_lastfm_temporary_unavailable_status() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    html = read_fixture("lastfm_loved_page_1.html")
-    unavailable_html = "<html><title>Last.fm - Temporarily Unavailable</title></html>"
-    session = SequencedSession(
-        [
-            FakeResponse(unavailable_html, first_url, status_code=600),
-            FakeResponse(html, first_url),
-        ]
-    )
-    fetcher = LastFmLovedTracksFetcher(
-        session=session,
-        retry_attempts=2,
-        retry_delay_seconds=0,
-    )
-
-    fetched_page = fetcher.fetch_page(first_url)
-
-    assert fetched_page == FetchedHtmlPage(url=first_url, html=html)
-    assert session.requested_urls == [first_url, first_url]
-
-
-def test_fetcher_retries_request_exception_then_succeeds() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-
-    class FlakySession:
-        def __init__(self) -> None:
-            self.calls = 0
-
-        def get(self, url: str, *, timeout: int) -> FakeResponse:
-            self.calls += 1
-            if self.calls == 1:
-                raise requests.ConnectionError("temporary network failure")
-            return FakeResponse(read_fixture("lastfm_loved_page_2.html"), url)
-
-    session = FlakySession()
-    fetcher = LastFmLovedTracksFetcher(
-        session=session,
-        retry_attempts=2,
-        retry_delay_seconds=0,
-    )
-
-    fetched_page = fetcher.fetch_page(first_url)
-
-    assert fetched_page.url == first_url
-    assert session.calls == 2
-
-
-def test_fetcher_treats_unavailable_title_as_retryable() -> None:
-    first_url = f"{LASTFM_BASE_URL}/user/example/loved"
-    html = read_fixture("lastfm_loved_page_2.html")
-    unavailable_html = "<html><title>Last.fm - Temporarily Unavailable</title></html>"
-    session = SequencedSession(
-        [
-            FakeResponse(unavailable_html, first_url),
-            FakeResponse(html, first_url),
-        ]
-    )
-
-    fetched_page = LastFmLovedTracksFetcher(
-        session=session,
-        retry_attempts=2,
-        retry_delay_seconds=0,
-    ).fetch_page(first_url)
-
-    assert fetched_page.html == html
-    assert session.requested_urls == [first_url, first_url]
-
-
 def test_scraper_reports_fetch_progress() -> None:
     session = ApiFakeSession(
         {
@@ -1022,14 +744,6 @@ def test_scraper_encodes_username_in_url() -> None:
     )
 
 
-def test_fetcher_encodes_username_in_url() -> None:
-    fetcher = LastFmLovedTracksFetcher(base_url="https://www.last.fm/")
-
-    assert fetcher.loved_tracks_url("user name/with slash") == (
-        "https://www.last.fm/user/user%20name%2Fwith%20slash/loved"
-    )
-
-
 def test_scraper_rejects_invalid_inputs() -> None:
     scraper = LastFmLovedTracksScraper()
 
@@ -1172,49 +886,6 @@ def test_retryable_error_detection() -> None:
 def test_scraper_rejects_empty_username_for_track_count_fetch() -> None:
     with pytest.raises(ValueError, match="username"):
         LastFmLovedTracksScraper().fetch_loved_track_count("")
-
-
-def test_parse_loved_tracks_page_sets_lastfm_url_none_when_title_link_has_no_href() -> None:
-    page = parse_loved_tracks_page(
-        """
-        <table>
-          <tr class="chartlist-row">
-            <td class="chartlist-name"><a>Title Without Href</a></td>
-            <td class="chartlist-artist"><a href="/music/Artist">Artist</a></td>
-          </tr>
-        </table>
-        """,
-        "https://www.last.fm/user/example/loved",
-    )
-
-    assert page.tracks == [Track(artist="Artist", title="Title Without Href")]
-
-
-def test_parse_loved_at_returns_none_when_title_attribute_is_empty() -> None:
-    html = '<tr><td class="chartlist-timestamp"><span title="">text</span></td></tr>'
-    row = BeautifulSoup(html, "html.parser").find("tr")
-    assert _parse_loved_at(row) is None
-
-
-def test_parse_loved_at_returns_none_when_title_has_no_space() -> None:
-    html = '<tr><td class="chartlist-timestamp"><span title="NoSpaceHere">text</span></td></tr>'
-    row = BeautifulSoup(html, "html.parser").find("tr")
-    assert _parse_loved_at(row) is None
-
-
-def test_parse_loved_at_returns_none_for_invalid_date_format() -> None:
-    html = (
-        '<tr><td class="chartlist-timestamp">'
-        '<span title="Weekday bad date format">text</span></td></tr>'
-    )
-    row = BeautifulSoup(html, "html.parser").find("tr")
-    assert _parse_loved_at(row) is None
-
-
-def test_find_total_tracks_reads_explicit_data_attribute() -> None:
-    soup = BeautifulSoup('<main data-total-tracks="1,234"></main>', "html.parser")
-
-    assert _find_total_tracks(soup) == 1234
 
 
 def test_controlled_sleep_returns_true_after_deadline_has_elapsed(monkeypatch) -> None:

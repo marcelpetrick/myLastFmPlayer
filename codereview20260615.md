@@ -26,7 +26,7 @@
 8. **Credential persistence stores the Last.fm session key as plain JSON.**
    `my_lastfm_player/scrobbling.py:459` returns a credentials dictionary containing `session_key`, and `my_lastfm_player/storage.py:236` writes it through `_atomic_write_json`. There is no OS keyring integration, no file permission hardening, and no separation between low-sensitivity track cache data and account session material.
 
-9. **Installed runtime dependencies do not match public runtime code paths.**
+9. FIXED: **Installed runtime dependencies do not match public runtime code paths.**
    `pyproject.toml:21` puts `beautifulsoup4` only in the `dev` extra, but `my_lastfm_player/lastfm.py:618` exposes `parse_loved_tracks_page`, and `my_lastfm_player/lastfm.py:788` imports BeautifulSoup at runtime for that parser. A normal package install can import the app successfully but fail when this public parser path is used.
 
 10. **Repository locking is inconsistent despite concurrent worker access.**
