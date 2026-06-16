@@ -90,7 +90,6 @@ disable = [
     "protected-access",
     "too-few-public-methods",
     "too-many-arguments",
-    "too-many-instance-attributes",
     "too-many-locals",
     "too-many-positional-arguments",
     "too-many-return-statements",

@@ -58,7 +58,7 @@ ArtistImageWorkerFactory = Callable[[str, LastFmArtistInfoClient], ArtistImageWo
 WorkflowWorker = FetchLovedTracksWorker | LookupTracksWorker | DownloadTracksWorker
 
 
-class ApplicationController(QObject):
+class ApplicationController(QObject):  # pylint: disable=too-many-instance-attributes  # god object
     """Coordinate UI events, background workers, persistence, and playback."""
 
     def __init__(

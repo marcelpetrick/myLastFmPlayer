@@ -35,7 +35,7 @@ _STATUS_RANK: dict[TrackStatus, int] = {
 
 
 @dataclass(frozen=True, slots=True)
-class Track:
+class Track:  # pylint: disable=too-many-instance-attributes  # domain model
     """Immutable representation of one Last.fm track and its local processing state."""
 
     artist: str

@@ -30,7 +30,7 @@ from my_lastfm_player.settings import (
 PREFERENCES_MINIMUM_WIDTH = 520
 
 
-class PreferencesDialog(QDialog):
+class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attributes
     """Modal preferences dialog for Last.fm authentication and scrobbling."""
 
     def __init__(self, parent: QWidget, service: ScrobblingService | None) -> None:

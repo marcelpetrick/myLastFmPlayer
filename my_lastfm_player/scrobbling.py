@@ -11,7 +11,7 @@ LOGGER = logging.getLogger(__name__)
 SCROBBLE_THRESHOLD = 0.33
 
 
-class ScrobblingService:
+class ScrobblingService:  # pylint: disable=too-many-instance-attributes
     """Wraps pylast for Last.fm web-auth and track scrobbling.
 
     API key and secret are the *application* credentials obtained from

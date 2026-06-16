@@ -34,7 +34,7 @@ class DownloadError(RuntimeError):
     """Raised when a track cannot be downloaded."""
 
 
-class DownloadManager:
+class DownloadManager:  # pylint: disable=too-many-instance-attributes
     """Download resolved tracks with retry, pause/resume, and progress reporting."""
 
     def __init__(

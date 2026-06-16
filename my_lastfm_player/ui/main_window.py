@@ -145,7 +145,7 @@ class ArtistImageLabel(QLabel):
         )
 
 
-class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods  # god object
+class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-many-instance-attributes  # god object
     """Initial MVP shell for the Last.fm player desktop UI."""
 
     fetch_requested = pyqtSignal()
