@@ -37,7 +37,7 @@ class DownloadError(RuntimeError):
 class DownloadManager:  # pylint: disable=too-many-instance-attributes
     """Download resolved tracks with retry, pause/resume, and progress reporting."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         command_runner: CommandRunner = subprocess.run,
         executable: str = "yt-dlp",
@@ -78,7 +78,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         self._stop_requested = True
         self._resume_event.set()
 
-    def download_and_store_tracks(
+    def download_and_store_tracks(  # pylint: disable=too-many-arguments
         self,
         username: str,
         repository: JsonTrackRepository,
@@ -104,7 +104,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         repository.save_download_cache(merged_tracks)
         return merged_tracks
 
-    def download_tracks(
+    def download_tracks(  # pylint: disable=too-many-arguments
         self,
         tracks: list[Track],
         downloads_dir: Path,

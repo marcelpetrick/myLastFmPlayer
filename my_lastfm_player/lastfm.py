@@ -113,7 +113,7 @@ FetchControlCallback = Callable[[], bool]
 class LastFmLovedTracksApiClient:
     """HTTP client for Last.fm's ``user.getLovedTracks`` JSON API."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         api_key: str | None = None,
         session: HttpSession | None = None,
@@ -438,7 +438,7 @@ class LastFmLovedTracksScraper:
         )
         return tracks
 
-    def fetch_and_store_loved_tracks(
+    def fetch_and_store_loved_tracks(  # pylint: disable=too-many-arguments
         self,
         username: str,
         repository: JsonTrackRepository,

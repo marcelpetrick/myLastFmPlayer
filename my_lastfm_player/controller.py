@@ -61,7 +61,7 @@ WorkflowWorker = FetchLovedTracksWorker | LookupTracksWorker | DownloadTracksWor
 class ApplicationController(QObject):  # pylint: disable=too-many-instance-attributes  # god object
     """Coordinate UI events, background workers, persistence, and playback."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         window: MainWindow,
         repository: JsonTrackRepository | None = None,

@@ -118,7 +118,7 @@ class YouTubeResolver:
             )
         return resolved_tracks
 
-    def resolve_and_store_tracks(
+    def resolve_and_store_tracks(  # pylint: disable=too-many-arguments
         self,
         username: str,
         repository: JsonTrackRepository,

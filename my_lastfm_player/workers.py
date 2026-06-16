@@ -223,7 +223,7 @@ class DownloadTracksWorker(QObject):
     error = pyqtSignal(str)
     finished = pyqtSignal()
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         username: str,
         download_manager: DownloadManager,

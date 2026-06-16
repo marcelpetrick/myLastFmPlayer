@@ -79,7 +79,7 @@ def _dark_palette() -> QPalette:
     return palette
 
 
-def _tinted_palette(
+def _tinted_palette(  # pylint: disable=too-many-arguments
     *,
     window: QColor,
     base: QColor,

@@ -19,7 +19,7 @@ class ScrobblingService:  # pylint: disable=too-many-instance-attributes
     and is obtained through the web-auth flow.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         api_key: str,
         api_secret: str,
