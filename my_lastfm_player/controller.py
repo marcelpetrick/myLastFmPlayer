@@ -1203,7 +1203,11 @@ class ApplicationController(QObject):
         if self._pending_retry_cache_key == track.cache_key:
             self._start_priority_download(username, track.cache_key)
             return
-        if not self._download_worker_active and not self._has_active_download_worker():
+        if (
+            not self._download_worker_active
+            and not self._has_active_download_worker()
+            and not self._has_active_lookup_worker()
+        ):
             self._start_automatic_download(username)
 
     def _has_download_candidates(self, tracks: list[Track]) -> bool:
@@ -1215,6 +1219,9 @@ class ApplicationController(QObject):
 
     def _has_active_download_worker(self) -> bool:
         return any(isinstance(worker, DownloadTracksWorker) for worker in self._active_workers)
+
+    def _has_active_lookup_worker(self) -> bool:
+        return any(isinstance(worker, LookupTracksWorker) for worker in self._active_workers)
 
     def _track_has_youtube_url(self, tracks: list[Track], cache_key: str) -> bool:
         return any(track.cache_key == cache_key and bool(track.youtube_url) for track in tracks)

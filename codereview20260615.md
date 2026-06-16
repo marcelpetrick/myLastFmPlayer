@@ -20,7 +20,7 @@
 6. FIXED: **Stopping downloads is not real cancellation and can leave workers blocked.**
    `my_lastfm_player/controller.py:1125` handles stop by setting flags, calling `DownloadManager.pause()`, and updating the button. `my_lastfm_player/download.py:58` implements pause by clearing an event, while `my_lastfm_player/download.py:167` waits on that event before attempts. There is no stop token passed into active downloads and no subprocess termination, so stop can pause future attempts while already-submitted futures keep running or block before retry.
 
-7. **Workflow orchestration can start overlapping lookup/download work from partial fetch updates.**
+7. FIXED: **Workflow orchestration can start overlapping lookup/download work from partial fetch updates.**
    `my_lastfm_player/controller.py:855` starts an automatic lookup after the first partial fetch batch, before the fetch worker has completed. `my_lastfm_player/controller.py:886` starts download handling as soon as a single track becomes queued, and `my_lastfm_player/controller.py:1201` can start automatic downloads whenever no active download worker is detected. This creates a fragile multi-worker pipeline with repository merges as the synchronization mechanism, instead of an explicit workflow state machine or queue.
 
 8. **Credential persistence stores the Last.fm session key as plain JSON.**

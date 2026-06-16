@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 from PyQt6.QtCore import Qt
 
@@ -13,6 +14,7 @@ from my_lastfm_player.lastfm import ArtistImage
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
+from my_lastfm_player.workers import LookupTracksWorker
 
 
 class FakeSignal:
@@ -2571,6 +2573,52 @@ def test_controller_track_ready_starts_pending_retry_priority_download(
     controller._handle_track_ready_for_download("user", track)
 
     assert calls == [("user", track.cache_key)]
+
+
+def test_controller_track_ready_defers_auto_download_while_lookup_active(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(
+        artist="A",
+        title="T",
+        youtube_url="https://youtu.be/a",
+        status=TrackStatus.QUEUED,
+    )
+    controller = ApplicationController(window, repository=repository)
+    auto_calls: list[str] = []
+    controller._start_automatic_download = lambda username: auto_calls.append(username)  # type: ignore[method-assign]
+
+    # Simulate a LookupTracksWorker being active.
+    fake_lookup_worker = MagicMock(spec=LookupTracksWorker)
+    controller._active_workers.append(fake_lookup_worker)
+
+    controller._handle_track_ready_for_download("user", track)
+
+    assert auto_calls == [], "auto-download should not start while lookup is active"
+
+
+def test_controller_track_ready_starts_auto_download_when_no_lookup_active(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(
+        artist="A",
+        title="T",
+        youtube_url="https://youtu.be/a",
+        status=TrackStatus.QUEUED,
+    )
+    controller = ApplicationController(window, repository=repository)
+    auto_calls: list[str] = []
+    controller._start_automatic_download = lambda username: auto_calls.append(username)  # type: ignore[method-assign]
+
+    controller._handle_track_ready_for_download("user", track)
+
+    assert auto_calls == ["user"]
 
 
 def test_controller_maybe_scrobble_does_nothing_when_no_current_track(qapp) -> None:
