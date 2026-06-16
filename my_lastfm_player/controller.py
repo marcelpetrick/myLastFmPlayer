@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines  # god object; tracked for future decomposition
 from __future__ import annotations
 
 import logging

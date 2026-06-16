@@ -91,7 +91,6 @@ disable = [
     "too-few-public-methods",
     "too-many-arguments",
     "too-many-instance-attributes",
-    "too-many-lines",
     "too-many-locals",
     "too-many-positional-arguments",
     "too-many-public-methods",
