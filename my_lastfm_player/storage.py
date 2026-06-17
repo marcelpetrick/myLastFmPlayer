@@ -3,11 +3,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
+import subprocess
 import tempfile
 from dataclasses import replace
 from pathlib import Path
 from threading import RLock
-from typing import Any
+from typing import Any, Protocol
 
 from my_lastfm_player.models import Track, TrackStatus
 
@@ -19,23 +21,103 @@ CACHE_FILENAME = "download-cache.json"
 LOOKUP_CACHE_FILENAME = "lookup-cache.json"
 CREDENTIALS_FILENAME = "lastfm-credentials.json"
 DEFAULT_DOWNLOADS_DIR = "downloads"
+SECRET_TOOL_ATTRIBUTE_APP = "myLastFmPlayer"
 
 
 class StorageError(RuntimeError):
     """Raised when persisted application data cannot be read or written."""
 
 
+class SessionKeyStore(Protocol):
+    """Storage boundary for Last.fm session keys."""
+
+    def load(self, username: str) -> str:
+        """Return the stored session key for ``username`` or an empty string."""
+
+    def save(self, username: str, session_key: str) -> None:
+        """Persist ``session_key`` for ``username`` when secure storage is available."""
+
+
+class SecretToolSessionKeyStore:
+    """Store Last.fm session keys in the desktop secret service via ``secret-tool``."""
+
+    def __init__(self, executable: str = "secret-tool") -> None:
+        self.executable = executable
+
+    def load(self, username: str) -> str:
+        if not username or shutil.which(self.executable) is None:
+            return ""
+        try:
+            result = subprocess.run(
+                [
+                    self.executable,
+                    "lookup",
+                    "application",
+                    SECRET_TOOL_ATTRIBUTE_APP,
+                    "username",
+                    username,
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            LOGGER.warning("Could not load Last.fm session key from secret service: %s", error)
+            return ""
+        if result.returncode != 0:
+            return ""
+        return result.stdout.strip()
+
+    def save(self, username: str, session_key: str) -> None:
+        if not username or not session_key or shutil.which(self.executable) is None:
+            return
+        try:
+            subprocess.run(
+                [
+                    self.executable,
+                    "store",
+                    "--label",
+                    f"myLastFmPlayer Last.fm session for {username}",
+                    "application",
+                    SECRET_TOOL_ATTRIBUTE_APP,
+                    "username",
+                    username,
+                ],
+                input=session_key,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            LOGGER.warning("Could not save Last.fm session key to secret service: %s", error)
+
+
 class JsonTrackRepository:
     """Repository that stores track lists and download cache data as JSON files."""
 
-    def __init__(self, data_dir: Path | None = None, downloads_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        data_dir: Path | None = None,
+        downloads_dir: Path | None = None,
+        session_key_store: SessionKeyStore | None = None,
+    ) -> None:
         self.data_dir = data_dir or default_data_dir()
         self.downloads_dir = downloads_dir or self.data_dir / DEFAULT_DOWNLOADS_DIR
         self.tracks_dir = self.data_dir / TRACKS_DIR_NAME
         self.cache_path = self.data_dir / CACHE_FILENAME
         self.lookup_cache_path = self.data_dir / LOOKUP_CACHE_FILENAME
-        self.credentials_path = self.data_dir / CREDENTIALS_FILENAME
+        self._session_key_store = session_key_store or SecretToolSessionKeyStore()
         self._lock = RLock()
+
+    @property
+    def credentials_path(self) -> Path:
+        """Return the path for non-secret Last.fm credential preferences."""
+
+        return self.data_dir / CREDENTIALS_FILENAME
 
     def load_tracks(self, username: str) -> list[Track]:
         """Load all stored tracks for ``username``."""
@@ -247,12 +329,24 @@ class JsonTrackRepository:
             return {}
         if not isinstance(data, dict):
             return {}
-        return data  # type: ignore[return-value]
+        credentials = dict(data)
+        username = credentials.get("username", "")
+        credentials.pop("session_key", None)
+        if isinstance(username, str):
+            session_key = self._session_key_store.load(username)
+            if session_key:
+                credentials["session_key"] = session_key
+        return credentials
 
     def save_credentials(self, credentials: dict[str, object]) -> None:
         """Atomically persist Last.fm credentials."""
 
-        _atomic_write_json(self.credentials_path, credentials)
+        stored_credentials = dict(credentials)
+        session_key = stored_credentials.pop("session_key", "")
+        username = stored_credentials.get("username", "")
+        if isinstance(username, str) and isinstance(session_key, str):
+            self._session_key_store.save(username, session_key)
+        _atomic_write_json(self.credentials_path, stored_credentials)
 
 
 def default_data_dir() -> Path:

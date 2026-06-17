@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ from my_lastfm_player.storage import (
     LOOKUP_CACHE_FILENAME,
     TRACKS_DIR_NAME,
     JsonTrackRepository,
+    SecretToolSessionKeyStore,
     StorageError,
     _atomic_write_json,
     _read_json_file,
@@ -18,6 +20,17 @@ from my_lastfm_player.storage import (
     merge_track_updates,
     sanitize_path_component,
 )
+
+
+class MemorySessionKeyStore:
+    def __init__(self) -> None:
+        self.session_keys: dict[str, str] = {}
+
+    def load(self, username: str) -> str:
+        return self.session_keys.get(username, "")
+
+    def save(self, username: str, session_key: str) -> None:
+        self.session_keys[username] = session_key
 
 
 def test_repository_saves_and_loads_per_user_tracks(tmp_path: Path) -> None:
@@ -387,13 +400,21 @@ def test_default_data_dir_respects_xdg_data_home(monkeypatch, tmp_path: Path) ->
 
 
 def test_credentials_round_trip(tmp_path: Path) -> None:
-    repository = JsonTrackRepository(data_dir=tmp_path)
+    session_key_store = MemorySessionKeyStore()
+    repository = JsonTrackRepository(
+        data_dir=tmp_path,
+        session_key_store=session_key_store,
+    )
     credentials = {"username": "testuser", "session_key": "abc123", "scrobbling_enabled": True}
 
     repository.save_credentials(credentials)
     loaded = repository.load_credentials()
 
     assert loaded == credentials
+    assert session_key_store.session_keys == {"testuser": "abc123"}
+    persisted = json.loads(repository.credentials_path.read_text(encoding="utf-8"))
+    assert persisted == {"username": "testuser", "scrobbling_enabled": True}
+    assert "session_key" not in persisted
 
 
 def test_credentials_returns_empty_dict_when_missing(tmp_path: Path) -> None:
@@ -416,6 +437,94 @@ def test_credentials_returns_empty_dict_for_non_dict_json(tmp_path: Path) -> Non
     repository.credentials_path.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
 
     assert repository.load_credentials() == {}
+
+
+def test_secret_tool_session_key_store_loads_key(monkeypatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout="stored-key\n", stderr="")
+
+    monkeypatch.setattr("my_lastfm_player.storage.shutil.which", lambda _name: "/bin/secret-tool")
+    monkeypatch.setattr("my_lastfm_player.storage.subprocess.run", fake_run)
+
+    store = SecretToolSessionKeyStore()
+
+    assert store.load("testuser") == "stored-key"
+    assert calls == [
+        [
+            "secret-tool",
+            "lookup",
+            "application",
+            "myLastFmPlayer",
+            "username",
+            "testuser",
+        ]
+    ]
+
+
+def test_secret_tool_session_key_store_saves_key(monkeypatch) -> None:
+    calls: list[tuple[list[str], str]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs["input"]))
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr("my_lastfm_player.storage.shutil.which", lambda _name: "/bin/secret-tool")
+    monkeypatch.setattr("my_lastfm_player.storage.subprocess.run", fake_run)
+
+    SecretToolSessionKeyStore().save("testuser", "stored-key")
+
+    assert calls == [
+        (
+            [
+                "secret-tool",
+                "store",
+                "--label",
+                "myLastFmPlayer Last.fm session for testuser",
+                "application",
+                "myLastFmPlayer",
+                "username",
+                "testuser",
+            ],
+            "stored-key",
+        )
+    ]
+
+
+def test_secret_tool_session_key_store_ignores_missing_secret_tool(monkeypatch) -> None:
+    monkeypatch.setattr("my_lastfm_player.storage.shutil.which", lambda _name: None)
+
+    store = SecretToolSessionKeyStore()
+
+    assert store.load("testuser") == ""
+    store.save("testuser", "stored-key")
+
+
+def test_secret_tool_session_key_store_returns_empty_when_load_fails(
+    monkeypatch, caplog
+) -> None:
+    def raise_os_error(*_args, **_kwargs):
+        raise OSError("secret service unavailable")
+
+    monkeypatch.setattr("my_lastfm_player.storage.shutil.which", lambda _name: "/bin/secret-tool")
+    monkeypatch.setattr("my_lastfm_player.storage.subprocess.run", raise_os_error)
+
+    assert SecretToolSessionKeyStore().load("testuser") == ""
+    assert "Could not load Last.fm session key" in caplog.text
+
+
+def test_secret_tool_session_key_store_ignores_save_failures(monkeypatch, caplog) -> None:
+    def raise_os_error(*_args, **_kwargs):
+        raise OSError("secret service unavailable")
+
+    monkeypatch.setattr("my_lastfm_player.storage.shutil.which", lambda _name: "/bin/secret-tool")
+    monkeypatch.setattr("my_lastfm_player.storage.subprocess.run", raise_os_error)
+
+    SecretToolSessionKeyStore().save("testuser", "stored-key")
+
+    assert "Could not save Last.fm session key" in caplog.text
 
 
 def test_wipe_removes_credentials_cache_and_track_files(tmp_path: Path) -> None:

@@ -325,8 +325,9 @@ platform-native ``QSettings`` store (``~/.config/`` on Linux).
        when the audio file still exists on disk.
    * - ``lastfm-credentials.json``
      - JSON object
-     - Per-user Last.fm session key obtained through the web-auth flow;
-       required for now-playing and scrobbling.
+     - Non-secret Last.fm preferences such as username and scrobbling enabled state.
+       Last.fm session keys are stored through the desktop secret service when
+       ``secret-tool`` is available, not in this JSON file.
    * - ``downloads/``
      - Directory
      - Default output folder for downloaded mp3 files (overridable).

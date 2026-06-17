@@ -2390,9 +2390,22 @@ def test_controller_init_scrobbling_reports_session_key_not_verified(
         def get_authenticated_user(self):
             raise RuntimeError("auth failed")
 
+    class MemorySessionKeyStore:
+        def __init__(self) -> None:
+            self.session_keys: dict[str, str] = {}
+
+        def load(self, username: str) -> str:
+            return self.session_keys.get(username, "")
+
+        def save(self, username: str, session_key: str) -> None:
+            self.session_keys[username] = session_key
+
     window = MainWindow()
-    repository = JsonTrackRepository(data_dir=tmp_path)
-    repository.save_credentials({"session_key": "stale"})
+    repository = JsonTrackRepository(
+        data_dir=tmp_path,
+        session_key_store=MemorySessionKeyStore(),
+    )
+    repository.save_credentials({"username": "storeduser", "session_key": "stale"})
 
     monkeypatch.setattr(
         controller_module,
