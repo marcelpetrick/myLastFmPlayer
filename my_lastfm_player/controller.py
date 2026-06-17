@@ -5,8 +5,10 @@ import logging
 import random
 import time
 from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 from PyQt6.QtCore import QObject, QThread, QUrl
 from PyQt6.QtGui import QDesktopServices
@@ -22,7 +24,6 @@ from my_lastfm_player.i18n import translate
 from my_lastfm_player.lastfm import (
     ArtistImage,
     LastFmArtistInfoClient,
-    LastFmError,
     LastFmLovedTracksScraper,
 )
 from my_lastfm_player.models import Track, TrackStatus
@@ -107,6 +108,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._download_stop_requested = False
         self._playback_callbacks_connected = False
         self._scrobbling_service: ScrobblingService | None = None
+        self._scrobbling_executor = ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="lastfm-scrobbling",
+        )
+        self._scrobbling_futures: set[Future[Any]] = set()
         self._scrobble_submitted = False
         self._scrobble_seek_start_ms: int = 0
         self._playback_start_time: int | None = None
@@ -153,6 +159,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
     def _handle_quit(self) -> None:
         if not AppSettings().keep_data_on_quit():
             self.repository.wipe()
+        self._scrobbling_executor.shutdown(wait=False, cancel_futures=True)
 
     def _report_user_action(self, message: str) -> None:
         LOGGER.info("User action: %s", message)
@@ -186,17 +193,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._report_user_action(
                 translate(
                     "ApplicationController",
-                    "Found {count} cached tracks for {username}; "
-                    "checking Last.fm before using them.",
+                    "Found {count} cached tracks for {username}; using local cache.",
                     count=cached_count,
                     username=username,
                 )
             )
-        if verify_online_count and not self._cached_track_count_matches_lastfm(
-            username,
-            cached_count,
-        ):
-            return False
 
         tracks = self.repository.mark_cached_downloads(
             self.repository.mark_cached_lookups(tracks)
@@ -212,61 +213,6 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
         )
         return True
-
-    def _cached_track_count_matches_lastfm(self, username: str, cached_count: int) -> bool:
-        try:
-            online_count = self.scraper.fetch_loved_track_count(username)
-        except LastFmError as error:
-            self._report_cache_status(
-                translate(
-                    "ApplicationController",
-                    "Could not verify Last.fm loved-track count for {username}; "
-                    "using {count} cached tracks: {error}",
-                    username=username,
-                    count=cached_count,
-                    error=error,
-                )
-            )
-            return True
-
-        if online_count is None:
-            self._report_cache_status(
-                translate(
-                    "ApplicationController",
-                    "Could not read Last.fm loved-track count for {username}; "
-                    "fetching fresh data instead of trusting {count} cached tracks.",
-                    username=username,
-                    count=cached_count,
-                )
-            )
-            return False
-
-        if online_count == cached_count:
-            self._report_cache_status(
-                translate(
-                    "ApplicationController",
-                    "Last.fm reports {online_count} loved tracks for {username}; "
-                    "cached track count matches.",
-                    username=username,
-                    online_count=online_count,
-                )
-            )
-            return True
-
-        self._report_cache_status(
-            translate(
-                "ApplicationController",
-                "Last.fm reports {online_count} loved tracks for {username}, "
-                "but the cache has {cached_count}; fetching fresh data.",
-                username=username,
-                online_count=online_count,
-                cached_count=cached_count,
-            )
-        )
-        return False
-
-    def _report_cache_status(self, message: str) -> None:
-        self._report_user_action(message)
 
     def check_dependencies(self) -> DependencyCheckResult:
         """Check external tools and update dependency status in the window."""
@@ -371,22 +317,13 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             scrobbling_enabled=scrobbling_enabled,
         )
         if self._scrobbling_service.session_key:
-            if self._scrobbling_service.try_connect():
-                self._report_user_action(
-                    translate(
-                        "ApplicationController",
-                        "Connected Last.fm scrobbling as {username}.",
-                        username=self._scrobbling_service.username,
-                    )
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Verifying stored Last.fm session key in the background.",
                 )
-            else:
-                self._report_user_action(
-                    translate(
-                        "ApplicationController",
-                        "Stored Last.fm session key could not be verified; "
-                        "scrobbling remains disconnected.",
-                    )
-                )
+            )
+            self._submit_scrobbling_task(self._scrobbling_service.try_connect)
 
     def _show_preferences(self) -> None:
         from my_lastfm_player.ui.preferences_dialog import PreferencesDialog  # noqa: PLC0415
@@ -447,45 +384,18 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 self._start_automatic_lookup(username, len(tracks))
             return
 
-        # Pre-flight: if no cache exists yet, verify the username on Last.fm before
-        # spawning the heavy fetch worker.  When cache existed but count mismatched,
-        # the username was already verified above, so skip the extra round-trip.
-        has_any_cache = bool(self.repository.load_tracks(username))
         expected_count: int | None = None
-        if not has_any_cache:
-            try:
-                expected_count = self.scraper.fetch_loved_track_count(username)
-            except LastFmError as error:
-                self._report_user_action(
-                    translate(
-                        "ApplicationController",
-                        "Could not reach Last.fm for {username}: {error}",
-                        username=username,
-                        error=error,
-                    )
-                )
-                return
 
         LOGGER.info(
             "Fresh fetch requested for Last.fm user %s (expected=%s)", username, expected_count
         )
-        if expected_count is not None:
-            self._report_user_action(
-                translate(
-                    "ApplicationController",
-                    "Starting fresh Last.fm fetch for {username}; {count} tracks expected.",
-                    username=username,
-                    count=expected_count,
-                )
+        self._report_user_action(
+            translate(
+                "ApplicationController",
+                "Starting fresh Last.fm fetch for {username}.",
+                username=username,
             )
-        else:
-            self._report_user_action(
-                translate(
-                    "ApplicationController",
-                    "Starting fresh Last.fm fetch for {username}.",
-                    username=username,
-                )
-            )
+        )
         self.window.set_workflow_enabled(False)
         self.window.set_fetch_control_state(active=True, paused=False)
         self._fetch_paused = False
@@ -1038,7 +948,12 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                     title=track.title,
                 )
             )
-            self._scrobbling_service.update_now_playing(track.artist, track.title, duration_s)
+            self._submit_scrobbling_task(
+                self._scrobbling_service.update_now_playing,
+                track.artist,
+                track.title,
+                duration_s,
+            )
         self._report_user_action(
             translate(
                 "ApplicationController",
@@ -1273,12 +1188,29 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 title=current_track.title,
             )
         )
-        self._scrobbling_service.scrobble(
+        self._submit_scrobbling_task(
+            self._scrobbling_service.scrobble,
             artist=current_track.artist,
             title=current_track.title,
             timestamp=self._playback_start_time,
             duration_seconds=duration_ms // 1000,
         )
+
+    def _submit_scrobbling_task(self, task: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
+        future = self._scrobbling_executor.submit(task, *args, **kwargs)
+        self._scrobbling_futures.add(future)
+        future.add_done_callback(self._handle_scrobbling_task_done)
+
+    def _handle_scrobbling_task_done(self, future: Future[Any]) -> None:
+        self._scrobbling_futures.discard(future)
+        try:
+            future.result()
+        except Exception:  # noqa: BLE001 - executor boundary logs unexpected failures.
+            LOGGER.exception("Background Last.fm scrobbling task failed")
+
+    def _wait_for_scrobbling_tasks(self) -> None:
+        for future in list(self._scrobbling_futures):
+            future.result(timeout=5)
 
     def _handle_playback_duration_changed(self, duration_ms: int) -> None:
         self.window.set_playback_timeline(self.playback_service.position_ms(), duration_ms)

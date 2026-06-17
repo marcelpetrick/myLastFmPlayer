@@ -10,7 +10,7 @@ from my_lastfm_player import controller as controller_module
 from my_lastfm_player.app_credentials import LastFmApiCredentials
 from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.dependencies import DependencyCheckResult
-from my_lastfm_player.lastfm import ArtistImage
+from my_lastfm_player.lastfm import ArtistImage, LastFmError
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
@@ -274,10 +274,10 @@ def test_controller_loads_cached_tracks_without_fetching(qapp, tmp_path) -> None
     assert window.tracks() == [cached_track]
     assert len(workers) == 1
     assert "Loaded 1 cached tracks for example" in window.feedback_log.toPlainText()
-    assert "cached track count matches" in window.feedback_log.toPlainText()
+    assert "using local cache" in window.feedback_log.toPlainText()
 
 
-def test_controller_fetches_fresh_tracks_when_online_count_differs(qapp, tmp_path) -> None:
+def test_controller_uses_cache_without_checking_different_online_count(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("example")
     repository = JsonTrackRepository(data_dir=tmp_path)
@@ -293,14 +293,13 @@ def test_controller_fetches_fresh_tracks_when_online_count_differs(qapp, tmp_pat
 
     controller.fetch_loved_tracks()
 
-    assert scraper.checked_usernames == ["example"]
+    assert scraper.checked_usernames == []
     assert len(workers) == 1
-    assert controller._active_fetch_worker is workers[0]
-    assert "cache has 1" in window.feedback_log.toPlainText()
-    assert "fetching fresh data" in window.feedback_log.toPlainText()
+    assert controller._active_fetch_worker is None
+    assert "using local cache" in window.feedback_log.toPlainText()
 
 
-def test_controller_fetches_fresh_tracks_when_online_count_is_unknown(qapp, tmp_path) -> None:
+def test_controller_uses_cache_without_checking_unknown_online_count(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("example")
     repository = JsonTrackRepository(data_dir=tmp_path)
@@ -316,7 +315,7 @@ def test_controller_fetches_fresh_tracks_when_online_count_is_unknown(qapp, tmp_
     controller.fetch_loved_tracks()
 
     assert len(workers) == 1
-    assert "Could not read Last.fm loved-track count" in window.feedback_log.toPlainText()
+    assert "using local cache" in window.feedback_log.toPlainText()
 
 
 def test_controller_uses_cache_when_online_count_check_fails(qapp, tmp_path) -> None:
@@ -328,7 +327,7 @@ def test_controller_uses_cache_when_online_count_check_fails(qapp, tmp_path) -> 
     controller = ApplicationController(
         window,
         repository=repository,
-        scraper=CountCheckingScraper(controller_module.LastFmError("network down")),  # type: ignore[arg-type]
+        scraper=CountCheckingScraper(LastFmError("network down")),  # type: ignore[arg-type]
     )
     workers: list[object] = []
     controller._run_worker = workers.append  # type: ignore[method-assign]
@@ -337,15 +336,14 @@ def test_controller_uses_cache_when_online_count_check_fails(qapp, tmp_path) -> 
 
     assert len(workers) == 1
     assert window.tracks() == [cached_track]
-    assert "using 1 cached tracks" in window.feedback_log.toPlainText()
+    assert "using local cache" in window.feedback_log.toPlainText()
 
 
-def test_controller_aborts_fresh_fetch_when_lastfm_is_unreachable(qapp, tmp_path) -> None:
+def test_controller_starts_fresh_fetch_without_main_thread_preflight(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("example")
     repository = JsonTrackRepository(data_dir=tmp_path)
-    # No tracks saved — no cache, so pre-flight runs.
-    scraper = CountCheckingScraper(controller_module.LastFmError("user not found"))
+    scraper = CountCheckingScraper(LastFmError("user not found"))
     controller = ApplicationController(
         window,
         repository=repository,
@@ -356,16 +354,15 @@ def test_controller_aborts_fresh_fetch_when_lastfm_is_unreachable(qapp, tmp_path
 
     controller.fetch_loved_tracks()
 
-    assert len(workers) == 0
-    assert scraper.checked_usernames == ["example"]
-    assert "Could not reach Last.fm for example" in window.feedback_log.toPlainText()
+    assert len(workers) == 1
+    assert scraper.checked_usernames == []
+    assert "Starting fresh Last.fm fetch for example." in window.feedback_log.toPlainText()
 
 
-def test_controller_shows_expected_count_before_fresh_fetch(qapp, tmp_path) -> None:
+def test_controller_fresh_fetch_worker_starts_without_expected_count(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("example")
     repository = JsonTrackRepository(data_dir=tmp_path)
-    # No cache — pre-flight returns a known count.
     scraper = CountCheckingScraper(523)
     controller = ApplicationController(
         window,
@@ -378,17 +375,17 @@ def test_controller_shows_expected_count_before_fresh_fetch(qapp, tmp_path) -> N
     controller.fetch_loved_tracks()
 
     assert len(workers) == 1
-    assert scraper.checked_usernames == ["example"]
-    assert "523 tracks expected" in window.feedback_log.toPlainText()
-    assert workers[0].expected_count == 523  # type: ignore[union-attr]
+    assert scraper.checked_usernames == []
+    assert "Starting fresh Last.fm fetch for example." in window.feedback_log.toPlainText()
+    assert workers[0].expected_count is None  # type: ignore[union-attr]
 
 
-def test_controller_skips_preflight_when_cache_count_already_checked(qapp, tmp_path) -> None:
+def test_controller_uses_cache_without_online_count_check(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("example")
     repository = JsonTrackRepository(data_dir=tmp_path)
     repository.save_tracks("example", [Track(artist="Cached", title="Track")])
-    scraper = CountCheckingScraper(2)  # count mismatch triggers fresh fetch
+    scraper = CountCheckingScraper(2)
     controller = ApplicationController(
         window,
         repository=repository,
@@ -399,8 +396,7 @@ def test_controller_skips_preflight_when_cache_count_already_checked(qapp, tmp_p
 
     controller.fetch_loved_tracks()
 
-    # fetch_loved_track_count called once only (from cache check, not again in pre-flight)
-    assert scraper.checked_usernames == ["example"]
+    assert scraper.checked_usernames == []
     assert len(workers) == 1
 
 
@@ -1916,14 +1912,17 @@ def test_controller_scrobbles_at_33_percent(qapp, tmp_path) -> None:
 
     controller._play_track(track)
     controller._maybe_scrobble(65_999, 200_000)  # just below 33%
+    controller._wait_for_scrobbling_tasks()
     assert scrobbles == []
 
     controller._maybe_scrobble(66_000, 200_000)  # exactly 33%
+    controller._wait_for_scrobbling_tasks()
     assert len(scrobbles) == 1
     assert scrobbles[0]["artist"] == "Artist"
     assert scrobbles[0]["title"] == "Title"
 
     controller._maybe_scrobble(100_000, 200_000)  # only submitted once
+    controller._wait_for_scrobbling_tasks()
     assert len(scrobbles) == 1
 
 
@@ -1972,9 +1971,11 @@ def test_controller_scrobble_resets_on_seek(qapp, tmp_path) -> None:
     assert controller._scrobble_seek_start_ms == 100_000
 
     controller._maybe_scrobble(165_999, 200_000)  # 65_999 ms elapsed < 66_000 threshold
+    controller._wait_for_scrobbling_tasks()
     assert scrobbles == []
 
     controller._maybe_scrobble(166_000, 200_000)  # exactly 33% from seek point
+    controller._wait_for_scrobbling_tasks()
     assert len(scrobbles) == 1
 
 
@@ -2019,12 +2020,14 @@ def test_controller_scrobble_resets_on_new_track(qapp, tmp_path) -> None:
 
     controller._play_track(track)
     controller._maybe_scrobble(33_000, 100_000)
+    controller._wait_for_scrobbling_tasks()
     assert len(scrobbles) == 1
 
     controller._play_track(track)  # restart same track
     assert not controller._scrobble_submitted
 
     controller._maybe_scrobble(33_000, 100_000)
+    controller._wait_for_scrobbling_tasks()
     assert len(scrobbles) == 2
 
 
@@ -2161,6 +2164,7 @@ def test_controller_load_cached_tracks_reports_count_when_verify_and_tracks_pres
 
     assert result is True
     assert "Found 1 cached tracks for user" in window.feedback_log.toPlainText()
+    assert controller.scraper.checked_usernames == []  # type: ignore[attr-defined]
 
 
 def test_controller_does_not_reload_cache_while_fresh_fetch_is_active(qapp, tmp_path) -> None:
@@ -2218,8 +2222,13 @@ def test_controller_init_scrobbling_reports_session_key_not_verified(
     )
     controller = ApplicationController(window, repository=repository)
     controller._init_scrobbling()
+    controller._wait_for_scrobbling_tasks()
 
-    assert "could not be verified" in window.feedback_log.toPlainText()
+    assert "Verifying stored Last.fm session key in the background." in (
+        window.feedback_log.toPlainText()
+    )
+    assert controller._scrobbling_service is not None
+    assert not controller._scrobbling_service.is_authenticated
 
 
 def test_controller_save_scrobbling_credentials_without_service(qapp, tmp_path) -> None:
