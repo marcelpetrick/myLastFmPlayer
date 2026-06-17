@@ -41,6 +41,7 @@ from my_lastfm_player.workers import (
 from my_lastfm_player.youtube import YouTubeResolver
 
 LOGGER = logging.getLogger(__name__)
+THREAD_SHUTDOWN_TIMEOUT_MS = 3000
 
 DependencyChecker = Callable[[], DependencyCheckResult]
 FetchWorkerFactory = Callable[
@@ -157,8 +158,25 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.check_dependencies()
 
     def _handle_quit(self) -> None:
+        self._shutdown_background_work()
         if not AppSettings().keep_data_on_quit():
             self.repository.wipe()
+
+    def _shutdown_background_work(self) -> None:
+        if self._active_fetch_worker is not None:
+            self._active_fetch_worker.stop_fetch()
+            self._fetch_paused = False
+            self.window.set_fetch_control_state(active=False, paused=False)
+        if self._download_worker_active or self._has_active_download_worker():
+            self._download_worker_active = False
+            self._download_stop_requested = True
+            self.download_manager.stop()
+            self.window.set_download_active(False)
+        for thread in list(self._active_threads):
+            if hasattr(thread, "quit"):
+                thread.quit()
+            if hasattr(thread, "wait"):
+                thread.wait(THREAD_SHUTDOWN_TIMEOUT_MS)
         self._scrobbling_executor.shutdown(wait=False, cancel_futures=True)
 
     def _report_user_action(self, message: str) -> None:

@@ -69,6 +69,7 @@ class FakeThread:
         self.finished = FakeSignal()
         self.started_flag = False
         self.quit_called = False
+        self.wait_timeout: int | None = None
         self.deleted = False
 
     def start(self) -> None:
@@ -76,6 +77,9 @@ class FakeThread:
 
     def quit(self) -> None:
         self.quit_called = True
+
+    def wait(self, timeout: int) -> None:
+        self.wait_timeout = timeout
 
     def deleteLater(self) -> None:
         self.deleted = True
@@ -2148,6 +2152,36 @@ def test_controller_handle_quit_skips_wipe_when_keep_data_is_true(
     controller._handle_quit()
 
     assert repository.credentials_path.exists()
+
+
+def test_controller_handle_quit_stops_workers_before_wiping(qapp, tmp_path, monkeypatch) -> None:
+    from my_lastfm_player import settings as settings_module
+
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_credentials({"key": "val"})
+    controller = ApplicationController(window, repository=repository)
+    fetch_worker = FakeFetchWorker()
+    thread = FakeThread(controller)
+    controller._active_fetch_worker = fetch_worker  # type: ignore[assignment]
+    controller._fetch_paused = True
+    controller._download_worker_active = True
+    controller._active_threads.append(thread)  # type: ignore[arg-type]
+    window.set_fetch_control_state(active=True, paused=True)
+    window.set_download_active(True)
+
+    monkeypatch.setattr(settings_module.AppSettings, "keep_data_on_quit", lambda self: False)
+    controller._handle_quit()
+
+    assert fetch_worker.events == ["stop"]
+    assert not controller._fetch_paused
+    assert not controller._download_worker_active
+    assert controller._download_stop_requested
+    assert not window.fetch_pause_button.isEnabled()
+    assert not window._download_active
+    assert thread.quit_called
+    assert thread.wait_timeout == controller_module.THREAD_SHUTDOWN_TIMEOUT_MS
+    assert not repository.credentials_path.exists()
 
 
 def test_controller_load_cached_tracks_returns_false_for_empty_username(qapp) -> None:
