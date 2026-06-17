@@ -5,7 +5,7 @@ import logging
 import random
 import time
 from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -18,6 +18,7 @@ from my_lastfm_player.app_credentials import (
     LASTFM_API_SECRET_ENV,
     lastfm_api_credentials,
 )
+from my_lastfm_player.background_tasks import BackgroundTaskRunner
 from my_lastfm_player.dependencies import DependencyCheckResult, check_external_dependencies
 from my_lastfm_player.download import DownloadManager
 from my_lastfm_player.i18n import translate
@@ -109,11 +110,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._download_stop_requested = False
         self._playback_callbacks_connected = False
         self._scrobbling_service: ScrobblingService | None = None
-        self._scrobbling_executor = ThreadPoolExecutor(
-            max_workers=1,
-            thread_name_prefix="lastfm-scrobbling",
+        self._scrobbling_tasks = BackgroundTaskRunner(
+            "lastfm-scrobbling",
+            "Background Last.fm scrobbling task failed",
         )
-        self._scrobbling_futures: set[Future[Any]] = set()
+        self._scrobbling_futures = self._scrobbling_tasks.futures
         self._scrobble_submitted = False
         self._scrobble_seek_start_ms: int = 0
         self._playback_start_time: int | None = None
@@ -177,7 +178,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 thread.quit()
             if hasattr(thread, "wait"):
                 thread.wait(THREAD_SHUTDOWN_TIMEOUT_MS)
-        self._scrobbling_executor.shutdown(wait=False, cancel_futures=True)
+        self._scrobbling_tasks.shutdown()
 
     def _report_user_action(self, message: str) -> None:
         LOGGER.info("User action: %s", message)
@@ -1357,20 +1358,13 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         )
 
     def _submit_scrobbling_task(self, task: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
-        future = self._scrobbling_executor.submit(task, *args, **kwargs)
-        self._scrobbling_futures.add(future)
-        future.add_done_callback(self._handle_scrobbling_task_done)
+        self._scrobbling_tasks.submit(task, *args, **kwargs)
 
     def _handle_scrobbling_task_done(self, future: Future[Any]) -> None:
-        self._scrobbling_futures.discard(future)
-        try:
-            future.result()
-        except Exception:  # noqa: BLE001 - executor boundary logs unexpected failures.
-            LOGGER.exception("Background Last.fm scrobbling task failed")
+        self._scrobbling_tasks.handle_task_done(future)
 
     def _wait_for_scrobbling_tasks(self) -> None:
-        for future in list(self._scrobbling_futures):
-            future.result(timeout=5)
+        self._scrobbling_tasks.wait(timeout=5)
 
     def _handle_playback_duration_changed(self, duration_ms: int) -> None:
         self.window.set_playback_timeline(self.playback_service.position_ms(), duration_ms)

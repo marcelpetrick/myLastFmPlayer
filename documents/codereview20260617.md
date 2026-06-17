@@ -42,7 +42,7 @@ The major unresolved items from 2026-06-15 are still present: `ApplicationContro
 9. FIXED: **Workflow conflict resolution is encoded as one fragile global status rank.**
    `_STATUS_RANK` in `my_lastfm_player/models.py:26` drives `Track.merge_preserving()` at `my_lastfm_player/models.py:86`. That linear rank tries to cover branches such as fetched, searching, queued, downloading, failed, not-found, downloaded, retry, and re-lookup. Because `NOT_FOUND` outranks `FAILED`, `QUEUED`, and `DOWNLOADING`, a stale terminal lookup state can win during merges even when later workflow intent wants to retry or move forward. This policy belongs in explicit workflow transitions rather than a single global ordering.
 
-10. **The controller and main window remain explicit god objects.**
+10. FIXED: **The controller and main window remain explicit god objects.**
     `my_lastfm_player/controller.py:1` and `my_lastfm_player/ui/main_window.py:1` both carry file-level `too-many-lines` suppressions, and the primary classes add more complexity suppressions at `my_lastfm_player/controller.py:61` and `my_lastfm_player/ui/main_window.py:148`. `ApplicationController` still owns dependency checks, repository writes, Last.fm fetch orchestration, YouTube lookup, downloads, playback, scrobbling, settings, artist images, and `QThread` lifecycle. `MainWindow` still owns menus, layout construction, filtering, table behavior, playback controls, dialogs, feedback logging, translation, and state formatting. The issues above are symptoms of this concentration: success handlers, error handlers, lifecycle cleanup, and UI state all cross through the same mutable coordinator.
 
 ## Still Important From The Previous Review
