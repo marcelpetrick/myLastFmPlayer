@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
 from my_lastfm_player.download import (
+    DownloadError,
     DownloadManager,
     _bit_rate_to_kbps,
     _format_name_to_file_type,
@@ -65,6 +68,36 @@ class BlockingRunner:
         finally:
             with self.lock:
                 self.active -= 1
+
+
+class FakeProcess:
+    def __init__(self, returncode: int | None = None, wait_raises: bool = False) -> None:
+        self.returncode = returncode
+        self.wait_raises = wait_raises
+        self.terminated = False
+        self.killed = False
+
+    def poll(self) -> int | None:
+        return self.returncode
+
+    def communicate(self) -> tuple[str, str]:
+        return "stdout", "stderr"
+
+    def terminate(self) -> None:
+        self.terminated = True
+        if not self.wait_raises:
+            self.returncode = -15
+
+    def wait(self, timeout: float | None = None) -> int:
+        if timeout is not None and self.wait_raises:
+            raise subprocess.TimeoutExpired(["fake"], timeout)
+        if self.returncode is None:
+            self.returncode = -9 if self.killed else 0
+        return self.returncode
+
+    def kill(self) -> None:
+        self.killed = True
+        self.returncode = -9
 
 
 def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
@@ -221,6 +254,80 @@ def test_download_manager_stop_wakes_blocked_threads_and_marks_failed(tmp_path: 
         tracks = future.result(timeout=5)
 
     assert tracks[0].status == TrackStatus.FAILED
+
+
+def test_download_manager_stop_terminates_active_default_process() -> None:
+    manager = DownloadManager()
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(
+            manager._run,
+            [sys.executable, "-c", "import time; time.sleep(30)"],
+        )
+        threading.Event().wait(0.2)
+        manager.stop()
+
+        with pytest.raises(DownloadError, match="stopped"):
+            future.result(timeout=5)
+
+
+def test_download_manager_default_process_reports_os_errors(monkeypatch) -> None:
+    def raise_os_error(*_args, **_kwargs):
+        raise OSError("missing executable")
+
+    monkeypatch.setattr(subprocess, "Popen", raise_os_error)
+
+    with pytest.raises(DownloadError, match="Could not run yt-dlp"):
+        DownloadManager()._run(["yt-dlp", "--version"])
+
+
+def test_download_manager_default_process_returns_completed_process() -> None:
+    manager = DownloadManager()
+
+    completed = manager._run([sys.executable, "-c", "print('ok')"])
+
+    assert completed.returncode == 0
+    assert completed.stdout.strip() == "ok"
+
+
+def test_download_manager_default_process_handles_pending_stop(monkeypatch) -> None:
+    process = FakeProcess()
+    monkeypatch.setattr(subprocess, "Popen", lambda *_args, **_kwargs: process)
+    manager = DownloadManager()
+    manager.stop()
+
+    with pytest.raises(DownloadError, match="stopped"):
+        manager._run(["yt-dlp", "--version"])
+
+    assert process.terminated
+
+
+def test_download_manager_default_process_handles_timeout(monkeypatch) -> None:
+    process = FakeProcess()
+    monkeypatch.setattr(subprocess, "Popen", lambda *_args, **_kwargs: process)
+    monkeypatch.setattr("my_lastfm_player.download.DOWNLOAD_TIMEOUT_SECONDS", 0)
+
+    with pytest.raises(DownloadError, match="timed out"):
+        DownloadManager()._run(["yt-dlp", "--version"])
+
+    assert process.terminated
+
+
+def test_download_manager_terminate_process_ignores_finished_process() -> None:
+    process = FakeProcess(returncode=0)
+
+    DownloadManager._terminate_process(process)  # type: ignore[arg-type]
+
+    assert not process.terminated
+
+
+def test_download_manager_terminate_process_kills_stubborn_process() -> None:
+    process = FakeProcess(wait_raises=True)
+
+    DownloadManager._terminate_process(process)  # type: ignore[arg-type]
+
+    assert process.terminated
+    assert process.killed
 
 
 def test_download_manager_stop_aborts_pending_retries(tmp_path: Path) -> None:

@@ -9,7 +9,7 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 from pathlib import Path
-from threading import Event
+from threading import Event, Lock
 
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track, TrackStatus
@@ -57,6 +57,8 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         self._resume_event = Event()
         self._resume_event.set()
         self._stop_requested = False
+        self._process_lock = Lock()
+        self._active_processes: set[subprocess.Popen[str]] = set()
 
     def pause(self) -> None:
         """Pause the queue before the next retry or download starts."""
@@ -77,6 +79,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         LOGGER.info("Download queue stopped")
         self._stop_requested = True
         self._resume_event.set()
+        self._terminate_active_processes()
 
     def download_and_store_tracks(  # pylint: disable=too-many-arguments
         self,
@@ -229,6 +232,9 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         return candidates[0]
 
     def _run(self, command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        if self.command_runner is subprocess.run:
+            return self._run_default_process(command)
+
         try:
             return self.command_runner(
                 command,
@@ -244,6 +250,70 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
             ) from error
         except OSError as error:
             raise DownloadError(f"Could not run {self.executable}: {error}") from error
+
+    def _run_default_process(  # pylint: disable=consider-using-with
+        self, command: Sequence[str]
+    ) -> subprocess.CompletedProcess[str]:
+        command_list = list(command)
+        try:
+            process = subprocess.Popen(
+                command_list,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+            )
+        except OSError as error:
+            raise DownloadError(f"Could not run {self.executable}: {error}") from error
+
+        with self._process_lock:
+            self._active_processes.add(process)
+
+        started_at = time.monotonic()
+        try:
+            while process.poll() is None:
+                if self._stop_requested:
+                    self._terminate_process(process)
+                    process.communicate()
+                    raise DownloadError("Download stopped.") from None
+                if time.monotonic() - started_at >= DOWNLOAD_TIMEOUT_SECONDS:
+                    self._terminate_process(process)
+                    process.communicate()
+                    raise DownloadError(
+                        f"{self.executable} download timed out after {DOWNLOAD_TIMEOUT_SECONDS}s"
+                    )
+                time.sleep(0.1)
+
+            stdout, stderr = process.communicate()
+            if self._stop_requested:
+                raise DownloadError("Download stopped.") from None
+            return subprocess.CompletedProcess(
+                command_list,
+                process.returncode,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        finally:
+            with self._process_lock:
+                self._active_processes.discard(process)
+
+    def _terminate_active_processes(self) -> None:
+        with self._process_lock:
+            processes = list(self._active_processes)
+
+        for process in processes:
+            self._terminate_process(process)
+
+    @staticmethod
+    def _terminate_process(process: subprocess.Popen[str]) -> None:
+        if process.poll() is not None:
+            return
+        process.terminate()
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
 
 
 def _should_download(track: Track) -> bool:

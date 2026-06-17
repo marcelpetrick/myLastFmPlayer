@@ -27,7 +27,7 @@ The major unresolved items from 2026-06-15 are still present: `ApplicationContro
 4. FIXED: **Application shutdown accepts close immediately while background work may still run.**
    `MainWindow.closeEvent()` emits `quit_requested` and immediately accepts at `my_lastfm_player/ui/main_window.py:1034`. The controller's quit handler may wipe repository data at `my_lastfm_player/controller.py:153`, but it does not stop or wait for active threads tracked in `_active_threads` at `my_lastfm_player/controller.py:97`. Fetch, lookup, download, or artist-image workers can therefore keep running while shutdown and optional data deletion proceed, risking lost updates, partial cleanup, or Qt thread lifetime problems.
 
-5. **Download cancellation is bounded but still cannot stop an active `yt-dlp` process.**
+5. FIXED: **Download cancellation is bounded but still cannot stop an active `yt-dlp` process.**
    `stop_downloads()` marks downloads stopped at `my_lastfm_player/controller.py:1131`, and `DownloadManager.stop()` flips `_stop_requested` at `my_lastfm_player/download.py:74`. However, download workers only check that flag before an attempt at `my_lastfm_player/download.py:178`. Once `_run()` enters blocking `subprocess.run()` at `my_lastfm_player/download.py:231`, the user-facing Stop action cannot terminate the active `yt-dlp`; it waits for process exit or the 600-second timeout at `my_lastfm_player/download.py:239`. This is an improvement over no timeout, but it is not real cancellation.
 
 6. **A shared mutable `DownloadManager` lets overlapping download workflows interfere.**
