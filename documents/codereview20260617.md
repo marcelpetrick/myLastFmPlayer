@@ -15,7 +15,7 @@ The major unresolved items from 2026-06-15 are still present: `ApplicationContro
 
 ## Ten Worst Current Findings
 
-1. **Retrying a `NOT_FOUND` track is likely broken by stale lookup-cache state.**
+1. FIXED: **Retrying a `NOT_FOUND` track is likely broken by stale lookup-cache state.**
    `my_lastfm_player/controller.py:1158` resets `NOT_FOUND` and `FAILED` tracks in the per-user track file, but it does not clear the lookup cache entry for the same cache key. The retry path then calls `resolve_youtube_urls()` at `my_lastfm_player/controller.py:1176`; `YouTubeResolver.resolve_and_store_tracks()` immediately reapplies cached lookup state via `repository.mark_cached_lookups()` at `my_lastfm_player/youtube.py:132`; `mark_cached_lookups()` restores stale `NOT_FOUND` at `my_lastfm_player/storage.py:209`; and `resolve_tracks()` skips `NOT_FOUND` rows at `my_lastfm_player/youtube.py:65`. A visible "Retry Download" action can therefore fail to retry the exact class of tracks users most need it for.
 
 2. **Main-thread network calls can still freeze the Qt event loop.**

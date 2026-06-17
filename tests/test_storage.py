@@ -345,6 +345,24 @@ def test_lookup_cache_leaves_unresolved_cached_tracks_unchanged(tmp_path: Path) 
     assert marked_tracks == [Track(artist="Artist", title="Title", status=TrackStatus.FETCHED)]
 
 
+def test_forget_lookup_cache_keys_removes_only_matching_entries(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    stale_missing = Track(artist="Missing", title="Track", status=TrackStatus.NOT_FOUND)
+    resolved = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtube.example/watch?v=abc",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_lookup_cache([stale_missing, resolved])
+
+    repository.forget_lookup_cache_keys({stale_missing.cache_key})
+
+    cache = repository.load_lookup_cache()
+    assert stale_missing.cache_key not in cache
+    assert cache[resolved.cache_key] == resolved
+
+
 def test_atomic_write_replaces_existing_json_without_temp_files(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
 

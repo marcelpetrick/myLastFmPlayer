@@ -2446,6 +2446,7 @@ def test_controller_retry_track_download_resets_not_found_and_starts_lookup(
     repository = JsonTrackRepository(data_dir=tmp_path)
     track = Track(artist="A", title="T", status=TrackStatus.NOT_FOUND, error="not found")
     repository.save_tracks("user", [track])
+    repository.save_lookup_cache([track])
     window.set_tracks([track])
     controller = ApplicationController(window, repository=repository)
     lookup_calls: list[dict] = []
@@ -2461,6 +2462,7 @@ def test_controller_retry_track_download_resets_not_found_and_starts_lookup(
     assert lookup_calls == [{"username": "user", "key": track.cache_key, "n": 1}]
     reloaded = repository.load_tracks("user")
     assert reloaded[0].status == TrackStatus.FETCHED
+    assert track.cache_key not in repository.load_lookup_cache()
 
 
 def test_controller_retry_track_download_starts_priority_download_when_url_known(

@@ -1159,6 +1159,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             reset_track = replace(track, status=TrackStatus.FETCHED, youtube_url=None, error=None)
             updated = [reset_track if t.cache_key == cache_key else t for t in tracks]
             self.repository.save_tracks(username, updated)
+            self.repository.forget_lookup_cache_keys({cache_key})
             self.window.set_tracks(updated)
             track = reset_track
         self._pending_retry_cache_key = cache_key

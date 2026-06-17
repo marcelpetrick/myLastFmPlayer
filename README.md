@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.125` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.126` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
@@ -310,4 +310,3 @@ After editing the `.ts` files with Qt Linguist or another Qt-compatible translat
 ```sh
 tools/compile_translations.sh
 ```
-
