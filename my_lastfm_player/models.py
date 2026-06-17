@@ -25,14 +25,43 @@ MAX_FILENAME_LENGTH = 240
 CACHE_KEY_SEPARATOR = "\x1f"
 AUDIO_STEM_HASH_LENGTH = 10
 
-_STATUS_RANK: dict[TrackStatus, int] = {
-    TrackStatus.FETCHED: 0,
-    TrackStatus.SEARCHING: 1,
-    TrackStatus.QUEUED: 2,
-    TrackStatus.DOWNLOADING: 3,
-    TrackStatus.FAILED: 4,
-    TrackStatus.NOT_FOUND: 5,
-    TrackStatus.DOWNLOADED: 6,
+_ALLOWED_STATUS_TRANSITIONS: dict[TrackStatus, set[TrackStatus]] = {
+    TrackStatus.FETCHED: {
+        TrackStatus.SEARCHING,
+        TrackStatus.QUEUED,
+        TrackStatus.DOWNLOADING,
+        TrackStatus.DOWNLOADED,
+        TrackStatus.FAILED,
+        TrackStatus.NOT_FOUND,
+    },
+    TrackStatus.SEARCHING: {
+        TrackStatus.QUEUED,
+        TrackStatus.DOWNLOADING,
+        TrackStatus.DOWNLOADED,
+        TrackStatus.FAILED,
+        TrackStatus.NOT_FOUND,
+    },
+    TrackStatus.QUEUED: {
+        TrackStatus.DOWNLOADING,
+        TrackStatus.DOWNLOADED,
+        TrackStatus.FAILED,
+        TrackStatus.NOT_FOUND,
+    },
+    TrackStatus.DOWNLOADING: {
+        TrackStatus.DOWNLOADED,
+        TrackStatus.FAILED,
+        TrackStatus.NOT_FOUND,
+    },
+    TrackStatus.FAILED: {
+        TrackStatus.DOWNLOADED,
+        TrackStatus.NOT_FOUND,
+    },
+    TrackStatus.NOT_FOUND: {
+        TrackStatus.QUEUED,
+        TrackStatus.DOWNLOADING,
+        TrackStatus.DOWNLOADED,
+    },
+    TrackStatus.DOWNLOADED: set(),
 }
 
 
@@ -92,9 +121,9 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
 
     @classmethod
     def merge_preserving(cls, old: Track, new: Track) -> Track:
-        """Merge two snapshots: status never goes backwards; None in ``new`` preserves ``old``."""
-        advances = _STATUS_RANK[new.status] > _STATUS_RANK[old.status]
-        merged_status = new.status if advances else old.status
+        """Merge two snapshots without letting stale workflow updates win."""
+        merged_status = _merge_status(old, new)
+        merged_error = new.error if merged_status is new.status else old.error
         return cls(
             artist=new.artist,
             title=new.title,
@@ -104,7 +133,7 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
             local_path=new.local_path if new.local_path is not None else old.local_path,
             status=merged_status,
             retry_count=max(old.retry_count, new.retry_count),
-            error=new.error,
+            error=merged_error,
             file_type=new.file_type if new.file_type is not None else old.file_type,
             bitrate_kbps=new.bitrate_kbps if new.bitrate_kbps is not None else old.bitrate_kbps,
         )
@@ -144,6 +173,24 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
             file_type=_optional_string(data, "file_type"),
             bitrate_kbps=_optional_int(data, "bitrate_kbps"),
         )
+
+
+def _merge_status(old: Track, new: Track) -> TrackStatus:
+    if old.status is new.status:
+        return new.status
+
+    if old.status is TrackStatus.DOWNLOADED:
+        return old.status
+
+    if old.status is TrackStatus.NOT_FOUND and not (
+        new.youtube_url or new.local_path
+    ):
+        return old.status
+
+    if new.status in _ALLOWED_STATUS_TRANSITIONS[old.status]:
+        return new.status
+
+    return old.status
 
 
 def build_track_cache_key(artist: str, title: str) -> str:

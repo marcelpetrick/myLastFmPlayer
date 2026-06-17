@@ -39,7 +39,7 @@ The major unresolved items from 2026-06-15 are still present: `ApplicationContro
 8. FIXED: **Download filenames are not collision-safe.**
    `Track.audio_base_name` is only sanitized and truncated `"artist - title"` text at `my_lastfm_player/models.py:147`. Downloads use it as the full output stem at `my_lastfm_player/download.py:213`, then discover the newest matching file by stem at `my_lastfm_player/download.py:222`. Different tracks can sanitize or truncate to the same stem, causing overwrites or incorrect local-path attribution. The domain model has a stable `cache_key`, but the filesystem boundary does not use a collision-resistant identifier.
 
-9. **Workflow conflict resolution is encoded as one fragile global status rank.**
+9. FIXED: **Workflow conflict resolution is encoded as one fragile global status rank.**
    `_STATUS_RANK` in `my_lastfm_player/models.py:26` drives `Track.merge_preserving()` at `my_lastfm_player/models.py:86`. That linear rank tries to cover branches such as fetched, searching, queued, downloading, failed, not-found, downloaded, retry, and re-lookup. Because `NOT_FOUND` outranks `FAILED`, `QUEUED`, and `DOWNLOADING`, a stale terminal lookup state can win during merges even when later workflow intent wants to retry or move forward. This policy belongs in explicit workflow transitions rather than a single global ordering.
 
 10. **The controller and main window remain explicit god objects.**

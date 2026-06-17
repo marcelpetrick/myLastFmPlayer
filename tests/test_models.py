@@ -225,6 +225,17 @@ def test_merge_preserving_never_downgrades_not_found() -> None:
     assert result.status == TrackStatus.NOT_FOUND
 
 
+def test_merge_preserving_allows_not_found_to_advance_when_url_is_resolved() -> None:
+    old = _track(status=TrackStatus.NOT_FOUND, error="not found")
+    new = _track(status=TrackStatus.QUEUED, youtube_url="https://yt/1")
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.status == TrackStatus.QUEUED
+    assert result.youtube_url == "https://yt/1"
+    assert result.error is None
+
+
 def test_merge_preserving_never_downgrades_failed() -> None:
     old = _track(status=TrackStatus.FAILED, error="network error")
     new = _track(status=TrackStatus.DOWNLOADING)
@@ -232,6 +243,7 @@ def test_merge_preserving_never_downgrades_failed() -> None:
     result = Track.merge_preserving(old, new)
 
     assert result.status == TrackStatus.FAILED
+    assert result.error == "network error"
 
 
 def test_merge_preserving_allows_failed_to_advance_to_not_found() -> None:
