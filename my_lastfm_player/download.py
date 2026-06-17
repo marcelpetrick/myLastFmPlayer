@@ -213,7 +213,8 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         if not track.youtube_url:
             raise DownloadError("Track has no YouTube URL")
 
-        output_template = str(downloads_dir / f"{track.audio_base_name}.%(ext)s")
+        output_stem = track.audio_file_stem
+        output_template = str(downloads_dir / f"{output_stem}.%(ext)s")
         command = [self.executable, "-f", "bestaudio", "--no-playlist"]
         if self.cookies_browser:
             command += ["--cookies-from-browser", self.cookies_browser]
@@ -223,7 +224,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
             raise DownloadError(completed.stderr.strip() or "yt-dlp download failed")
 
         candidates = sorted(
-            [p for p in downloads_dir.iterdir() if p.stem == track.audio_base_name],
+            [p for p in downloads_dir.iterdir() if p.stem == output_stem],
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )

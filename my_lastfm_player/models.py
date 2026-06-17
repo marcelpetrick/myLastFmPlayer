@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass, replace
 from enum import StrEnum
@@ -22,6 +23,7 @@ INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 COLLAPSED_WHITESPACE = re.compile(r"\s+")
 MAX_FILENAME_LENGTH = 240
 CACHE_KEY_SEPARATOR = "\x1f"
+AUDIO_STEM_HASH_LENGTH = 10
 
 _STATUS_RANK: dict[TrackStatus, int] = {
     TrackStatus.FETCHED: 0,
@@ -68,9 +70,15 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
 
     @property
     def audio_base_name(self) -> str:
-        """Return the sanitized base filename (no extension) used for downloads."""
+        """Return the sanitized human-readable base filename (no extension)."""
 
         return build_audio_base_name(self.artist, self.title)
+
+    @property
+    def audio_file_stem(self) -> str:
+        """Return a collision-resistant base filename (no extension) for downloads."""
+
+        return build_audio_file_stem(self.artist, self.title)
 
     def with_status(self, status: TrackStatus, error: str | None = None) -> Track:
         """Return a copy with ``status`` and an optional error message applied."""
@@ -153,6 +161,18 @@ def build_audio_base_name(artist: str, title: str) -> str:
     if len(base_name) <= max_base:
         return base_name
     return base_name[:max_base].rstrip()
+
+
+def build_audio_file_stem(artist: str, title: str) -> str:
+    """Build a safe, collision-resistant base filename for ``artist`` and ``title``."""
+
+    digest = hashlib.sha1(build_track_cache_key(artist, title).encode("utf-8")).hexdigest()
+    suffix = f" [{digest[:AUDIO_STEM_HASH_LENGTH]}]"
+    base_name = sanitize_filename_part(f"{artist} - {title}")
+    max_base = MAX_FILENAME_LENGTH - 5 - len(suffix)
+    if len(base_name) > max_base:
+        base_name = base_name[:max_base].rstrip()
+    return f"{base_name}{suffix}"
 
 
 def sanitize_filename_part(value: str) -> str:

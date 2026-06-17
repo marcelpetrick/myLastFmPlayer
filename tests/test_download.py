@@ -113,6 +113,7 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
         youtube_url="https://youtu.be/example",
         status=TrackStatus.QUEUED,
     )
+    expected_path = tmp_path / f"{track.audio_file_stem}.webm"
     progress: list[tuple[int, str]] = []
     track_updates: list[Track] = []
 
@@ -128,7 +129,7 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
             artist="Artist",
             title="Title",
             youtube_url="https://youtu.be/example",
-            local_path=str(tmp_path / "Artist - Title.webm"),
+            local_path=str(expected_path),
             status=TrackStatus.DOWNLOADED,
             file_type="WEBM",
         )
@@ -140,7 +141,7 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
             "bestaudio",
             "--no-playlist",
             "--output",
-            str(tmp_path / "Artist - Title.%(ext)s"),
+            str(tmp_path / f"{track.audio_file_stem}.%(ext)s"),
             "https://youtu.be/example",
         ]
     ]
@@ -175,6 +176,19 @@ def test_download_manager_uses_configured_parallel_worker_count(tmp_path: Path) 
     assert len(runner.commands) == 4
     assert runner.max_active == 4
     assert [track.status for track in result] == [TrackStatus.DOWNLOADED] * 4
+
+
+def test_download_manager_uses_collision_safe_output_stems(tmp_path: Path) -> None:
+    runner = FakeRunner()
+    manager = DownloadManager(command_runner=runner)
+    first = Track(artist="AC/DC", title="Song", youtube_url="https://youtu.be/first")
+    second = Track(artist="AC_DC", title="Song", youtube_url="https://youtu.be/second")
+
+    tracks = manager.download_tracks([first, second], tmp_path, concurrency=1)
+
+    assert tracks[0].local_path == str(tmp_path / f"{first.audio_file_stem}.webm")
+    assert tracks[1].local_path == str(tmp_path / f"{second.audio_file_stem}.webm")
+    assert tracks[0].local_path != tracks[1].local_path
 
 
 def test_probe_audio_file_reads_ffprobe_metadata(monkeypatch, tmp_path: Path) -> None:
@@ -449,7 +463,8 @@ def test_download_manager_redownloads_stale_download_paths(tmp_path: Path) -> No
 
     assert len(runner.commands) == 1
     assert tracks[0].status == TrackStatus.DOWNLOADED
-    assert tracks[0].local_path == str(tmp_path / "downloads" / "Artist - Title.webm")
+    expected_path = tmp_path / "downloads" / f"{tracks[0].audio_file_stem}.webm"
+    assert tracks[0].local_path == str(expected_path)
 
 
 def test_download_manager_preserves_tracks_added_while_download_runs(tmp_path: Path) -> None:

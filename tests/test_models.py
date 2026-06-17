@@ -6,6 +6,7 @@ from my_lastfm_player.models import (
     Track,
     TrackStatus,
     build_audio_base_name,
+    build_audio_file_stem,
     build_track_cache_key,
     sanitize_filename_part,
 )
@@ -152,6 +153,16 @@ def test_audio_base_name_uses_artist_title_and_sanitizes_invalid_characters() ->
     assert Track(artist="Artist", title="Title").audio_base_name == "Artist - Title"
 
 
+def test_audio_file_stem_adds_stable_hash_to_avoid_sanitized_collisions() -> None:
+    slash_stem = build_audio_file_stem("AC/DC", "Song")
+    underscore_stem = build_audio_file_stem("AC_DC", "Song")
+
+    assert slash_stem.startswith("AC_DC - Song [")
+    assert underscore_stem.startswith("AC_DC - Song [")
+    assert slash_stem != underscore_stem
+    assert Track(artist="AC/DC", title="Song").audio_file_stem == slash_stem
+
+
 def test_filename_sanitizer_handles_blank_or_unsafe_values() -> None:
     assert sanitize_filename_part("   ...   ") == "Unknown Track"
     assert sanitize_filename_part(" Artist\tName  -  Title\nName ") == "Artist Name - Title Name"
@@ -161,6 +172,13 @@ def test_audio_base_name_is_limited_to_safe_length() -> None:
     base = build_audio_base_name("A" * 300, "B" * 300)
 
     assert len(base) <= 235
+
+
+def test_audio_file_stem_is_limited_to_safe_length() -> None:
+    stem = build_audio_file_stem("A" * 300, "B" * 300)
+
+    assert len(stem) <= 235
+    assert stem.endswith("]")
 
 
 # ---------------------------------------------------------------------------

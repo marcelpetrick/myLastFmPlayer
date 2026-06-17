@@ -36,7 +36,7 @@ The major unresolved items from 2026-06-15 are still present: `ApplicationContro
 7. FIXED: **Repository corruption and storage failures can escape interactive controller paths.**
    Storage raises `StorageError` for invalid JSON and write failures at `my_lastfm_player/storage.py:263` and `my_lastfm_player/storage.py:315`. Worker `run()` methods catch broad exceptions, but controller paths call repository methods directly without recovery: cached-track loading at `my_lastfm_player/controller.py:172`, fetch preflight cache checks at `my_lastfm_player/controller.py:453`, and visible-track saving at `my_lastfm_player/controller.py:1004`. A corrupt local JSON file or write failure can still crash an interactive action instead of producing recoverable UI feedback.
 
-8. **Download filenames are not collision-safe.**
+8. FIXED: **Download filenames are not collision-safe.**
    `Track.audio_base_name` is only sanitized and truncated `"artist - title"` text at `my_lastfm_player/models.py:147`. Downloads use it as the full output stem at `my_lastfm_player/download.py:213`, then discover the newest matching file by stem at `my_lastfm_player/download.py:222`. Different tracks can sanitize or truncate to the same stem, causing overwrites or incorrect local-path attribution. The domain model has a stable `cache_key`, but the filesystem boundary does not use a collision-resistant identifier.
 
 9. **Workflow conflict resolution is encoded as one fragile global status rank.**
