@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Future
 from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -10,11 +11,16 @@ from my_lastfm_player import controller as controller_module
 from my_lastfm_player.app_credentials import LastFmApiCredentials
 from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.dependencies import DependencyCheckResult
+from my_lastfm_player.download import DownloadManager
 from my_lastfm_player.lastfm import ArtistImage, LastFmError
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
-from my_lastfm_player.workers import LookupTracksWorker
+from my_lastfm_player.workers import (
+    DownloadTracksWorker,
+    FetchLovedTracksWorker,
+    LookupTracksWorker,
+)
 
 
 class FakeSignal:
@@ -1656,7 +1662,8 @@ def test_controller_handles_invalid_worker_payloads(qapp) -> None:
     controller._handle_track_updated("user", object())
     controller._handle_tracks_resolved("user", object())
     controller._handle_tracks_downloaded("user", object())
-    controller._handle_worker_error("boom")
+    lookup_worker = LookupTracksWorker("user", controller.youtube_resolver, controller.repository)
+    controller._handle_worker_error(lookup_worker, "boom")
 
     feedback = window.feedback_log.toPlainText()
     assert "invalid track data" in feedback
@@ -1665,6 +1672,56 @@ def test_controller_handles_invalid_worker_payloads(qapp) -> None:
     assert "invalid track update" in feedback
     assert "boom" in feedback
     assert window.progress_bar.format() == "Failed"
+
+
+def test_controller_worker_error_clears_download_state(qapp, tmp_path) -> None:
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    worker = DownloadTracksWorker("user", DownloadManager(), repository)
+    controller._download_worker_active = True
+    controller._download_stop_requested = True
+    window.set_download_active(True)
+
+    controller._handle_worker_error(worker, "download failed")
+
+    assert not controller._download_worker_active
+    assert not controller._download_stop_requested
+    assert not window._download_active
+    assert "download failed" in window.feedback_log.toPlainText()
+
+
+def test_controller_worker_error_clears_fetch_state(qapp, tmp_path) -> None:
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    worker = FetchLovedTracksWorker("user", controller.scraper, repository)
+    controller._active_fetch_worker = worker
+    controller._fetch_paused = True
+    controller._started_incremental_lookup_for_fetch = True
+    window.set_fetch_control_state(active=True, paused=True)
+
+    controller._handle_worker_error(worker, "fetch failed")
+
+    assert controller._active_fetch_worker is None
+    assert not controller._fetch_paused
+    assert not controller._started_incremental_lookup_for_fetch
+    assert not window.fetch_pause_button.isEnabled()
+    assert not window.fetch_stop_button.isEnabled()
+    assert "fetch failed" in window.feedback_log.toPlainText()
+
+
+def test_controller_scrobbling_task_done_logs_unexpected_failure(qapp, caplog) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    future: Future[object] = Future()
+    controller._scrobbling_futures.add(future)
+    future.set_exception(RuntimeError("boom"))
+
+    controller._handle_scrobbling_task_done(future)
+
+    assert future not in controller._scrobbling_futures
+    assert "Background Last.fm scrobbling task failed" in caplog.text
 
 
 def test_controller_handles_downloaded_tracks_and_pending_play(qapp, tmp_path) -> None:

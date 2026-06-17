@@ -640,7 +640,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
 
         thread.started.connect(worker.run)
         worker.progress.connect(self.window.set_progress)
-        worker.error.connect(self._handle_worker_error)
+        worker.error.connect(
+            lambda message, worker=worker: self._handle_worker_error(worker, message)
+        )
         if isinstance(worker, FetchLovedTracksWorker):
             worker.tracks_updated.connect(self._handle_tracks_updated)
             worker.tracks_loaded.connect(self._handle_tracks_loaded)
@@ -900,8 +902,17 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         ):
             self._start_automatic_download(username)
 
-    def _handle_worker_error(self, message: str) -> None:
+    def _handle_worker_error(self, worker: WorkflowWorker, message: str) -> None:
         LOGGER.error("Worker error: %s", message)
+        if isinstance(worker, FetchLovedTracksWorker):
+            self._active_fetch_worker = None
+            self._fetch_paused = False
+            self._started_incremental_lookup_for_fetch = False
+            self.window.set_fetch_control_state(active=False, paused=False)
+        if isinstance(worker, DownloadTracksWorker):
+            self._download_worker_active = False
+            self._download_stop_requested = False
+            self.window.set_download_active(False)
         self.window.append_feedback(message)
         self.window.set_progress(0, translate("ApplicationController", "Failed"))
 
