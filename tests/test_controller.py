@@ -14,7 +14,7 @@ from my_lastfm_player.dependencies import DependencyCheckResult
 from my_lastfm_player.download import DownloadManager
 from my_lastfm_player.lastfm import ArtistImage, LastFmError
 from my_lastfm_player.models import Track, TrackStatus
-from my_lastfm_player.storage import JsonTrackRepository
+from my_lastfm_player.storage import JsonTrackRepository, StorageError
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import (
     DownloadTracksWorker,
@@ -48,6 +48,40 @@ class GenericWorker:
 
     def deleteLater(self) -> None:
         self.deleted = True
+
+
+class FailingRepository(JsonTrackRepository):
+    def __init__(self, tmp_path, failing_methods: set[str]) -> None:
+        super().__init__(data_dir=tmp_path)
+        self.failing_methods = failing_methods
+
+    def _fail_if_configured(self, method_name: str) -> None:
+        if method_name in self.failing_methods:
+            raise StorageError(f"{method_name} failed")
+
+    def load_tracks(self, username: str) -> list[Track]:
+        self._fail_if_configured("load_tracks")
+        return super().load_tracks(username)
+
+    def save_tracks(self, username: str, tracks: list[Track]) -> None:
+        self._fail_if_configured("save_tracks")
+        super().save_tracks(username, tracks)
+
+    def merge_tracks(self, username: str, updates: list[Track]) -> list[Track]:
+        self._fail_if_configured("merge_tracks")
+        return super().merge_tracks(username, updates)
+
+    def save_lookup_cache(self, tracks: list[Track]) -> None:
+        self._fail_if_configured("save_lookup_cache")
+        super().save_lookup_cache(tracks)
+
+    def forget_lookup_cache_keys(self, cache_keys: set[str]) -> None:
+        self._fail_if_configured("forget_lookup_cache_keys")
+        super().forget_lookup_cache_keys(cache_keys)
+
+    def save_credentials(self, credentials: dict[str, object]) -> None:
+        self._fail_if_configured("save_credentials")
+        super().save_credentials(credentials)
 
 
 class CountCheckingScraper:
@@ -285,6 +319,18 @@ def test_controller_loads_cached_tracks_without_fetching(qapp, tmp_path) -> None
     assert len(workers) == 1
     assert "Loaded 1 cached tracks for example" in window.feedback_log.toPlainText()
     assert "using local cache" in window.feedback_log.toPlainText()
+
+
+def test_controller_reports_storage_error_when_cached_tracks_cannot_load(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("example")
+    repository = FailingRepository(tmp_path, {"load_tracks"})
+    controller = ApplicationController(window, repository=repository)
+
+    assert not controller.load_cached_tracks_for_entered_username()
+    assert "Storage error while loading cached tracks" in window.feedback_log.toPlainText()
 
 
 def test_controller_uses_cache_without_checking_different_online_count(qapp, tmp_path) -> None:
@@ -658,6 +704,22 @@ def test_controller_stop_downloads_stops_manager_and_clears_ui(qapp) -> None:
     assert not controller._download_worker_active
     assert controller._download_stop_requested
     assert window.download_toggle_button.text() == "Start Downloads"
+
+
+def test_controller_reports_storage_error_when_partial_fetch_save_fails(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    repository = FailingRepository(tmp_path, {"merge_tracks"})
+    controller = ApplicationController(window, repository=repository)
+    controller._active_fetch_worker = FakeFetchWorker()  # type: ignore[assignment]
+    lookup_calls: list[str] = []
+    controller._start_automatic_lookup = lambda username, _count: lookup_calls.append(username)  # type: ignore[method-assign]
+
+    controller._handle_tracks_updated("user", [Track(artist="Artist", title="Title")])
+
+    assert lookup_calls == []
+    assert "Storage error while saving partial fetch results" in window.feedback_log.toPlainText()
 
 
 def test_controller_starts_priority_download_after_lookup_for_pending_play(qapp, tmp_path) -> None:
@@ -2403,6 +2465,25 @@ def test_controller_show_preferences_opens_dialog_and_saves(qapp, tmp_path, monk
     assert "Opening preferences." in window.feedback_log.toPlainText()
 
 
+def test_controller_reports_storage_error_when_preferences_cannot_save(
+    qapp, tmp_path
+) -> None:
+    from my_lastfm_player.scrobbling import ScrobblingService
+
+    window = MainWindow()
+    repository = FailingRepository(tmp_path, {"save_credentials"})
+    controller = ApplicationController(window, repository=repository)
+    controller._scrobbling_service = ScrobblingService(
+        api_key="key",
+        api_secret="secret",
+        username="testuser",
+    )
+
+    controller._save_scrobbling_credentials()
+
+    assert "Storage error while saving Last.fm preferences" in window.feedback_log.toPlainText()
+
+
 def test_controller_download_tracks_sets_active_flag_for_non_priority_run(
     qapp, tmp_path
 ) -> None:
@@ -2492,6 +2573,18 @@ def test_controller_handle_tracks_resolved_reports_no_candidates_when_worker_act
     assert "No queued tracks are ready for download." not in log
 
 
+def test_controller_reports_storage_error_when_resolved_tracks_cannot_reload(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    repository = FailingRepository(tmp_path, {"load_tracks"})
+    controller = ApplicationController(window, repository=repository)
+
+    controller._handle_tracks_resolved("user", [Track(artist="A", title="T")])
+
+    assert "Storage error while loading resolved tracks" in window.feedback_log.toPlainText()
+
+
 def test_controller_handle_tracks_resolved_skips_download_when_worker_tracked(
     qapp, tmp_path
 ) -> None:
@@ -2512,6 +2605,18 @@ def test_controller_handle_tracks_resolved_skips_download_when_worker_tracked(
     controller._handle_tracks_resolved("user", [queued])
 
     assert auto_calls == []
+
+
+def test_controller_reports_storage_error_when_downloaded_tracks_cannot_reload(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    repository = FailingRepository(tmp_path, {"load_tracks"})
+    controller = ApplicationController(window, repository=repository)
+
+    controller._handle_tracks_downloaded("user", [Track(artist="A", title="T")])
+
+    assert "Storage error while loading downloaded tracks" in window.feedback_log.toPlainText()
 
 
 def test_controller_handle_tracks_downloaded_clears_pending_retry(qapp) -> None:
@@ -2542,6 +2647,20 @@ def test_controller_handle_tracks_downloaded_continues_bulk_download(qapp, tmp_p
     controller._handle_tracks_downloaded("user", [queued])
 
     assert auto_calls == ["user"]
+
+
+def test_controller_reports_storage_error_when_visible_tracks_cannot_save(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    window.set_tracks([Track(artist="Artist", title="Title")])
+    repository = FailingRepository(tmp_path, {"merge_tracks"})
+    controller = ApplicationController(window, repository=repository)
+
+    controller._save_visible_tracks()
+
+    assert "Storage error while saving visible tracks" in window.feedback_log.toPlainText()
 
 
 def test_controller_update_track_by_cache_key_does_nothing_on_miss(qapp) -> None:
@@ -2588,6 +2707,19 @@ def test_controller_retry_track_download_does_nothing_for_unknown_track(
     assert window.feedback_log.toPlainText() == ""
 
 
+def test_controller_reports_storage_error_when_retry_tracks_cannot_load(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = FailingRepository(tmp_path, {"load_tracks"})
+    controller = ApplicationController(window, repository=repository)
+
+    controller.retry_track_download("some_key")
+
+    assert "Storage error while loading tracks for retry" in window.feedback_log.toPlainText()
+
+
 def test_controller_retry_track_download_resets_not_found_and_starts_lookup(
     qapp, tmp_path
 ) -> None:
@@ -2613,6 +2745,26 @@ def test_controller_retry_track_download_resets_not_found_and_starts_lookup(
     reloaded = repository.load_tracks("user")
     assert reloaded[0].status == TrackStatus.FETCHED
     assert track.cache_key not in repository.load_lookup_cache()
+
+
+def test_controller_reports_storage_error_when_retry_state_cannot_save(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = FailingRepository(tmp_path, {"save_tracks"})
+    track = Track(artist="A", title="T", status=TrackStatus.NOT_FOUND, error="not found")
+    repository.failing_methods = set()
+    repository.save_tracks("user", [track])
+    repository.failing_methods = {"save_tracks"}
+    controller = ApplicationController(window, repository=repository)
+    lookup_calls: list[str] = []
+    controller.resolve_youtube_urls = lambda *_args, **_kwargs: lookup_calls.append("lookup")  # type: ignore[method-assign]
+
+    controller.retry_track_download(track.cache_key)
+
+    assert lookup_calls == []
+    assert "Storage error while resetting track retry state" in window.feedback_log.toPlainText()
 
 
 def test_controller_retry_track_download_starts_priority_download_when_url_known(
@@ -2703,6 +2855,27 @@ def test_controller_track_ready_starts_pending_play_priority_download(
     controller._handle_track_ready_for_download("user", track)
 
     assert calls == [("user", track.cache_key)]
+
+
+def test_controller_reports_storage_error_when_ready_track_cannot_save(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    repository = FailingRepository(tmp_path, {"merge_tracks"})
+    track = Track(
+        artist="A",
+        title="T",
+        youtube_url="https://youtu.be/a",
+        status=TrackStatus.QUEUED,
+    )
+    controller = ApplicationController(window, repository=repository)
+    download_calls: list[str] = []
+    controller._start_automatic_download = lambda username: download_calls.append(username)  # type: ignore[method-assign]
+
+    controller._handle_track_ready_for_download("user", track)
+
+    assert download_calls == []
+    assert "Storage error while saving ready track" in window.feedback_log.toPlainText()
 
 
 def test_controller_track_ready_starts_pending_retry_priority_download(

@@ -30,7 +30,7 @@ from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.playback import PlaybackError, PlaybackService
 from my_lastfm_player.scrobbling import SCROBBLE_THRESHOLD, ScrobblingService
 from my_lastfm_player.settings import AppSettings
-from my_lastfm_player.storage import JsonTrackRepository
+from my_lastfm_player.storage import JsonTrackRepository, StorageError
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import (
     ArtistImageWorker,
@@ -183,6 +183,18 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         LOGGER.info("User action: %s", message)
         self.window.append_feedback(message)
 
+    def _report_storage_error(self, action: str, error: StorageError) -> None:
+        LOGGER.error("Storage error while %s: %s", action, error)
+        self.window.append_feedback(
+            translate(
+                "ApplicationController",
+                "Storage error while {action}: {error}",
+                action=action,
+                error=str(error),
+            )
+        )
+        self.window.set_progress(0, translate("ApplicationController", "Storage error"))
+
     def load_cached_tracks_for_entered_username(self, *, verify_online_count: bool = False) -> bool:
         """Load locally stored tracks for the entered username when available."""
 
@@ -194,7 +206,18 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         if not username:
             return False
 
-        tracks = self.repository.load_tracks(username)
+        try:
+            tracks = self.repository.load_tracks(username)
+        except StorageError as error:
+            self._report_storage_error(
+                translate(
+                    "ApplicationController",
+                    "loading cached tracks for {username}",
+                    username=username,
+                ),
+                error,
+            )
+            return False
         if not tracks:
             if verify_online_count:
                 self._report_user_action(
@@ -217,10 +240,21 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 )
             )
 
-        tracks = self.repository.mark_cached_downloads(
-            self.repository.mark_cached_lookups(tracks)
-        )
-        tracks = self.repository.merge_tracks(username, tracks)
+        try:
+            tracks = self.repository.mark_cached_downloads(
+                self.repository.mark_cached_lookups(tracks)
+            )
+            tracks = self.repository.merge_tracks(username, tracks)
+        except StorageError as error:
+            self._report_storage_error(
+                translate(
+                    "ApplicationController",
+                    "applying cached track state for {username}",
+                    username=username,
+                ),
+                error,
+            )
+            return False
         self.window.set_tracks(tracks)
         self._report_user_action(
             translate(
@@ -367,7 +401,14 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
             return
         AppSettings().set_scrobbling_enabled(self._scrobbling_service.scrobbling_enabled)
-        self.repository.save_credentials(self._scrobbling_service.credentials_dict())
+        try:
+            self.repository.save_credentials(self._scrobbling_service.credentials_dict())
+        except StorageError as error:
+            self._report_storage_error(
+                translate("ApplicationController", "saving Last.fm preferences"),
+                error,
+            )
+            return
         self._report_user_action(
             translate(
                 "ApplicationController",
@@ -804,7 +845,18 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             and not self._started_incremental_lookup_for_fetch
         ):
             self._started_incremental_lookup_for_fetch = True
-            self.repository.merge_tracks(username, tracks)
+            try:
+                self.repository.merge_tracks(username, tracks)
+            except StorageError as error:
+                self._report_storage_error(
+                    translate(
+                        "ApplicationController",
+                        "saving partial fetch results for {username}",
+                        username=username,
+                    ),
+                    error,
+                )
+                return
             self._start_automatic_lookup(username, len(tracks))
 
     def _handle_track_updated(self, username: str, track: object) -> None:
@@ -844,7 +896,18 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             return
 
         # Reload from the repository so the UI shows the full current state.
-        current_tracks = self.repository.load_tracks(username)
+        try:
+            current_tracks = self.repository.load_tracks(username)
+        except StorageError as error:
+            self._report_storage_error(
+                translate(
+                    "ApplicationController",
+                    "loading resolved tracks for {username}",
+                    username=username,
+                ),
+                error,
+            )
+            return
         self.window.set_tracks(current_tracks)
         resolved_count = sum(1 for t in current_tracks if t.youtube_url)
         not_found_count = sum(
@@ -901,7 +964,18 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         # Reload from the repository so the UI shows the full current state, not the
         # stale snapshot the worker started with (which may be a small partial list if
         # the fetch was still running when this worker was spawned).
-        current_tracks = self.repository.load_tracks(username)
+        try:
+            current_tracks = self.repository.load_tracks(username)
+        except StorageError as error:
+            self._report_storage_error(
+                translate(
+                    "ApplicationController",
+                    "loading downloaded tracks for {username}",
+                    username=username,
+                ),
+                error,
+            )
+            return
         self.window.set_tracks(current_tracks)
         downloaded_count = sum(
             1 for t in current_tracks if t.status is TrackStatus.DOWNLOADED
@@ -957,7 +1031,17 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
     def _save_visible_tracks(self) -> None:
         username = self.window.username()
         if username:
-            self.repository.merge_tracks(username, self.window.tracks())
+            try:
+                self.repository.merge_tracks(username, self.window.tracks())
+            except StorageError as error:
+                self._report_storage_error(
+                    translate(
+                        "ApplicationController",
+                        "saving visible tracks for {username}",
+                        username=username,
+                    ),
+                    error,
+                )
 
     def _play_track(self, track: Track) -> None:
         if self._can_prepare_for_playback(track):
@@ -1109,15 +1193,37 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 )
             )
             return
-        tracks = self.repository.load_tracks(username)
+        try:
+            tracks = self.repository.load_tracks(username)
+        except StorageError as error:
+            self._report_storage_error(
+                translate(
+                    "ApplicationController",
+                    "loading tracks for retry for {username}",
+                    username=username,
+                ),
+                error,
+            )
+            return
         track = next((t for t in tracks if t.cache_key == cache_key), None)
         if track is None:
             return
         if track.status in {TrackStatus.NOT_FOUND, TrackStatus.FAILED}:
             reset_track = replace(track, status=TrackStatus.FETCHED, youtube_url=None, error=None)
             updated = [reset_track if t.cache_key == cache_key else t for t in tracks]
-            self.repository.save_tracks(username, updated)
-            self.repository.forget_lookup_cache_keys({cache_key})
+            try:
+                self.repository.save_tracks(username, updated)
+                self.repository.forget_lookup_cache_keys({cache_key})
+            except StorageError as error:
+                self._report_storage_error(
+                    translate(
+                        "ApplicationController",
+                        "resetting track retry state for {username}",
+                        username=username,
+                    ),
+                    error,
+                )
+                return
             self.window.set_tracks(updated)
             track = reset_track
         self._pending_retry_cache_key = cache_key
@@ -1155,8 +1261,19 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         )
 
     def _handle_track_ready_for_download(self, username: str, track: Track) -> None:
-        merged_tracks = self.repository.merge_tracks(username, [track])
-        self.repository.save_lookup_cache(merged_tracks)
+        try:
+            merged_tracks = self.repository.merge_tracks(username, [track])
+            self.repository.save_lookup_cache(merged_tracks)
+        except StorageError as error:
+            self._report_storage_error(
+                translate(
+                    "ApplicationController",
+                    "saving ready track for {username}",
+                    username=username,
+                ),
+                error,
+            )
+            return
         if self._pending_play_cache_key == track.cache_key:
             self._start_priority_download(username, track.cache_key)
             return

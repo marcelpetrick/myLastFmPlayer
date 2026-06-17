@@ -33,7 +33,7 @@ The major unresolved items from 2026-06-15 are still present: `ApplicationContro
 6. FIXED: **A shared mutable `DownloadManager` lets overlapping download workflows interfere.**
    The controller injects the same `DownloadManager` instance into every download worker at `my_lastfm_player/controller.py:619`. Starting any download calls `self.download_manager.resume()` at `my_lastfm_player/controller.py:615`, which clears the shared stop flag in `my_lastfm_player/download.py:67`. Priority downloads do not set `_download_worker_active` unless `priority_cache_key is None` at `my_lastfm_player/controller.py:626`, so priority and bulk runs can overlap while sharing pause/stop state, retry settings, and cookie settings. Download state should be per run or managed by an explicit queue.
 
-7. **Repository corruption and storage failures can escape interactive controller paths.**
+7. FIXED: **Repository corruption and storage failures can escape interactive controller paths.**
    Storage raises `StorageError` for invalid JSON and write failures at `my_lastfm_player/storage.py:263` and `my_lastfm_player/storage.py:315`. Worker `run()` methods catch broad exceptions, but controller paths call repository methods directly without recovery: cached-track loading at `my_lastfm_player/controller.py:172`, fetch preflight cache checks at `my_lastfm_player/controller.py:453`, and visible-track saving at `my_lastfm_player/controller.py:1004`. A corrupt local JSON file or write failure can still crash an interactive action instead of producing recoverable UI feedback.
 
 8. **Download filenames are not collision-safe.**
