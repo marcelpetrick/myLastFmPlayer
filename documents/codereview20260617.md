@@ -30,7 +30,7 @@ The major unresolved items from 2026-06-15 are still present: `ApplicationContro
 5. FIXED: **Download cancellation is bounded but still cannot stop an active `yt-dlp` process.**
    `stop_downloads()` marks downloads stopped at `my_lastfm_player/controller.py:1131`, and `DownloadManager.stop()` flips `_stop_requested` at `my_lastfm_player/download.py:74`. However, download workers only check that flag before an attempt at `my_lastfm_player/download.py:178`. Once `_run()` enters blocking `subprocess.run()` at `my_lastfm_player/download.py:231`, the user-facing Stop action cannot terminate the active `yt-dlp`; it waits for process exit or the 600-second timeout at `my_lastfm_player/download.py:239`. This is an improvement over no timeout, but it is not real cancellation.
 
-6. **A shared mutable `DownloadManager` lets overlapping download workflows interfere.**
+6. FIXED: **A shared mutable `DownloadManager` lets overlapping download workflows interfere.**
    The controller injects the same `DownloadManager` instance into every download worker at `my_lastfm_player/controller.py:619`. Starting any download calls `self.download_manager.resume()` at `my_lastfm_player/controller.py:615`, which clears the shared stop flag in `my_lastfm_player/download.py:67`. Priority downloads do not set `_download_worker_active` unless `priority_cache_key is None` at `my_lastfm_player/controller.py:626`, so priority and bulk runs can overlap while sharing pause/stop state, retry settings, and cookie settings. Download state should be per run or managed by an explicit queue.
 
 7. **Repository corruption and storage failures can escape interactive controller paths.**

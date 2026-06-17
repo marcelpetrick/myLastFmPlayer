@@ -518,6 +518,16 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
             return
 
+        if self._download_worker_active or self._has_active_download_worker():
+            LOGGER.info("Download request ignored because a download worker is already active")
+            self.window.append_feedback(
+                translate(
+                    "ApplicationController",
+                    "Downloads are already running.",
+                )
+            )
+            return
+
         concurrency = AppSettings().download_concurrency()
         LOGGER.info(
             "Download requested for Last.fm user %s with concurrency %s",
@@ -861,7 +871,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._pending_retry_cache_key,
         ):
             self._start_priority_download(username, self._pending_retry_cache_key)
-        elif self._has_download_candidates(current_tracks) and not self._download_worker_active:
+        elif (
+            self._has_download_candidates(current_tracks)
+            and not self._download_worker_active
+            and not self._has_active_download_worker()
+        ):
             self._start_automatic_download(username)
         elif not self._has_download_candidates(current_tracks):
             self._report_user_action(

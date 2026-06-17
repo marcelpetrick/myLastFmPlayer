@@ -431,6 +431,34 @@ def test_controller_rejects_empty_username_for_download(qapp) -> None:
     )
 
 
+def test_controller_rejects_overlapping_download_request(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    resumed: list[bool] = []
+    workers: list[object] = []
+
+    class FakeManager:
+        def resume(self) -> None:
+            resumed.append(True)
+
+        def stop(self) -> None:
+            pass
+
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        download_manager=FakeManager(),  # type: ignore[arg-type]
+    )
+    controller._download_worker_active = True
+    controller._run_worker = workers.append  # type: ignore[method-assign]
+
+    controller.download_tracks(priority_cache_key="track", max_downloads=1)
+
+    assert resumed == []
+    assert workers == []
+    assert "Downloads are already running." in window.feedback_log.toPlainText()
+
+
 def test_controller_handles_resolved_tracks(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)
@@ -2462,6 +2490,28 @@ def test_controller_handle_tracks_resolved_reports_no_candidates_when_worker_act
     log = window.feedback_log.toPlainText()
     assert "Resolved YouTube URLs" in log
     assert "No queued tracks are ready for download." not in log
+
+
+def test_controller_handle_tracks_resolved_skips_download_when_worker_tracked(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    queued = Track(
+        artist="A",
+        title="T",
+        youtube_url="https://youtu.be/y",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_tracks("user", [queued])
+    controller = ApplicationController(window, repository=repository)
+    controller._has_active_download_worker = lambda: True  # type: ignore[method-assign]
+    auto_calls: list[str] = []
+    controller._start_automatic_download = lambda username: auto_calls.append(username)  # type: ignore[method-assign]
+
+    controller._handle_tracks_resolved("user", [queued])
+
+    assert auto_calls == []
 
 
 def test_controller_handle_tracks_downloaded_clears_pending_retry(qapp) -> None:
