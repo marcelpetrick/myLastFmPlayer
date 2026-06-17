@@ -1010,6 +1010,7 @@ def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
 
     controller.play_selected_track()
@@ -1100,11 +1101,57 @@ def test_controller_shows_cached_artist_image_and_opens_artist_page(
     assert opened_urls == ["https://www.last.fm/music/Artist"]
 
 
+def test_controller_start_wires_artist_image_click_to_browser(qapp, monkeypatch) -> None:
+    opened_urls: list[str] = []
+    monkeypatch.setattr(
+        controller_module.QDesktopServices,
+        "openUrl",
+        lambda url: opened_urls.append(url.toString()) or True,
+    )
+    window = MainWindow()
+    controller = ApplicationController(
+        window,
+        dependency_checker=lambda: DependencyCheckResult(installed=(), missing=()),
+    )
+
+    controller.start()
+    window.artist_page_requested.emit("https://www.last.fm/music/Artist")
+
+    assert opened_urls == ["https://www.last.fm/music/Artist"]
+
+
+def test_controller_shows_matching_artist_image_result(qapp) -> None:
+    window = MainWindow()
+    playback = FakePlaybackService()
+    playback.current_track = Track(artist="Artist", title="Title")
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
+    image_calls: list[tuple[bytes | None, str | None]] = []
+    window.set_artist_image = lambda image, url: image_calls.append((image, url))  # type: ignore[method-assign]
+
+    controller._handle_artist_image_loaded(
+        ArtistImage(
+            artist="Artist",
+            page_url="https://www.last.fm/music/Artist",
+            image_bytes=b"image",
+        )
+    )
+
+    assert image_calls == [(b"image", "https://www.last.fm/music/Artist")]
+
+
 def test_controller_ignores_stale_artist_image_results(qapp) -> None:
     window = MainWindow()
     playback = FakePlaybackService()
     playback.current_track = Track(artist="Current", title="Title")
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     controller._handle_artist_image_loaded(
         ArtistImage(
@@ -1178,6 +1225,7 @@ def test_controller_auto_plays_next_track_after_finished_in_sort_order(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
 
     controller.play_selected_track()
@@ -1234,6 +1282,7 @@ def test_controller_auto_plays_next_track_from_filtered_rows(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
 
     controller.play_selected_track()
@@ -1286,6 +1335,7 @@ def test_controller_next_button_plays_next_track_from_filtered_rows(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
 
     controller.play_selected_track()
@@ -1329,6 +1379,7 @@ def test_controller_wraps_to_first_sorted_track_after_last_track_finishes(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
 
     controller.play_selected_track()
@@ -1383,6 +1434,7 @@ def test_controller_auto_plays_random_track_after_finished_when_enabled(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
     random_candidates: list[list[tuple[int, Track]]] = []
 
@@ -1444,6 +1496,7 @@ def test_controller_auto_plays_random_track_from_filtered_rows(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
     random_candidates: list[list[tuple[int, Track]]] = []
 
@@ -1503,6 +1556,7 @@ def test_controller_next_button_plays_random_track_when_enabled(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
     random_candidates: list[list[tuple[int, Track]]] = []
 
@@ -1535,7 +1589,11 @@ def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
     window.set_playing_track(track.cache_key)
     playback = FakePlaybackService()
     playback.current_track = track
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     controller.pause_playback()
     controller.stop_playback()
@@ -1560,7 +1618,11 @@ def test_controller_pause_toggles_to_resume(qapp, tmp_path) -> None:
     )
     playback = FakePlaybackService()
     playback.current_track = track
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     controller.pause_playback()
     assert playback.events == ["pause"]
@@ -1583,7 +1645,11 @@ def test_playback_button_states(qapp, tmp_path) -> None:
     )
     window.set_tracks([track])
     playback = FakePlaybackService()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     assert window.play_button.isEnabled()
     assert not window.pause_button.isEnabled()
@@ -1610,7 +1676,11 @@ def test_controller_seeks_active_playback(qapp) -> None:
     playback = FakePlaybackService()
     playback.current_track = Track(artist="Artist", title="Title", status=TrackStatus.DOWNLOADED)
     playback.duration = 240_000
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     controller.seek_playback(75_000)
 
@@ -1639,7 +1709,11 @@ def test_controller_reports_playback_errors(qapp, tmp_path) -> None:
         status=TrackStatus.DOWNLOADED,
         local_path=str(audio_path),
     )
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     controller._play_track(track)
     controller.pause_playback()
@@ -1652,7 +1726,11 @@ def test_controller_reports_playback_errors(qapp, tmp_path) -> None:
 
 def test_controller_reports_no_selection_and_no_active_playback(qapp) -> None:
     window = MainWindow()
-    controller = ApplicationController(window, playback_service=FakePlaybackService())  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=FakePlaybackService(),  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     controller.play_selected_track()
     controller.stop_playback()
@@ -1692,6 +1770,7 @@ def test_controller_plays_first_downloaded_track_when_nothing_is_selected(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
 
     controller.play_selected_track()
@@ -1729,6 +1808,7 @@ def test_controller_plays_random_downloaded_track_when_nothing_is_selected_and_r
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
     random_candidates: list[list[tuple[int, Track]]] = []
 
@@ -1909,7 +1989,11 @@ def test_controller_playback_callbacks_update_timeline_once(qapp) -> None:
     playback = FakePlaybackService()
     playback.position = 30_000
     playback.duration = 120_000
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     assert controller.playback_service is playback
     assert controller.playback_service is playback
@@ -2058,7 +2142,11 @@ def test_controller_scrobbles_at_33_percent(qapp, tmp_path) -> None:
         network_factory=lambda **kw: FakeNetwork(),
     )
     svc.try_connect()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
     controller._scrobbling_service = svc
 
     controller._play_track(track)
@@ -2112,7 +2200,11 @@ def test_controller_scrobble_resets_on_seek(qapp, tmp_path) -> None:
         network_factory=lambda **kw: FakeNetwork(),
     )
     svc.try_connect()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
     controller._scrobbling_service = svc
 
     controller._play_track(track)
@@ -2166,7 +2258,11 @@ def test_controller_scrobble_resets_on_new_track(qapp, tmp_path) -> None:
         network_factory=lambda **kw: FakeNetwork(),
     )
     svc.try_connect()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
     controller._scrobbling_service = svc
 
     controller._play_track(track)
@@ -2294,6 +2390,25 @@ def test_controller_load_cached_tracks_reports_when_no_cached_tracks_and_verify(
 
     assert result is False
     assert "No cached tracks found for user" in window.feedback_log.toPlainText()
+
+
+def test_controller_load_cached_tracks_reports_storage_error_while_applying_state(
+    qapp,
+    tmp_path,
+) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = FailingRepository(tmp_path, set())
+    repository.save_tracks("user", [Track(artist="Artist", title="Title")])
+    repository.failing_methods = {"merge_tracks"}
+    controller = ApplicationController(window, repository=repository)
+
+    result = controller.load_cached_tracks_for_entered_username()
+
+    assert not result
+    assert "Storage error while applying cached track state for user" in (
+        window.feedback_log.toPlainText()
+    )
 
 
 def test_controller_load_cached_tracks_returns_false_without_verify_message(
@@ -2522,7 +2637,11 @@ def test_controller_pause_playback_reports_resume_failure(qapp) -> None:
         raise PlaybackError("resume failed")
 
     playback.resume = fail_resume  # type: ignore[method-assign]
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     controller.pause_playback()
 
@@ -2820,7 +2939,11 @@ def test_controller_play_prepared_track_not_yet_downloaded(qapp) -> None:
     window = MainWindow()
     track = Track(artist="A", title="T", status=TrackStatus.QUEUED)
     window.set_tracks([track])
-    controller = ApplicationController(window, playback_service=FakePlaybackService())  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=FakePlaybackService(),  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     controller._play_prepared_track(track.cache_key)
 
@@ -2839,7 +2962,11 @@ def test_controller_play_prepared_track_plays_when_downloaded(qapp, tmp_path) ->
     )
     window.set_tracks([track])
     playback = FakePlaybackService()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
     controller._pending_play_cache_key = track.cache_key
 
     controller._play_prepared_track(track.cache_key)
@@ -2983,7 +3110,11 @@ def test_controller_maybe_scrobble_does_nothing_when_no_current_track(qapp) -> N
         network_factory=lambda **kw: FakeNetwork(),
     )
     svc.try_connect()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
     controller._scrobbling_service = svc
     controller._playback_start_time = 1000
     playback.current_track = None
@@ -2996,7 +3127,11 @@ def test_controller_maybe_scrobble_does_nothing_when_no_current_track(qapp) -> N
 def test_controller_handle_playback_finished_does_nothing_when_no_track(qapp) -> None:
     window = MainWindow()
     playback = FakePlaybackService()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
+    )
 
     controller._handle_playback_finished()
 
@@ -3012,6 +3147,7 @@ def test_controller_handle_playback_finished_reports_done_when_no_next(qapp, tmp
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
+        artist_images_enabled=False,
     )
 
     controller._handle_playback_finished()
@@ -3019,3 +3155,12 @@ def test_controller_handle_playback_finished_reports_done_when_no_next(qapp, tmp
     log = window.feedback_log.toPlainText()
     assert "Finished playback for Artist - Title." in log
     assert "Playback finished." in log
+
+
+def test_controller_continue_playback_from_reports_done_without_next_track(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+
+    controller._continue_playback_from("missing")
+
+    assert "Playback finished." in window.feedback_log.toPlainText()

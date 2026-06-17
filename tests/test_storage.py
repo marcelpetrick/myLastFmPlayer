@@ -401,6 +401,14 @@ def test_forget_lookup_cache_keys_removes_only_matching_entries(tmp_path: Path) 
     assert cache[resolved.cache_key] == resolved
 
 
+def test_forget_lookup_cache_keys_ignores_empty_set(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+
+    repository.forget_lookup_cache_keys(set())
+
+    assert repository.load_lookup_cache() == {}
+
+
 def test_atomic_write_replaces_existing_json_without_temp_files(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
 

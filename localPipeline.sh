@@ -361,6 +361,9 @@ run_tests_with_coverage() {
 
     if run_with_log "${log_path}" "${PYTHON}" -m pytest; then
         TESTS_DETAILS="$(extract_test_details "${log_path}")"
+        if grep -q "FAIL Required test coverage" "${log_path}"; then
+            return 1
+        fi
         return 0
     fi
 
