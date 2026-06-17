@@ -48,7 +48,7 @@ The major unresolved items from 2026-06-15 are still present: `ApplicationContro
 ## Still Important From The Previous Review
 
 - FIXED: Last.fm session credentials are still stored as plain JSON. `ScrobblingService.credentials_dict()` includes `session_key` at `my_lastfm_player/scrobbling.py:184`, and `JsonTrackRepository.save_credentials()` writes it directly at `my_lastfm_player/storage.py:236`.
-- Repository locking is still inconsistent. Writes and merges use `_lock` at `my_lastfm_player/storage.py:57` and `my_lastfm_player/storage.py:63`, but reads such as `load_tracks()`, `load_download_cache()`, and `load_lookup_cache()` at `my_lastfm_player/storage.py:40`, `my_lastfm_player/storage.py:97`, and `my_lastfm_player/storage.py:153` remain outside that boundary.
+- FIXED: Repository locking is still inconsistent. Writes and merges use `_lock` at `my_lastfm_player/storage.py:57` and `my_lastfm_player/storage.py:63`, but reads such as `load_tracks()`, `load_download_cache()`, and `load_lookup_cache()` at `my_lastfm_player/storage.py:40`, `my_lastfm_player/storage.py:97`, and `my_lastfm_player/storage.py:153` remain outside that boundary.
 - Pylint complexity visibility improved, but the biggest objects now rely on local suppressions instead of decomposition.
 
 ## Review Method

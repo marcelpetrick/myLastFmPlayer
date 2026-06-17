@@ -33,6 +33,18 @@ class MemorySessionKeyStore:
         self.session_keys[username] = session_key
 
 
+class RecordingLock:
+    def __init__(self) -> None:
+        self.enter_count = 0
+
+    def __enter__(self):
+        self.enter_count += 1
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        return None
+
+
 def test_repository_saves_and_loads_per_user_tracks(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     audio_path = tmp_path / "Artist - Title.mp3"
@@ -60,6 +72,19 @@ def test_repository_returns_empty_list_for_unknown_user(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
 
     assert repository.load_tracks("missing") == []
+
+
+def test_repository_reads_use_shared_lock(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    lock = RecordingLock()
+    repository._lock = lock  # type: ignore[assignment]  # verify read synchronization
+
+    assert repository.load_tracks("missing") == []
+    assert repository.load_download_cache() == {}
+    assert repository.load_lookup_cache() == {}
+    assert repository.load_credentials() == {}
+
+    assert lock.enter_count == 4
 
 
 def test_repository_delete_tracks_removes_only_user_json(tmp_path: Path) -> None:

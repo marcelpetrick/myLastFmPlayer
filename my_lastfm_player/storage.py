@@ -122,15 +122,16 @@ class JsonTrackRepository:
     def load_tracks(self, username: str) -> list[Track]:
         """Load all stored tracks for ``username``."""
 
-        path = self.user_tracks_path(username)
-        if not path.exists():
-            return []
+        with self._lock:
+            path = self.user_tracks_path(username)
+            if not path.exists():
+                return []
 
-        data = _read_json_file(path)
-        if not isinstance(data, list):
-            raise StorageError(f"{path} must contain a JSON array of tracks")
+            data = _read_json_file(path)
+            if not isinstance(data, list):
+                raise StorageError(f"{path} must contain a JSON array of tracks")
 
-        return [_normalize_download_file_state(Track.from_dict(item)) for item in data]
+            return [_normalize_download_file_state(Track.from_dict(item)) for item in data]
 
     def save_tracks(self, username: str, tracks: list[Track]) -> None:
         """Atomically save ``tracks`` for ``username``."""
@@ -150,9 +151,10 @@ class JsonTrackRepository:
     def delete_tracks(self, username: str) -> None:
         """Delete the stored track list for ``username`` if it exists."""
 
-        path = self.user_tracks_path(username)
-        if path.exists():
-            path.unlink()
+        with self._lock:
+            path = self.user_tracks_path(username)
+            if path.exists():
+                path.unlink()
 
     def user_tracks_path(self, username: str) -> Path:
         """Return the JSON path for ``username``."""
@@ -166,32 +168,34 @@ class JsonTrackRepository:
         Deletion errors are printed to stdout and silently skipped.
         """
 
-        targets: list[Path] = [self.credentials_path, self.cache_path, self.lookup_cache_path]
-        if self.tracks_dir.is_dir():
-            targets.extend(self.tracks_dir.iterdir())
-        for path in targets:
-            try:
-                if path.is_file():
-                    path.unlink()
-            except OSError as error:
-                LOGGER.warning("Could not delete %s during wipe: %s", path, error)
+        with self._lock:
+            targets: list[Path] = [self.credentials_path, self.cache_path, self.lookup_cache_path]
+            if self.tracks_dir.is_dir():
+                targets.extend(self.tracks_dir.iterdir())
+            for path in targets:
+                try:
+                    if path.is_file():
+                        path.unlink()
+                except OSError as error:
+                    LOGGER.warning("Could not delete %s during wipe: %s", path, error)
 
     def load_download_cache(self) -> dict[str, Track]:
         """Load cached downloaded tracks keyed by cache key."""
 
-        if not self.cache_path.exists():
-            return {}
+        with self._lock:
+            if not self.cache_path.exists():
+                return {}
 
-        data = _read_json_file(self.cache_path)
-        if not isinstance(data, list):
-            raise StorageError(f"{self.cache_path} must contain a JSON array of cached tracks")
+            data = _read_json_file(self.cache_path)
+            if not isinstance(data, list):
+                raise StorageError(f"{self.cache_path} must contain a JSON array of cached tracks")
 
-        tracks = [
-            track
-            for item in data
-            if (track := _normalize_download_file_state(Track.from_dict(item))).local_path
-        ]
-        return {track.cache_key: track for track in tracks}
+            tracks = [
+                track
+                for item in data
+                if (track := _normalize_download_file_state(Track.from_dict(item))).local_path
+            ]
+            return {track.cache_key: track for track in tracks}
 
     def save_download_cache(self, tracks: list[Track]) -> None:
         """Persist downloaded tracks that have a local file path."""
@@ -235,17 +239,18 @@ class JsonTrackRepository:
     def load_lookup_cache(self) -> dict[str, Track]:
         """Load cached YouTube lookup results keyed by cache key."""
 
-        if not self.lookup_cache_path.exists():
-            return {}
+        with self._lock:
+            if not self.lookup_cache_path.exists():
+                return {}
 
-        data = _read_json_file(self.lookup_cache_path)
-        if not isinstance(data, list):
-            raise StorageError(
-                f"{self.lookup_cache_path} must contain a JSON array of cached lookups"
-            )
+            data = _read_json_file(self.lookup_cache_path)
+            if not isinstance(data, list):
+                raise StorageError(
+                    f"{self.lookup_cache_path} must contain a JSON array of cached lookups"
+                )
 
-        tracks = [Track.from_dict(item) for item in data]
-        return {track.cache_key: track for track in tracks}
+            tracks = [Track.from_dict(item) for item in data]
+            return {track.cache_key: track for track in tracks}
 
     def save_lookup_cache(self, tracks: list[Track]) -> None:
         """Persist tracks with resolved or known-missing YouTube lookup state."""
@@ -321,32 +326,34 @@ class JsonTrackRepository:
     def load_credentials(self) -> dict[str, object]:
         """Load persisted Last.fm credentials, returning an empty dict if absent or corrupt."""
 
-        if not self.credentials_path.exists():
-            return {}
-        try:
-            data = _read_json_file(self.credentials_path)
-        except StorageError:
-            return {}
-        if not isinstance(data, dict):
-            return {}
-        credentials = dict(data)
-        username = credentials.get("username", "")
-        credentials.pop("session_key", None)
-        if isinstance(username, str):
-            session_key = self._session_key_store.load(username)
-            if session_key:
-                credentials["session_key"] = session_key
-        return credentials
+        with self._lock:
+            if not self.credentials_path.exists():
+                return {}
+            try:
+                data = _read_json_file(self.credentials_path)
+            except StorageError:
+                return {}
+            if not isinstance(data, dict):
+                return {}
+            credentials = dict(data)
+            username = credentials.get("username", "")
+            credentials.pop("session_key", None)
+            if isinstance(username, str):
+                session_key = self._session_key_store.load(username)
+                if session_key:
+                    credentials["session_key"] = session_key
+            return credentials
 
     def save_credentials(self, credentials: dict[str, object]) -> None:
         """Atomically persist Last.fm credentials."""
 
-        stored_credentials = dict(credentials)
-        session_key = stored_credentials.pop("session_key", "")
-        username = stored_credentials.get("username", "")
-        if isinstance(username, str) and isinstance(session_key, str):
-            self._session_key_store.save(username, session_key)
-        _atomic_write_json(self.credentials_path, stored_credentials)
+        with self._lock:
+            stored_credentials = dict(credentials)
+            session_key = stored_credentials.pop("session_key", "")
+            username = stored_credentials.get("username", "")
+            if isinstance(username, str) and isinstance(session_key, str):
+                self._session_key_store.save(username, session_key)
+            _atomic_write_json(self.credentials_path, stored_credentials)
 
 
 def default_data_dir() -> Path:
