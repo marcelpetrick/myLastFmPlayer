@@ -388,18 +388,36 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         if menu.exec(self.track_table.viewport().mapToGlobal(pos)) == retry_action:
             self.retry_download_requested.emit(cache_key)
 
-    def _build_controls_panel(self) -> QWidget:  # pylint: disable=too-many-statements
+    def _build_controls_panel(self) -> QWidget:
         panel = QWidget()
         layout = QHBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
 
+        layout.addWidget(self._build_playback_group())
+        layout.addWidget(self._build_artist_image_group(), stretch=1)
+        layout.addWidget(self._build_downloads_group())
+
+        return panel
+
+    def _build_playback_group(self) -> QGroupBox:
         self.playback_group = QGroupBox()
         self.playback_group.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
         playback_layout = QVBoxLayout(self.playback_group)
-        playback_button_layout = QHBoxLayout()
+
         self.artist_image_label = ArtistImageLabel()
         self.artist_image_label.artist_page_requested.connect(self.artist_page_requested.emit)
+
+        playback_timeline_layout = self._build_playback_timeline_layout()
+        playback_layout.addWidget(self.now_playing_label)
+        playback_layout.addLayout(self._build_playback_button_layout())
+        playback_layout.addLayout(playback_timeline_layout)
+        playback_layout.addWidget(self.randomize_checkbox)
+
+        return self.playback_group
+
+    def _build_playback_button_layout(self) -> QHBoxLayout:
+        playback_button_layout = QHBoxLayout()
         self.play_button = QPushButton()
         self.pause_button = QPushButton()
         self.stop_button = QPushButton()
@@ -415,7 +433,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.next_button.setEnabled(False)
         for button in (self.play_button, self.pause_button, self.stop_button, self.next_button):
             playback_button_layout.addWidget(button)
+        return playback_button_layout
 
+    def _build_playback_timeline_layout(self) -> QHBoxLayout:
         playback_timeline_layout = QHBoxLayout()
         self.playback_slider = QSlider(Qt.Orientation.Horizontal)
         self.playback_slider.setRange(0, 0)
@@ -437,12 +457,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         playback_timeline_layout.addWidget(self.total_time_label)
         self.now_playing_label = QLabel()
         self.now_playing_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        return playback_timeline_layout
 
-        playback_layout.addWidget(self.now_playing_label)
-        playback_layout.addLayout(playback_button_layout)
-        playback_layout.addLayout(playback_timeline_layout)
-        playback_layout.addWidget(self.randomize_checkbox)
-
+    def _build_artist_image_group(self) -> QGroupBox:
         self.artist_image_group = QGroupBox()
         self.artist_image_group.setSizePolicy(
             QSizePolicy.Policy.Expanding,
@@ -450,19 +467,16 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         )
         artist_image_layout = QVBoxLayout(self.artist_image_group)
         artist_image_layout.addWidget(self.artist_image_label, stretch=1)
+        return self.artist_image_group
 
+    def _build_downloads_group(self) -> QGroupBox:
         self.downloads_group = QGroupBox()
         self.downloads_group.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
         self.downloads_layout = QVBoxLayout(self.downloads_group)
         self.download_toggle_button = QPushButton()
         self.download_toggle_button.clicked.connect(self.download_requested.emit)
         self.downloads_layout.addWidget(self.download_toggle_button)
-
-        layout.addWidget(self.playback_group)
-        layout.addWidget(self.artist_image_group, stretch=1)
-        layout.addWidget(self.downloads_group)
-
-        return panel
+        return self.downloads_group
 
     def _build_feedback_panel(self) -> QWidget:
         panel = QWidget()
