@@ -9,6 +9,7 @@ htmlcov/
 docs/_build/
 build/
 dist/
+release-artifacts/
 my_lastfm_player/_build_info.py
 
 /.codex

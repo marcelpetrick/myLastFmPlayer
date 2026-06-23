@@ -89,10 +89,28 @@ four inputs:
   `true` so artifacts can be reviewed before public publication.
 - `prerelease`: when publishing, mark the release as a prerelease.
 
-The build job runs the same no-GUI local pipeline and uploads the packages from
-`dist/`. The publish job runs only when `publish_release` is true and uses the
-repository `GITHUB_TOKEN` with job-scoped `contents: write` permission to create
-the tag and GitHub Release.
+The build job runs the same no-GUI local pipeline with a persistent report
+directory. It keeps the wheel and source distribution as direct release assets
+and also creates these ZIP archives:
+
+- `packages`: wheel and source distribution.
+- `sphinx-docs`: complete browsable Sphinx HTML documentation.
+- `c4-architecture`: architecture source, rendered page, and C4/Graphviz
+  diagrams.
+- `test-results`: pytest console trace and JUnit XML.
+- `coverage`: browsable HTML coverage and machine-readable coverage XML.
+- `static-analysis`: Ruff and Pylint reports.
+- `pipeline-trace`: stage logs, translation and documentation checks, pipeline
+  summary, package/import verification, and environment metadata.
+
+Every ZIP contains a `README.txt` describing its contents and recording the
+application version, commit, workflow run ID, and generation time. The GitHub
+Release notes contain the same short artifact inventory, and the release assets
+use descriptive display labels.
+
+The publish job runs only when `publish_release` is true and uses the repository
+`GITHUB_TOKEN` with job-scoped `contents: write` permission to create the tag
+and GitHub Release.
 
 ## Recommended Release Flow
 
@@ -124,5 +142,8 @@ as a draft for final review.
   before packaging.
 - No PyPI publishing is configured. The release workflow creates GitHub Release
   assets only.
+- GitHub Actions workflow artifacts are temporary transport between the build
+  and publish jobs. Published GitHub Release assets preserve the reports with
+  the release.
 - No custom secrets are required for GitHub Releases. The workflow uses the
   built-in `GITHUB_TOKEN`.

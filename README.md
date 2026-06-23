@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.126` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.127` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
@@ -165,10 +165,10 @@ Tests+Coverage   : PASS 99.06%; 451 passed, 1 skipped in 3.38s
 Open Docs        : PASS Sphinx index.html was handed to firefox
 Open Coverage    : PASS htmlcov/index.html was handed to firefox
 Clean Build      : PASS Stale package artifacts removed
-Package Build    : PASS Successfully built my_lastfm_player-0.0.124.tar.gz and my_lastfm_player-0.0.124-py3-none-any.whl
-Wheel            : PASS my_lastfm_player-0.0.124-py3-none-any.whl
+Package Build    : PASS Successfully built my_lastfm_player-0.0.127.tar.gz and my_lastfm_player-0.0.127-py3-none-any.whl
+Wheel            : PASS my_lastfm_player-0.0.127-py3-none-any.whl
 Wheel Install    : PASS Built wheel installed into .venv
-Import Check     : PASS 0.0.124+1974439
+Import Check     : PASS 0.0.127+1e838d
 Launch App       : PASS my-lastfm-player was started once
 ============================================
 ```
@@ -255,7 +255,7 @@ flowchart TD
 
 The workflow phases are:
 
-1. Argument handling: accepts only `--noRun`; any other argument stops the pipeline with usage help.
+1. Argument handling: accepts `--noRun` and `--report-dir PATH`; any other argument stops the pipeline with usage help.
 2. Environment preparation: creates `.venv` only when `.venv/bin/python` is missing, otherwise reuses the existing virtual environment.
 3. Dependency installation: runs `python -m pip install -e ".[dev]"` so the app and development tools come from the same environment.
 4. Quality gates: runs Ruff (0 violations), Pylint (10.00/10), translations (0 untranslated strings across all locales), required documentation checks, Sphinx documentation with warnings as errors, and pytest with configured coverage reporting (99% minimum).
@@ -270,6 +270,19 @@ To run every check without launching the GUI at the end:
 ```sh
 ./localPipeline.sh --noRun
 ```
+
+To preserve the machine-readable test and coverage results, stage logs,
+environment metadata, and final summary:
+
+```sh
+./localPipeline.sh --noRun --report-dir release-artifacts/raw
+```
+
+The manual GitHub Release workflow uses these reports to publish seven
+described ZIP archives: packages, Sphinx documentation, C4 architecture,
+pytest results, coverage, static analysis, and the complete pipeline trace.
+The raw wheel and source distribution remain separate release assets for
+direct installation and packaging use.
 
 After the pipeline completes, open the HTML coverage report at:
 

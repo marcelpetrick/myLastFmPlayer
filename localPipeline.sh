@@ -7,8 +7,9 @@ VENV_DIR="${ROOT_DIR}/.venv"
 PYTHON="${VENV_DIR}/bin/python"
 APP="${VENV_DIR}/bin/my-lastfm-player"
 RUN_APP=true
-PIPELINE_LOG_DIR="${TMPDIR:-/tmp}/myLastFmPlayer-pipeline-$$"
-trap 'rm -rf "${PIPELINE_LOG_DIR}"' EXIT
+REPORT_DIR=""
+PIPELINE_LOG_DIR=""
+REMOVE_PIPELINE_LOG_DIR=true
 
 declare -a SUMMARY_LINES=()
 
@@ -40,7 +41,7 @@ TRANSLATION_DETAILS=""
 
 print_usage() {
     cat <<EOF
-Usage: ./localPipeline.sh [--noRun]
+Usage: ./localPipeline.sh [--noRun] [--report-dir PATH]
 
 Local project pipeline:
   1. Create or reuse .venv
@@ -62,6 +63,9 @@ Local project pipeline:
 
 Generated HTML reports are opened with MY_LASTFM_PLAYER_REPORT_BROWSER when set,
 then firefox, then xdg-open, then open.
+
+Use --report-dir to preserve stage logs, JUnit XML, coverage XML, environment
+metadata, and the final summary. Without it, those trace files are temporary.
 EOF
 }
 
@@ -168,12 +172,14 @@ extract_package_build_details() {
 }
 
 print_summary() {
-    printf '\n========== Local Pipeline Summary ==========\n'
-    local line
-    for line in "${SUMMARY_LINES[@]}"; do
-        printf '%s\n' "${line}"
-    done
-    printf '============================================\n'
+    {
+        printf '\n========== Local Pipeline Summary ==========\n'
+        local line
+        for line in "${SUMMARY_LINES[@]}"; do
+            printf '%s\n' "${line}"
+        done
+        printf '============================================\n'
+    } | tee "${PIPELINE_LOG_DIR}/summary.txt"
 }
 
 detect_open_command() {
@@ -228,22 +234,79 @@ open_html_report() {
 }
 
 parse_arguments() {
-    for argument in "$@"; do
-        case "${argument}" in
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
             --noRun)
                 RUN_APP=false
+                shift
+                ;;
+            --report-dir)
+                if [[ "$#" -lt 2 || -z "$2" ]]; then
+                    error "--report-dir requires a path."
+                    print_usage
+                    exit 2
+                fi
+                REPORT_DIR="$2"
+                shift 2
                 ;;
             --help|-h)
                 print_usage
                 exit 0
                 ;;
             *)
-                error "Unknown argument: ${argument}"
+                error "Unknown argument: $1"
                 print_usage
                 exit 2
                 ;;
         esac
     done
+}
+
+prepare_report_directory() {
+    if [[ -n "${REPORT_DIR}" ]]; then
+        PIPELINE_LOG_DIR="$(realpath -m "${REPORT_DIR}")"
+        REMOVE_PIPELINE_LOG_DIR=false
+    else
+        PIPELINE_LOG_DIR="${TMPDIR:-/tmp}/myLastFmPlayer-pipeline-$$"
+    fi
+
+    mkdir -p "${PIPELINE_LOG_DIR}"
+    rm -f \
+        "${PIPELINE_LOG_DIR}/build.log" \
+        "${PIPELINE_LOG_DIR}/clean-build.log" \
+        "${PIPELINE_LOG_DIR}/coverage.xml" \
+        "${PIPELINE_LOG_DIR}/dependencies.log" \
+        "${PIPELINE_LOG_DIR}/docs.log" \
+        "${PIPELINE_LOG_DIR}/environment.txt" \
+        "${PIPELINE_LOG_DIR}/import-check.log" \
+        "${PIPELINE_LOG_DIR}/junit.xml" \
+        "${PIPELINE_LOG_DIR}/pylint.log" \
+        "${PIPELINE_LOG_DIR}/pytest.log" \
+        "${PIPELINE_LOG_DIR}/ruff.log" \
+        "${PIPELINE_LOG_DIR}/sphinx.log" \
+        "${PIPELINE_LOG_DIR}/summary.txt" \
+        "${PIPELINE_LOG_DIR}/translations.log" \
+        "${PIPELINE_LOG_DIR}/wheel-install.log"
+    trap 'if [[ "${REMOVE_PIPELINE_LOG_DIR}" == true ]]; then rm -rf "${PIPELINE_LOG_DIR}"; fi' EXIT
+}
+
+write_environment_metadata() {
+    local metadata_path="${PIPELINE_LOG_DIR}/environment.txt"
+    {
+        printf 'application_version=%s\n' "$("${PYTHON}" -c 'from my_lastfm_player.version import __version__; print(__version__)')"
+        printf 'commit=%s\n' "$(git -C "${ROOT_DIR}" rev-parse HEAD 2>/dev/null || true)"
+        printf 'generated_at=%s\n' "$(date --utc +'%Y-%m-%dT%H:%M:%SZ')"
+        printf 'github_run_id=%s\n' "${GITHUB_RUN_ID:-local}"
+        printf 'github_run_attempt=%s\n' "${GITHUB_RUN_ATTEMPT:-local}"
+        printf 'runner_os=%s\n' "${RUNNER_OS:-local}"
+        printf 'python=%s\n' "$("${PYTHON}" --version 2>&1)"
+        printf 'pip=%s\n' "$("${PYTHON}" -m pip --version)"
+        printf 'ruff=%s\n' "$("${PYTHON}" -m ruff --version)"
+        printf 'pylint=%s\n' "$("${PYTHON}" -m pylint --version | head -n 1)"
+        printf 'pytest=%s\n' "$("${PYTHON}" -m pytest --version)"
+        printf 'sphinx=%s\n' "$("${PYTHON}" -m sphinx --version)"
+        printf 'graphviz=%s\n' "$(dot -V 2>&1 || true)"
+    } > "${metadata_path}"
 }
 
 prepare_virtual_environment() {
@@ -258,7 +321,7 @@ prepare_virtual_environment() {
 
 install_development_dependencies() {
     log "Installing project with development dependencies."
-    "${PYTHON}" -m pip install -e ".[dev]"
+    run_with_log "${PIPELINE_LOG_DIR}/dependencies.log" "${PYTHON}" -m pip install -e ".[dev]"
 }
 
 run_lint() {
@@ -289,6 +352,7 @@ run_pylint() {
 
 check_translations() {
     log "Checking Qt translation completion."
+    local log_path="${PIPELINE_LOG_DIR}/translations.log"
     local catalog=""
     local language=""
     local source_count=0
@@ -296,6 +360,7 @@ check_translations() {
     local total_sources=0
     local total_unfinished=0
     local detail_parts=()
+    : > "${log_path}"
 
     shopt -s nullglob
     for catalog in "${ROOT_DIR}"/my_lastfm_player/translations/*.ts; do
@@ -308,6 +373,8 @@ check_translations() {
         total_unfinished=$((total_unfinished + unfinished_count))
         detail_parts+=("${language}: ${source_count} strings, ${unfinished_count} untranslated")
         log "Translations ${language}: ${source_count} strings, ${unfinished_count} untranslated"
+        printf '%s: %s strings, %s untranslated\n' \
+            "${language}" "${source_count}" "${unfinished_count}" >> "${log_path}"
     done
     shopt -u nullglob
 
@@ -319,6 +386,8 @@ check_translations() {
     local joined_details
     joined_details="$(printf '%s; ' "${detail_parts[@]}")"
     TRANSLATION_DETAILS="${joined_details%; } (total: ${total_sources} strings, ${total_unfinished} untranslated)"
+    printf 'total: %s strings, %s untranslated\n' \
+        "${total_sources}" "${total_unfinished}" >> "${log_path}"
 
     if [[ "${total_unfinished}" -eq 0 ]]; then
         return 0
@@ -359,7 +428,11 @@ run_tests_with_coverage() {
     log "Running pytest with coverage."
     local log_path="${PIPELINE_LOG_DIR}/pytest.log"
 
-    if run_with_log "${log_path}" "${PYTHON}" -m pytest; then
+    if run_with_log \
+        "${log_path}" \
+        "${PYTHON}" -m pytest \
+        --junitxml="${PIPELINE_LOG_DIR}/junit.xml" \
+        --cov-report="xml:${PIPELINE_LOG_DIR}/coverage.xml"; then
         TESTS_DETAILS="$(extract_test_details "${log_path}")"
         return 0
     fi
@@ -381,6 +454,8 @@ open_sphinx_documentation() {
 clean_package_artifacts() {
     log "Removing stale package build artifacts."
     rm -rf "${ROOT_DIR}/build" "${ROOT_DIR}/dist" "${ROOT_DIR}/my_lastfm_player.egg-info"
+    printf 'Removed build/, dist/, and my_lastfm_player.egg-info\n' \
+        > "${PIPELINE_LOG_DIR}/clean-build.log"
 }
 
 build_package() {
@@ -409,7 +484,9 @@ install_built_wheel() {
     fi
 
     log "Installing built wheel: ${wheel_path}"
-    "${PYTHON}" -m pip install --force-reinstall --no-deps "${wheel_path}"
+    run_with_log \
+        "${PIPELINE_LOG_DIR}/wheel-install.log" \
+        "${PYTHON}" -m pip install --force-reinstall --no-deps "${wheel_path}"
 }
 
 verify_package_import() {
@@ -420,7 +497,7 @@ verify_package_import() {
         cd "${ROOT_DIR}/dist"
         "${PYTHON}" -c "import my_lastfm_player; print(f'Package import ok: {my_lastfm_player.__display_version__}')"
     )"
-    printf '%s\n' "${import_output}"
+    printf '%s\n' "${import_output}" | tee "${PIPELINE_LOG_DIR}/import-check.log"
     IMPORT_DETAILS="${import_output#Package import ok: }"
 }
 
@@ -450,6 +527,7 @@ main() {
     local exit_code=1
 
     parse_arguments "$@"
+    prepare_report_directory
 
     if [[ "${RUN_APP}" == false ]]; then
         log "Application launch is suppressed because --noRun was provided."
@@ -466,6 +544,7 @@ main() {
         if install_development_dependencies; then
             INSTALL_OK=1
             mark_result "Dependencies" "PASS" "Editable install with dev dependencies completed"
+            write_environment_metadata
         else
             mark_result "Dependencies" "FAIL" "Dependency installation failed"
         fi
