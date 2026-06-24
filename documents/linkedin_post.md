@@ -23,7 +23,7 @@ Repo at https://github.com/marcelpetrick/myLastFmPlayer - feedback welcome.
 
 ----
 
-Release: **myLastFmPlayer**
+Release: 𝗺𝘆𝗟𝗮𝘀𝘁𝗙𝗺𝗣𝗹𝗮𝘆𝗲𝗿
 
 Weeks ago I finally implemented an idea that had been on my mind for years.
 
@@ -35,7 +35,7 @@ Once the prototype worked, I added the quality-of-life features that make it use
 
 I already had prototypes for individual parts: web scraping with BeautifulSoup, YouTube downloads, and PyQt desktop UIs. What I had not done was turn them into a full product.
 
-**This time, I did.**
+𝗧𝗵𝗶𝘀 𝘁𝗶𝗺𝗲, 𝗜 𝗱𝗶𝗱.
 
 I have used it daily for several weeks now, and I genuinely like the result.
 
@@ -45,4 +45,8 @@ That includes local and GitHub Actions CI #pipelines, 99% test #coverage, linter
 
 Licensed under GPLv3 — remix and adapt it.
 
-The repository is here:  https://github.com/marcelpetrick/myLastFmPlayer **Feedback, issues, and ideas are welcome.**
+The repository is here:  https://github.com/marcelpetrick/myLastFmPlayer 𝗙𝗲𝗲𝗱𝗯𝗮𝗰𝗸, 𝗶𝘀𝘀𝘂𝗲𝘀, 𝗮𝗻𝗱 𝗶𝗱𝗲𝗮𝘀 𝗮𝗿𝗲 𝘄𝗲𝗹𝗰𝗼𝗺𝗲.
+
+Oh, btw. I did the markdown to Linkedin-Unicode with `Boldemort` xD
+Thank you for reading until here.
+
