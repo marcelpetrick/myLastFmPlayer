@@ -8,9 +8,13 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.127` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.128` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
+
+[![myLastFmPlayer video preview](media/myLastFmPlayer_v0.0.127_recording_preview.gif)](media/myLastFmPlayer_v0.0.127_recording.webm)
+
+Click the preview to open the full recording.
 
 ![](media/currentState.png)
 
