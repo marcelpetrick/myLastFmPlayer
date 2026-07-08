@@ -451,16 +451,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         artist_image_layout = QVBoxLayout(self.artist_image_group)
         artist_image_layout.addWidget(self.artist_image_label, stretch=1)
 
-        self.downloads_group = QGroupBox()
-        self.downloads_group.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
-        self.downloads_layout = QVBoxLayout(self.downloads_group)
-        self.download_toggle_button = QPushButton()
-        self.download_toggle_button.clicked.connect(self.download_requested.emit)
-        self.downloads_layout.addWidget(self.download_toggle_button)
-
         layout.addWidget(self.playback_group)
         layout.addWidget(self.artist_image_group, stretch=1)
-        layout.addWidget(self.downloads_group)
 
         return panel
 
@@ -541,26 +533,14 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.fetch_stop_button.setToolTip(self.tr("Stop the active Last.fm fetch"))
 
     def set_download_active(self, active: bool) -> None:
-        """Switch the download button between Start and Stop state."""
+        """Track whether the automatic bulk download worker is active."""
 
-        if self._download_active == active:
-            return
         self._download_active = active
-        self.download_toggle_button.clicked.disconnect()
-        if active:
-            self.download_toggle_button.setText(self.tr("Stop Downloads"))
-            self.download_toggle_button.clicked.connect(self.download_stop_requested.emit)
-            self.download_toggle_button.setEnabled(True)
-        else:
-            self.download_toggle_button.setText(self.tr("Start Downloads"))
-            self.download_toggle_button.clicked.connect(self.download_requested.emit)
 
     def set_workflow_enabled(self, enabled: bool) -> None:
         """Enable or disable controls that start long-running workflows."""
 
         self.set_fetch_enabled(enabled)
-        if not self._download_active:
-            self.download_toggle_button.setEnabled(enabled)
 
     def set_dependency_status(self, is_ok: bool, message: str) -> None:
         """Display dependency check status in the source panel."""
@@ -1000,10 +980,6 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.artist_image_group.setTitle(self.tr("Artist"))
         self.artist_image_label.setToolTip(self.tr("Open artist page on Last.fm"))
         self.playback_slider.setToolTip(self.tr("Playback position"))
-        self.downloads_group.setTitle(self.tr("Downloads"))
-        self.download_toggle_button.setText(
-            self.tr("Stop Downloads") if self._download_active else self.tr("Start Downloads")
-        )
         self.clear_feedback_button.setText(self.tr("Clear log"))
         self.clear_feedback_button.setToolTip(self.tr("Clear status updates and errors"))
         self.feedback_log.setPlaceholderText(

@@ -36,8 +36,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.129"
-    assert __display_version__ == "0.0.129"
+    assert __version__ == "0.0.130"
+    assert __display_version__ == "0.0.130"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -74,7 +74,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.129"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.130"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -191,7 +191,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.129\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.130\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -595,38 +595,17 @@ def test_rich_text_dialog_uses_larger_scrollable_layout_for_long_text(qapp, monk
     assert text_browser.verticalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAsNeeded
 
 
-def test_main_window_download_control_emits_download_signal(qapp) -> None:
+def test_main_window_download_active_tracks_internal_state(qapp) -> None:
     window = MainWindow()
-    emissions: list[bool] = []
-    window.download_requested.connect(lambda: emissions.append(True))
-
-    window.download_toggle_button.click()
-
-    assert emissions == [True]
-    assert window.download_toggle_button.text() == "Start Downloads"
-
-
-def test_main_window_download_toggle_switches_to_stop_and_back(qapp) -> None:
-    window = MainWindow()
-    stop_emissions: list[bool] = []
-    start_emissions: list[bool] = []
-    window.download_stop_requested.connect(lambda: stop_emissions.append(True))
-    window.download_requested.connect(lambda: start_emissions.append(True))
 
     window.set_download_active(True)
-    assert window.download_toggle_button.text() == "Stop Downloads"
-    assert window.download_toggle_button.isEnabled()
-    window.download_toggle_button.click()
-    assert stop_emissions == [True]
-    assert start_emissions == []
+    assert window._download_active
 
     window.set_download_active(False)
-    assert window.download_toggle_button.text() == "Start Downloads"
-    window.download_toggle_button.click()
-    assert start_emissions == [True]
+    assert not window._download_active
 
 
-def test_main_window_workflow_enabled_toggles_fetch_and_download_controls(qapp) -> None:
+def test_main_window_workflow_enabled_toggles_fetch_controls(qapp) -> None:
     window = MainWindow()
 
     window.set_workflow_enabled(False)
@@ -634,24 +613,12 @@ def test_main_window_workflow_enabled_toggles_fetch_and_download_controls(qapp) 
     assert not window.fetch_button.isEnabled()
     assert not window.username_input.isEnabled()
     assert not window.refresh_action.isEnabled()
-    assert not window.download_toggle_button.isEnabled()
 
     window.set_workflow_enabled(True)
 
     assert window.fetch_button.isEnabled()
     assert window.username_input.isEnabled()
     assert window.refresh_action.isEnabled()
-    assert window.download_toggle_button.isEnabled()
-
-
-def test_main_window_download_button_stays_enabled_while_active(qapp) -> None:
-    window = MainWindow()
-
-    window.set_download_active(True)
-    window.set_workflow_enabled(False)
-
-    assert window.download_toggle_button.isEnabled()
-    assert window.download_toggle_button.text() == "Stop Downloads"
 
 
 def test_main_window_playback_controls_emit_signals(qapp) -> None:
@@ -681,7 +648,7 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
 
     assert controls_layout.itemAt(0).widget() is window.playback_group
     assert controls_layout.itemAt(1).widget() is window.artist_image_group
-    assert controls_layout.itemAt(2).widget() is window.downloads_group
+    assert controls_layout.count() == 2
     assert controls_layout.stretch(1) == 1
     assert window.artist_image_group.title() == "Artist"
     assert (
@@ -689,7 +656,6 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
         == QSizePolicy.Policy.Expanding
     )
     assert window.playback_group.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Minimum
-    assert window.downloads_group.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Minimum
     assert window.artist_image_label.parentWidget() is window.artist_image_group
     assert (
         window.artist_image_label.sizePolicy().horizontalPolicy()

@@ -623,7 +623,7 @@ def test_controller_stop_downloads_stops_manager_and_clears_ui(qapp) -> None:
     assert stopped == [True]
     assert not controller._download_worker_active
     assert controller._download_stop_requested
-    assert window.download_toggle_button.text() == "Start Downloads"
+    assert not window._download_active
 
 
 def test_controller_starts_priority_download_after_lookup_for_pending_play(qapp, tmp_path) -> None:
@@ -661,7 +661,6 @@ def test_controller_reenables_workflow_after_last_worker(qapp) -> None:
     controller._complete_worker_run()
 
     assert window.fetch_button.isEnabled()
-    assert window.download_toggle_button.isEnabled()
 
 
 def test_controller_run_worker_tracks_thread_lifecycle(qapp, monkeypatch) -> None:
