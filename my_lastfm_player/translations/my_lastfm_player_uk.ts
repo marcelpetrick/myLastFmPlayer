@@ -6,37 +6,37 @@
     <message>
         <location filename="../controller.py" line="175" />
         <source>No cached tracks found for {username}; fetching from Last.fm.</source>
-        <translation>Кешованих треків для {username} не знайдено; отримуємо дані з Last.fm.</translation>
+        <translation>Збережених треків для {username} не знайдено; отримуємо дані з Last.fm.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="186" />
         <source>Found {count} cached tracks for {username}; checking Last.fm before using them.</source>
-        <translation>Знайдено {count} кешованих треків для {username}; перед використанням перевіряємо Last.fm.</translation>
+        <translation>Знайдено {count} збережених треків для {username}; перед використанням перевіряємо Last.fm.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="206" />
         <source>Loaded {count} cached tracks for {username}; skipped Last.fm fetch.</source>
-        <translation>Завантажено {count} кешованих треків для {username}; отримання з Last.fm пропущено.</translation>
+        <translation>Завантажено {count} збережених треків для {username}; отримання з Last.fm пропущено.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="220" />
         <source>Could not verify Last.fm loved-track count for {username}; using {count} cached tracks: {error}</source>
-        <translation>Не вдалося перевірити кількість улюблених треків Last.fm для {username}; використовуємо {count} кешованих треків: {error}</translation>
+        <translation>Не вдалося перевірити кількість улюблених треків Last.fm для {username}; використовуємо {count} збережених треків: {error}</translation>
     </message>
     <message>
         <location filename="../controller.py" line="233" />
         <source>Could not read Last.fm loved-track count for {username}; fetching fresh data instead of trusting {count} cached tracks.</source>
-        <translation>Не вдалося прочитати кількість улюблених треків Last.fm для {username}; отримуємо свіжі дані замість використання {count} кешованих треків.</translation>
+        <translation>Не вдалося прочитати кількість улюблених треків Last.fm для {username}; отримуємо свіжі дані замість використання {count} збережених треків.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="245" />
         <source>Last.fm reports {online_count} loved tracks for {username}; cached track count matches.</source>
-        <translation>Last.fm повідомляє про {online_count} улюблених треків для {username}; кількість у кеші збігається.</translation>
+        <translation>Last.fm повідомляє про {online_count} улюблених треків для {username}; кількість збережених треків збігається.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="256" />
         <source>Last.fm reports {online_count} loved tracks for {username}, but the cache has {cached_count}; fetching fresh data.</source>
-        <translation>Last.fm повідомляє про {online_count} улюблених треків для {username}, але в кеші є {cached_count}; отримуємо свіжі дані.</translation>
+        <translation>Last.fm повідомляє про {online_count} улюблених треків для {username}, але локально збережено {cached_count}; отримуємо свіжі дані.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="281" />
@@ -66,7 +66,7 @@
     <message>
         <location filename="../controller.py" line="340" />
         <source>Last.fm scrobbling is disabled because {api_key_env}/{api_secret_env} are not configured and no bundled credentials are available.</source>
-        <translation>Скроблінг Last.fm вимкнено, оскільки {api_key_env}/{api_secret_env} не налаштовано, а вбудовані облікові дані недоступні.</translation>
+        <translation>Скроблінг Last.fm вимкнено, оскільки {api_key_env}/{api_secret_env} не налаштовано, а надані облікові дані недоступні.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="355" />
@@ -166,7 +166,7 @@
     <message>
         <location filename="../controller.py" line="546" />
         <source>Starting YouTube lookup for {username}; priority={priority}, limit={limit}.</source>
-        <translation>Починаємо пошук на YouTube для {username}; пріоритет={priority}, обмеження={limit}.</translation>
+        <translation>Починаємо пошук джерел на YouTube для {username}; пріоритет={priority}, обмеження={limit}.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="606" />
@@ -183,7 +183,7 @@
     <message>
         <location filename="../controller.py" line="562" />
         <source>Starting YouTube lookup</source>
-        <translation>Починаємо пошук на YouTube</translation>
+        <translation>Починаємо пошук джерел на YouTube</translation>
     </message>
     <message>
         <location filename="../controller.py" line="585" />
@@ -274,7 +274,7 @@
     <message>
         <location filename="../controller.py" line="877" />
         <source>Track update from {username}: {artist} - {title} is now {status}.</source>
-        <translation>Оновлення треку для {username}: {artist} - {title} тепер {status}.</translation>
+        <translation>Оновлення треку для {username}: {artist} - {title} тепер має статус {status}.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="892" />
@@ -284,7 +284,7 @@
     <message>
         <location filename="../controller.py" line="908" />
         <source>Resolved YouTube URLs for {resolved_count}/{count} tracks; {not_found_count} were not found.</source>
-        <translation>Знайдено URL-адреси YouTube для {resolved_count}/{count} треків; не знайдено {not_found_count}.</translation>
+        <translation>Знайдено URL-адреси YouTube для {resolved_count}/{count} треків; {not_found_count} не знайдено.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="932" />
@@ -334,7 +334,7 @@
     <message>
         <location filename="../controller.py" line="1117" />
         <source>Starting automatic YouTube lookup for {count} fetched tracks.</source>
-        <translation>Починаємо автоматичний пошук на YouTube для {count} отриманих треків.</translation>
+        <translation>Починаємо автоматичний пошук джерел на YouTube для {count} отриманих треків.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1133" />
@@ -783,7 +783,7 @@
     <message>
         <location filename="../ui/main_window.py" line="981" />
         <source>Open artist page on Last.fm</source>
-        <translation>Відкрити сторінку виконавця на Last.fm</translation>
+        <translation>Відкрити сторінку виконавця на Last.fm у приватному вікні</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="982" />
@@ -1034,7 +1034,7 @@ Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
     <message>
         <location filename="../ui/track_table_model.py" line="201" />
         <source>Waiting for implementation</source>
-        <translation>Очікування реалізації</translation>
+        <translation>Очікує обробки</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="210" />

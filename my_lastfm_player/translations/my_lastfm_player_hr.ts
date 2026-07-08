@@ -6,37 +6,37 @@
     <message>
         <location filename="../controller.py" line="175" />
         <source>No cached tracks found for {username}; fetching from Last.fm.</source>
-        <translation>Nisu pronađene predmemorirane pjesme za {username}; dohvaćanje s Last.fm-a.</translation>
+        <translation>Nema spremljenih pjesama za {username}; dohvaćaju se s Last.fm-a.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="186" />
         <source>Found {count} cached tracks for {username}; checking Last.fm before using them.</source>
-        <translation>Pronađeno je {count} predmemoriranih pjesama za {username}; provjerava se Last.fm prije korištenja.</translation>
+        <translation>Pronađeno je {count} spremljenih pjesama za {username}; provjerava se Last.fm prije korištenja.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="206" />
         <source>Loaded {count} cached tracks for {username}; skipped Last.fm fetch.</source>
-        <translation>Učitano je {count} predmemoriranih pjesama za {username}; preskočeno je dohvaćanje s Last.fm-a.</translation>
+        <translation>Učitano je {count} spremljenih pjesama za {username}; preskočeno je dohvaćanje s Last.fm-a.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="220" />
         <source>Could not verify Last.fm loved-track count for {username}; using {count} cached tracks: {error}</source>
-        <translation>Nije moguće provjeriti broj omiljenih pjesama na Last.fm-u za {username}; koristi se {count} predmemoriranih pjesama: {error}</translation>
+        <translation>Nije moguće provjeriti broj omiljenih pjesama na Last.fm-u za {username}; koristi se {count} spremljenih pjesama: {error}</translation>
     </message>
     <message>
         <location filename="../controller.py" line="233" />
         <source>Could not read Last.fm loved-track count for {username}; fetching fresh data instead of trusting {count} cached tracks.</source>
-        <translation>Nije moguće pročitati broj omiljenih pjesama na Last.fm-u za {username}; dohvaćaju se novi podaci umjesto korištenja {count} predmemoriranih pjesama.</translation>
+        <translation>Nije moguće pročitati broj omiljenih pjesama na Last.fm-u za {username}; dohvaćaju se novi podaci umjesto korištenja {count} spremljenih pjesama.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="245" />
         <source>Last.fm reports {online_count} loved tracks for {username}; cached track count matches.</source>
-        <translation>Last.fm javlja {online_count} omiljenih pjesama za {username}; broj pjesama u predmemoriji se podudara.</translation>
+        <translation>Last.fm javlja {online_count} omiljenih pjesama za {username}; broj spremljenih pjesama se podudara.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="256" />
         <source>Last.fm reports {online_count} loved tracks for {username}, but the cache has {cached_count}; fetching fresh data.</source>
-        <translation>Last.fm javlja {online_count} omiljenih pjesama za {username}, ali predmemorija sadrži {cached_count}; dohvaćaju se novi podaci.</translation>
+        <translation>Last.fm javlja {online_count} omiljenih pjesama za {username}, ali lokalno je spremljeno {cached_count}; dohvaćaju se novi podaci.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="281" />
@@ -66,7 +66,7 @@
     <message>
         <location filename="../controller.py" line="340" />
         <source>Last.fm scrobbling is disabled because {api_key_env}/{api_secret_env} are not configured and no bundled credentials are available.</source>
-        <translation>Last.fm skroblanje je onemogućeno jer {api_key_env}/{api_secret_env} nisu konfigurirani i nisu dostupne ugrađene vjerodajnice.</translation>
+        <translation>Last.fm skroblanje je onemogućeno jer {api_key_env}/{api_secret_env} nisu konfigurirani i nisu dostupne isporučene vjerodajnice.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="355" />
@@ -166,7 +166,7 @@
     <message>
         <location filename="../controller.py" line="546" />
         <source>Starting YouTube lookup for {username}; priority={priority}, limit={limit}.</source>
-        <translation>Pokreće se YouTube pretraživanje za {username}; prioritet={priority}, ograničenje={limit}.</translation>
+        <translation>Pokreće se pretraga YouTube izvora za {username}; prioritet={priority}, ograničenje={limit}.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="606" />
@@ -183,7 +183,7 @@
     <message>
         <location filename="../controller.py" line="562" />
         <source>Starting YouTube lookup</source>
-        <translation>Pokretanje YouTube pretraživanja</translation>
+        <translation>Pokretanje pretrage YouTube izvora</translation>
     </message>
     <message>
         <location filename="../controller.py" line="585" />
@@ -274,7 +274,7 @@
     <message>
         <location filename="../controller.py" line="877" />
         <source>Track update from {username}: {artist} - {title} is now {status}.</source>
-        <translation>Ažuriranje pjesme za {username}: {artist} - {title} sada je {status}.</translation>
+        <translation>Ažuriranje pjesme za {username}: {artist} - {title} sada ima status {status}.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="892" />
@@ -284,7 +284,7 @@
     <message>
         <location filename="../controller.py" line="908" />
         <source>Resolved YouTube URLs for {resolved_count}/{count} tracks; {not_found_count} were not found.</source>
-        <translation>Pronađeni su YouTube URL-ovi za {resolved_count}/{count} pjesama; nije pronađeno {not_found_count}.</translation>
+        <translation>Pronađeni su YouTube URL-ovi za {resolved_count}/{count} pjesama; {not_found_count} nije pronađeno.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="932" />
@@ -299,7 +299,7 @@
     <message>
         <location filename="../controller.py" line="963" />
         <source>Download run for {username} finished: {downloaded_count}/{count} tracks downloaded, {failed_count} failed.</source>
-        <translation>Preuzimanje za {username} je završeno: preuzeto je {downloaded_count}/{count} pjesama, neuspjelo {failed_count}.</translation>
+        <translation>Preuzimanje za {username} je završeno: preuzeto je {downloaded_count}/{count} pjesama, {failed_count} nije uspjelo.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="990" />
@@ -334,7 +334,7 @@
     <message>
         <location filename="../controller.py" line="1117" />
         <source>Starting automatic YouTube lookup for {count} fetched tracks.</source>
-        <translation>Pokreće se automatsko YouTube pretraživanje za {count} dohvaćenih pjesama.</translation>
+        <translation>Pokreće se automatska pretraga YouTube izvora za {count} dohvaćenih pjesama.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1133" />
@@ -783,7 +783,7 @@
     <message>
         <location filename="../ui/main_window.py" line="981" />
         <source>Open artist page on Last.fm</source>
-        <translation>Otvori stranicu izvođača na Last.fm-u</translation>
+        <translation>Otvori stranicu izvođača na Last.fm-u u privatnom prozoru</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="982" />
@@ -921,7 +921,7 @@
     <message>
         <location filename="../ui/preferences_dialog.py" line="163" />
         <source>Submits to Last.fm after 33% of each track has been played.</source>
-        <translation>Šalje se na Last.fm nakon što se reproducira 33% svake pjesme.</translation>
+        <translation>Šalje na Last.fm nakon što se reproducira 33% svake pjesme.</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="165" />
@@ -1034,7 +1034,7 @@ Postavite varijable okoline LASTFM_API_KEY i LASTFM_API_SECRET.</translation>
     <message>
         <location filename="../ui/track_table_model.py" line="201" />
         <source>Waiting for implementation</source>
-        <translation>Čeka se implementacija</translation>
+        <translation>Čeka obradu</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="210" />

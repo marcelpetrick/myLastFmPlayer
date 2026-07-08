@@ -6,37 +6,37 @@
     <message>
         <location filename="../controller.py" line="175" />
         <source>No cached tracks found for {username}; fetching from Last.fm.</source>
-        <translation>未找到 {username} 的缓存曲目；正在从 Last.fm 获取。</translation>
+        <translation>未找到 {username} 的本地曲目；正在从 Last.fm 获取。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="186" />
         <source>Found {count} cached tracks for {username}; checking Last.fm before using them.</source>
-        <translation>找到 {username} 的 {count} 首缓存曲目；使用前正在检查 Last.fm。</translation>
+        <translation>找到 {username} 的 {count} 首本地曲目；使用前正在检查 Last.fm。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="206" />
         <source>Loaded {count} cached tracks for {username}; skipped Last.fm fetch.</source>
-        <translation>已为 {username} 加载 {count} 首缓存曲目；已跳过 Last.fm 获取。</translation>
+        <translation>已为 {username} 加载 {count} 首本地曲目；已跳过 Last.fm 获取。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="220" />
         <source>Could not verify Last.fm loved-track count for {username}; using {count} cached tracks: {error}</source>
-        <translation>无法验证 {username} 的 Last.fm 喜爱曲目数量；将使用 {count} 首缓存曲目：{error}</translation>
+        <translation>无法验证 {username} 的 Last.fm 喜爱曲目数量；将使用 {count} 首本地曲目：{error}</translation>
     </message>
     <message>
         <location filename="../controller.py" line="233" />
         <source>Could not read Last.fm loved-track count for {username}; fetching fresh data instead of trusting {count} cached tracks.</source>
-        <translation>无法读取 {username} 的 Last.fm 喜爱曲目数量；将重新获取数据，而不使用 {count} 首缓存曲目。</translation>
+        <translation>无法读取 {username} 的 Last.fm 喜爱曲目数量；将重新获取数据，而不使用 {count} 首本地曲目。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="245" />
         <source>Last.fm reports {online_count} loved tracks for {username}; cached track count matches.</source>
-        <translation>Last.fm 显示 {username} 有 {online_count} 首喜爱曲目；缓存曲目数量匹配。</translation>
+        <translation>Last.fm 显示 {username} 有 {online_count} 首喜爱曲目；本地曲目数量匹配。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="256" />
         <source>Last.fm reports {online_count} loved tracks for {username}, but the cache has {cached_count}; fetching fresh data.</source>
-        <translation>Last.fm 显示 {username} 有 {online_count} 首喜爱曲目，但缓存中有 {cached_count} 首；正在重新获取数据。</translation>
+        <translation>Last.fm 显示 {username} 有 {online_count} 首喜爱曲目，但本地有 {cached_count} 首；正在重新获取数据。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="281" />
@@ -121,7 +121,7 @@
     <message>
         <location filename="../controller.py" line="442" />
         <source>Loaded cached tracks</source>
-        <translation>已加载缓存曲目</translation>
+        <translation>已加载本地曲目</translation>
     </message>
     <message>
         <location filename="../controller.py" line="459" />
@@ -274,7 +274,7 @@
     <message>
         <location filename="../controller.py" line="877" />
         <source>Track update from {username}: {artist} - {title} is now {status}.</source>
-        <translation>{username} 的曲目更新：{artist} - {title} 现在为 {status}。</translation>
+        <translation>{username} 的曲目更新：{artist} - {title} 现在状态为 {status}。</translation>
     </message>
     <message>
         <location filename="../controller.py" line="892" />
@@ -783,7 +783,7 @@
     <message>
         <location filename="../ui/main_window.py" line="981" />
         <source>Open artist page on Last.fm</source>
-        <translation>在 Last.fm 打开艺术家页面</translation>
+        <translation>在隐私窗口中打开 Last.fm 艺术家页面</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="982" />
@@ -1034,7 +1034,7 @@ Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
     <message>
         <location filename="../ui/track_table_model.py" line="201" />
         <source>Waiting for implementation</source>
-        <translation>等待实现</translation>
+        <translation>等待处理</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="210" />
