@@ -6,37 +6,37 @@
     <message>
         <location filename="../controller.py" line="175" />
         <source>No cached tracks found for {username}; fetching from Last.fm.</source>
-        <translation>Keine zwischengespeicherten Titel für {username} gefunden; Abruf von Last.fm wird gestartet.</translation>
+        <translation>Keine gespeicherten Titel für {username} gefunden; Abruf von Last.fm wird gestartet.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="186" />
         <source>Found {count} cached tracks for {username}; checking Last.fm before using them.</source>
-        <translation>{count} zwischengespeicherte Titel für {username} gefunden; Last.fm wird vor der Verwendung geprüft.</translation>
+        <translation>{count} gespeicherte Titel für {username} gefunden; Last.fm wird vor der Verwendung geprüft.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="206" />
         <source>Loaded {count} cached tracks for {username}; skipped Last.fm fetch.</source>
-        <translation>{count} zwischengespeicherte Titel für {username} geladen; Last.fm-Abruf übersprungen.</translation>
+        <translation>{count} gespeicherte Titel für {username} geladen; Last.fm-Abruf übersprungen.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="220" />
         <source>Could not verify Last.fm loved-track count for {username}; using {count} cached tracks: {error}</source>
-        <translation>Die Anzahl der Last.fm-Lieblingstitel für {username} konnte nicht überprüft werden. {count} zwischengespeicherte Titel werden verwendet: {error}</translation>
+        <translation>Die Anzahl der favorisierten Last.fm-Titel für {username} konnte nicht überprüft werden. {count} gespeicherte Titel werden verwendet: {error}</translation>
     </message>
     <message>
         <location filename="../controller.py" line="233" />
         <source>Could not read Last.fm loved-track count for {username}; fetching fresh data instead of trusting {count} cached tracks.</source>
-        <translation>Die Anzahl der Last.fm-Lieblingstitel für {username} konnte nicht gelesen werden. Es werden neue Daten abgerufen, statt {count} zwischengespeicherten Titeln zu vertrauen.</translation>
+        <translation>Die Anzahl der favorisierten Last.fm-Titel für {username} konnte nicht gelesen werden. Es werden neue Daten abgerufen, statt {count} gespeicherte Titel zu verwenden.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="245" />
         <source>Last.fm reports {online_count} loved tracks for {username}; cached track count matches.</source>
-        <translation>Last.fm meldet {online_count} Lieblingstitel für {username}; die Anzahl der zwischengespeicherten Titel stimmt überein.</translation>
+        <translation>Last.fm meldet {online_count} favorisierte Titel für {username}; die Anzahl der gespeicherten Titel stimmt überein.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="256" />
         <source>Last.fm reports {online_count} loved tracks for {username}, but the cache has {cached_count}; fetching fresh data.</source>
-        <translation>Last.fm meldet {online_count} Lieblingstitel für {username}, aber der Cache enthält {cached_count}; neue Daten werden abgerufen.</translation>
+        <translation>Last.fm meldet {online_count} favorisierte Titel für {username}, aber der Cache enthält {cached_count} Titel; neue Daten werden abgerufen.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="281" />
@@ -66,7 +66,7 @@
     <message>
         <location filename="../controller.py" line="340" />
         <source>Last.fm scrobbling is disabled because {api_key_env}/{api_secret_env} are not configured and no bundled credentials are available.</source>
-        <translation>Das Scrobbeln von Last.fm ist deaktiviert, da {api_key_env}/{api_secret_env} nicht konfiguriert sind und keine gebündelten Anmeldeinformationen verfügbar sind.</translation>
+        <translation>Last.fm-Scrobbling ist deaktiviert, da {api_key_env}/{api_secret_env} nicht konfiguriert sind und keine mitgelieferten Zugangsdaten verfügbar sind.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="355" />
@@ -86,12 +86,12 @@
     <message>
         <location filename="../controller.py" line="375" />
         <source>Connected Last.fm scrobbling as {username}.</source>
-        <translation>Mit Last.fm verbunden; Scrobbling als {username}.</translation>
+        <translation>Mit Last.fm verbunden; Scrobbling läuft als {username}.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="383" />
         <source>Stored Last.fm session key could not be verified; scrobbling remains disconnected.</source>
-        <translation>Der gespeicherte Last.fm-Sitzungsschlüssel konnte nicht überprüft werden; Scrobbling bleibt getrennt.</translation>
+        <translation>Der gespeicherte Last.fm-Sitzungsschlüssel konnte nicht überprüft werden; Scrobbling bleibt nicht verbunden.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="393" />
@@ -131,12 +131,12 @@
     <message>
         <location filename="../controller.py" line="473" />
         <source>Starting fresh Last.fm fetch for {username}; {count} tracks expected.</source>
-        <translation>Neuen Last.fm-Abruf für {username} starten; {count} Titel erwartet.</translation>
+        <translation>Neuer Last.fm-Abruf für {username} wird gestartet; {count} Titel erwartet.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="482" />
         <source>Starting fresh Last.fm fetch for {username}.</source>
-        <translation>Neuen Last.fm-Abruf für {username} starten.</translation>
+        <translation>Neuer Last.fm-Abruf für {username} wird gestartet.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="491" />
@@ -161,12 +161,12 @@
     <message>
         <location filename="../controller.py" line="537" />
         <source>Enter a Last.fm username before resolving tracks.</source>
-        <translation>Geben Sie einen Last.fm-Benutzernamen ein, bevor Sie Titel auflösen.</translation>
+        <translation>Geben Sie einen Last.fm-Benutzernamen ein, bevor Sie Titel ermitteln.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="546" />
         <source>Starting YouTube lookup for {username}; priority={priority}, limit={limit}.</source>
-        <translation>YouTube-Suche für {username} wird gestartet; Priorität={priority}, Limit={limit}.</translation>
+        <translation>YouTube-Ermittlung für {username} wird gestartet; Priorität={priority}, Limit={limit}.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="606" />
@@ -183,7 +183,7 @@
     <message>
         <location filename="../controller.py" line="562" />
         <source>Starting YouTube lookup</source>
-        <translation>YouTube-Suche wird gestartet</translation>
+        <translation>YouTube-Ermittlung wird gestartet</translation>
     </message>
     <message>
         <location filename="../controller.py" line="585" />
@@ -229,7 +229,7 @@
     <message>
         <location filename="../controller.py" line="710" />
         <source>Seeked playback to {seconds} seconds.</source>
-        <translation>Wiedergabe auf {seconds} Sekunden gesetzt.</translation>
+        <translation>Wiedergabe auf {seconds} Sekunden gesprungen.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="775" />
@@ -269,27 +269,27 @@
     <message>
         <location filename="../controller.py" line="867" />
         <source>Workflow for {username} returned an invalid track update.</source>
-        <translation>Der Workflow für {username} hat eine ungültige Titelaktualisierung zurückgegeben.</translation>
+        <translation>Der Ablauf für {username} hat eine ungültige Titelaktualisierung zurückgegeben.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="877" />
         <source>Track update from {username}: {artist} - {title} is now {status}.</source>
-        <translation>Titelaktualisierung von {username}: {artist} – {title} ist jetzt {status}.</translation>
+        <translation>Titelaktualisierung von {username}: {artist} – {title} hat jetzt den Status {status}.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="892" />
         <source>Lookup for {username} returned invalid track data.</source>
-        <translation>Die Suche für {username} hat ungültige Titeldaten zurückgegeben.</translation>
+        <translation>Die YouTube-Ermittlung für {username} hat ungültige Titeldaten zurückgegeben.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="908" />
         <source>Resolved YouTube URLs for {resolved_count}/{count} tracks; {not_found_count} were not found.</source>
-        <translation>YouTube-URLs für {resolved_count}/{count} Titel aufgelöst; {not_found_count} wurden nicht gefunden.</translation>
+        <translation>YouTube-URLs für {resolved_count}/{count} Titel ermittelt; {not_found_count} wurden nicht gefunden.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="932" />
         <source>No queued tracks are ready for download.</source>
-        <translation>Es stehen keine Titel in der Warteschlange zum Download bereit.</translation>
+        <translation>Keine Titel in der Warteschlange sind zum Download bereit.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="943" />
@@ -299,7 +299,7 @@
     <message>
         <location filename="../controller.py" line="963" />
         <source>Download run for {username} finished: {downloaded_count}/{count} tracks downloaded, {failed_count} failed.</source>
-        <translation>Download-Lauf für {username} abgeschlossen: {downloaded_count}/{count} Titel heruntergeladen, {failed_count} fehlgeschlagen.</translation>
+        <translation>Downloadlauf für {username} abgeschlossen: {downloaded_count}/{count} Titel heruntergeladen, {failed_count} fehlgeschlagen.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="990" />
@@ -319,7 +319,7 @@
     <message>
         <location filename="../controller.py" line="1061" />
         <source>Last.fm returned invalid artist image data.</source>
-        <translation>Last.fm hat ungültige Künstlerbilddaten zurückgegeben.</translation>
+        <translation>Last.fm hat ungültige Künstlerbild-Daten zurückgegeben.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1091" />
@@ -334,7 +334,7 @@
     <message>
         <location filename="../controller.py" line="1117" />
         <source>Starting automatic YouTube lookup for {count} fetched tracks.</source>
-        <translation>Automatische YouTube-Suche für {count} abgerufene Titel wird gestartet.</translation>
+        <translation>Automatische YouTube-Ermittlung für {count} abgerufene Titel wird gestartet.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1133" />
@@ -354,7 +354,7 @@
     <message>
         <location filename="../controller.py" line="1173" />
         <source>Starting automatic download queue for resolved tracks.</source>
-        <translation>Automatische Download-Warteschlange für aufgelöste Titel wird gestartet.</translation>
+        <translation>Automatische Download-Warteschlange für ermittelte Titel wird gestartet.</translation>
     </message>
     <message>
         <location filename="../controller.py" line="1181" />
@@ -390,7 +390,7 @@
     <message>
         <location filename="../controller.py" line="1347" />
         <source>All background work is finished; controls are enabled again.</source>
-        <translation>Alle Hintergrundarbeiten sind abgeschlossen; die Steuerung ist wieder aktiviert.</translation>
+        <translation>Alle Hintergrundarbeiten sind abgeschlossen; die Bedienelemente sind wieder aktiviert.</translation>
     </message>
     <message>
         <source>Could not open file cache: {error}</source>
@@ -475,12 +475,12 @@
     <message>
         <location filename="../workers.py" line="183" />
         <source>Resolving YouTube URLs for {username}</source>
-        <translation>Auflösen von YouTube-URLs für {username}</translation>
+        <translation>YouTube-URLs für {username} werden ermittelt</translation>
     </message>
     <message>
         <location filename="../workers.py" line="199" />
         <source>Resolved {count} tracks</source>
-        <translation>{count} Titel aufgelöst</translation>
+        <translation>{count} Titel ermittelt</translation>
     </message>
 </context><context>
     <name>MainWindow</name>
@@ -514,7 +514,7 @@
     <message>
         <location filename="../ui/main_window.py" line="534" />
         <source>Resume</source>
-        <translation>Wieder aufnehmen</translation>
+        <translation>Fortsetzen</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="976" />
@@ -558,13 +558,13 @@
     <message>
         <location filename="../ui/main_window.py" line="672" />
         <source>Updated {artist} - {title}: {status}</source>
-        <translation>Aktualisiert {artist} – {title}: {status}</translation>
+        <translation>{artist} – {title} aktualisiert: {status}</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="974" />
         <location filename="../ui/main_window.py" line="689" />
         <source>Not playing</source>
-        <translation>Keine Wiedergabe</translation>
+        <translation>Es läuft nichts</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="955" />
@@ -590,12 +590,12 @@
     <message>
         <location filename="../ui/main_window.py" line="759" />
         <source>This application fetches a user's public loved tracks from Last.fm, keeps local metadata, resolves playable sources through yt-dlp, downloads MP3 files, and plays them locally.</source>
-        <translation>Diese Anwendung lädt die öffentlichen Lieblingslieder eines Benutzers von Last.fm, speichert lokale Metadaten, ermittelt abspielbare Quellen über yt-dlp, lädt MP3-Dateien herunter und spielt sie lokal ab.</translation>
+        <translation>Diese Anwendung lädt die öffentlichen favorisierten Titel eines Benutzers von Last.fm, speichert lokale Metadaten, ermittelt abspielbare Quellen über yt-dlp, lädt MP3-Dateien herunter und spielt sie lokal ab.</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="764" />
         <source>It is intended as a practical Linux desktop helper for rebuilding a personal loved-track collection without manually searching every song.</source>
-        <translation>Sie ist als praktischer Linux-Desktophelfer gedacht, um eine persönliche Sammlung von Lieblingstiteln wiederaufzubauen, ohne jedes Lied manuell zu suchen.</translation>
+        <translation>Sie ist als praktischer Linux-Desktophelfer gedacht, um eine persönliche Sammlung favorisierter Titel wiederaufzubauen, ohne jeden Song manuell zu suchen.</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="768" />
@@ -668,7 +668,7 @@
     <message>
         <location filename="../ui/main_window.py" line="952" />
         <source>Fetch loved tracks</source>
-        <translation>Lieblingstitel abrufen</translation>
+        <translation>Favorisierte Titel abrufen</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="953" />
@@ -698,7 +698,7 @@
     <message>
         <location filename="../ui/main_window.py" line="960" />
         <source>Light</source>
-        <translation>Licht</translation>
+        <translation>Hell</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="961" />
@@ -748,7 +748,7 @@
     <message>
         <location filename="../ui/main_window.py" line="970" />
         <source>Artist or track title</source>
-        <translation>Künstler oder Titel</translation>
+        <translation>Künstler oder Songtitel</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="971" />
@@ -783,7 +783,7 @@
     <message>
         <location filename="../ui/main_window.py" line="981" />
         <source>Open artist page on Last.fm</source>
-        <translation>Künstlerseite auf Last.fm öffnen</translation>
+        <translation>Künstlerseite auf Last.fm im privaten Fenster öffnen</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="982" />
@@ -921,7 +921,7 @@
     <message>
         <location filename="../ui/preferences_dialog.py" line="163" />
         <source>Submits to Last.fm after 33% of each track has been played.</source>
-        <translation>Wird an Last.fm übermittelt, nachdem 33 % jedes Titels abgespielt wurden.</translation>
+        <translation>Übermittelt an Last.fm, nachdem 33 % jedes Titels abgespielt wurden.</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="165" />
@@ -1024,7 +1024,7 @@ Legen Sie die Umgebungsvariablen LASTFM_API_KEY und LASTFM_API_SECRET fest.</tra
     <message>
         <location filename="../ui/track_table_model.py" line="196" />
         <source>Example Track</source>
-        <translation>Beispiel-Track</translation>
+        <translation>Beispieltitel</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="200" />
@@ -1034,7 +1034,7 @@ Legen Sie die Umgebungsvariablen LASTFM_API_KEY und LASTFM_API_SECRET fest.</tra
     <message>
         <location filename="../ui/track_table_model.py" line="201" />
         <source>Waiting for implementation</source>
-        <translation>Wartet auf Umsetzung</translation>
+        <translation>Wartet auf Verarbeitung</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="210" />
@@ -1049,12 +1049,12 @@ Legen Sie die Umgebungsvariablen LASTFM_API_KEY und LASTFM_API_SECRET fest.</tra
     <message>
         <location filename="../ui/track_table_model.py" line="214" />
         <source>Searching</source>
-        <translation>Suchen</translation>
+        <translation>Suche</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="216" />
         <source>Downloading</source>
-        <translation>Herunterladen</translation>
+        <translation>Lädt herunter</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="218" />
@@ -1086,7 +1086,7 @@ Legen Sie die Umgebungsvariablen LASTFM_API_KEY und LASTFM_API_SECRET fest.</tra
     <message>
         <location filename="../youtube.py" line="236" />
         <source>Resolved {done}/{total}: {artist} - {title}</source>
-        <translation>Aufgelöst {done}/{total}: {artist} – {title}</translation>
+        <translation>Ermittelt {done}/{total}: {artist} – {title}</translation>
     </message>
     <message>
         <location filename="../youtube.py" line="244" />

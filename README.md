@@ -8,7 +8,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.133` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.134` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
