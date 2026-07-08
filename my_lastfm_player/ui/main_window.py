@@ -178,6 +178,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._track_count = 0
         self._showing_example_tracks = False
         self._now_playing_idle = True
+        self._artist_heading_name: str | None = None
         self.set_application_title(__display_version__)
         self.resize(1120, 720)
 
@@ -449,6 +450,10 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             QSizePolicy.Policy.Preferred,
         )
         artist_image_layout = QVBoxLayout(self.artist_image_group)
+        self.artist_heading_label = QLabel()
+        self.artist_heading_label.setTextFormat(Qt.TextFormat.RichText)
+        self.artist_heading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        artist_image_layout.addWidget(self.artist_heading_label)
         artist_image_layout.addWidget(self.artist_image_label, stretch=1)
 
         layout.addWidget(self.playback_group)
@@ -691,10 +696,24 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             self._now_playing_idle = False
             self.now_playing_label.setText(f"{track.artist} — {track.title}")
 
-    def set_artist_image(self, image_bytes: bytes | None, page_url: str | None) -> None:
+    def set_artist_image(
+        self,
+        image_bytes: bytes | None,
+        page_url: str | None,
+        artist_name: str | None = None,
+    ) -> None:
         """Show a clickable Last.fm artist image near the playback controls."""
 
+        self._set_artist_heading(artist_name)
         self.artist_image_label.set_artist_image(image_bytes, page_url)
+
+    def _set_artist_heading(self, artist_name: str | None = None) -> None:
+        self._artist_heading_name = artist_name
+        label = self.tr("Artist")
+        if artist_name:
+            self.artist_heading_label.setText(f"{label}: <b>{escape(artist_name)}</b>")
+            return
+        self.artist_heading_label.setText(label)
 
     def tracks(self) -> list[Track]:
         """Return a copy of the tracks currently visible in the table."""
@@ -977,7 +996,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.stop_button.setText(self.tr("Stop"))
         self.next_button.setText(self.tr("Next"))
         self.randomize_checkbox.setText(self.tr("Randomize"))
-        self.artist_image_group.setTitle(self.tr("Artist"))
+        self.artist_image_group.setTitle("")
+        self._set_artist_heading(self._artist_heading_name)
         self.artist_image_label.setToolTip(self.tr("Open artist page on Last.fm"))
         self.playback_slider.setToolTip(self.tr("Playback position"))
         self.clear_feedback_button.setText(self.tr("Clear log"))

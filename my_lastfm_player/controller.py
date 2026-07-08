@@ -1057,7 +1057,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._show_artist_image(cached_image)
             return
 
-        self.window.set_artist_image(None, None)
+        self.window.set_artist_image(None, None, artist)
         worker = self.artist_image_worker_factory(artist, self.artist_info_client)
         self._run_artist_image_worker(worker)
 
@@ -1081,7 +1081,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         if artist_image is None:
             self.window.set_artist_image(None, None)
             return
-        self.window.set_artist_image(artist_image.image_bytes, artist_image.page_url)
+        self.window.set_artist_image(
+            artist_image.image_bytes,
+            artist_image.page_url,
+            artist_image.artist,
+        )
 
     def _can_prepare_for_playback(self, track: Track) -> bool:
         return (

@@ -989,17 +989,21 @@ def test_controller_shows_cached_artist_image_and_opens_artist_page(
     )
     controller._artist_image_cache["Artist"] = artist_image
     controller._run_artist_image_worker = lambda _worker: None  # type: ignore[method-assign]
-    image_calls: list[tuple[bytes | None, str | None]] = []
+    image_calls: list[tuple[bytes | None, str | None, str | None]] = []
 
-    def capture_artist_image(image_bytes: bytes | None, page_url: str | None) -> None:
-        image_calls.append((image_bytes, page_url))
+    def capture_artist_image(
+        image_bytes: bytes | None,
+        page_url: str | None,
+        artist_name: str | None = None,
+    ) -> None:
+        image_calls.append((image_bytes, page_url, artist_name))
 
     window.set_artist_image = capture_artist_image  # type: ignore[method-assign]
 
     controller.play_selected_track()
     controller.open_artist_page("https://www.last.fm/music/Artist")
 
-    assert image_calls == [(artist_image.image_bytes, artist_image.page_url)]
+    assert image_calls == [(artist_image.image_bytes, artist_image.page_url, "Artist")]
     assert opened_urls == ["https://www.last.fm/music/Artist"]
 
 
@@ -1024,7 +1028,9 @@ def test_controller_handles_artist_image_edge_cases(qapp, monkeypatch) -> None:
     monkeypatch.setattr(controller_module.QDesktopServices, "openUrl", lambda _url: False)
     window = MainWindow()
     image_calls: list[tuple[bytes | None, str | None]] = []
-    window.set_artist_image = lambda image, url: image_calls.append((image, url))  # type: ignore[method-assign]
+    window.set_artist_image = (  # type: ignore[method-assign]
+        lambda image, url, artist=None: image_calls.append((image, url))
+    )
     controller = ApplicationController(window)
 
     controller.open_artist_page("https://www.last.fm/music/Artist")
