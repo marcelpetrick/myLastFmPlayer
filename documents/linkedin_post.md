@@ -1,4 +1,4 @@
-Release! myLastFmPlayer
+# Release! myLastFmPlayer
 
 Finally I've had implemented an idea I had in my mind for ages. a desktop player for favorite songs from last.fm. You just enter the username of an account, where you like the "loved" list and it will download that list, resolve them on youtube, download then for eachtrack the best qualtiy audio and store it locally. Some quality of life features followed when the prototype was done: like sorting and filtering the track-list; themes, language support.
 I had already protoypse for parts of the functionality: like web-scraping with beuatiful soup, downloads from youtube, PyQt-UI-apps, .. but never bothered to form a full fledged product. But here it is. Already vetted through week long usage. And I like it.
@@ -49,4 +49,3 @@ The repository is here:  https://github.com/marcelpetrick/myLastFmPlayer ùóôùó
 
 Oh, btw. I did the markdown to Linkedin-Unicode with `Boldemort` xD
 Thank you for reading until here.
-

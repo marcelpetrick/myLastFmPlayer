@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=82.0.1"]
+requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -13,7 +13,7 @@ authors = [
 ]
 dynamic = ["version"]
 dependencies = [
-    "pylast>=7.0.2",
+    "pylast>=7.1.0",
     "PyQt6>=6.11.0",
     "requests>=2.34.2",
 ]
@@ -24,7 +24,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pylint>=4.0.6",
-    "ruff>=0.15.18",
+    "ruff>=0.15.20",
     "sphinx>=9.1.0",
 ]
 
