@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QThread, QUrl
+from PyQt6.QtCore import QObject, QProcess, QThread, QUrl
 from PyQt6.QtGui import QDesktopServices
 
 from my_lastfm_player.app_credentials import (
@@ -323,9 +323,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         )
 
     def open_artist_page(self, url: str) -> None:
-        """Open an artist Last.fm page in the user's default browser."""
+        """Open an artist Last.fm page in a Firefox private window."""
 
-        if not QDesktopServices.openUrl(QUrl(url)):
+        if not _open_firefox_private_window(url):
             self.window.append_feedback(
                 translate(
                     "ApplicationController",
@@ -1387,3 +1387,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             "Artist image worker released; active_artist_image_workers=%d",
             len(self._active_artist_image_workers),
         )
+
+
+def _open_firefox_private_window(url: str) -> bool:
+    started, _pid = QProcess.startDetached("firefox", ["--private-window", url])
+    if not started:
+        LOGGER.error("Could not open artist page in Firefox private window: %s", url)
+        return False
+    return True

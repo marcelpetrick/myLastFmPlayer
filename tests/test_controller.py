@@ -957,12 +957,13 @@ def test_controller_shows_cached_artist_image_and_opens_artist_page(
     tmp_path,
     monkeypatch,
 ) -> None:
-    opened_urls: list[str] = []
-    monkeypatch.setattr(
-        controller_module.QDesktopServices,
-        "openUrl",
-        lambda url: opened_urls.append(url.toString()) or True,
-    )
+    opened_commands: list[tuple[str, list[str]]] = []
+
+    def fake_start_detached(program: str, arguments: list[str]) -> tuple[bool, int]:
+        opened_commands.append((program, arguments))
+        return True, 1234
+
+    monkeypatch.setattr(controller_module.QProcess, "startDetached", fake_start_detached)
     window = MainWindow()
     audio_path = tmp_path / "track.mp3"
     audio_path.write_bytes(b"fake mp3")
@@ -1004,7 +1005,9 @@ def test_controller_shows_cached_artist_image_and_opens_artist_page(
     controller.open_artist_page("https://www.last.fm/music/Artist")
 
     assert image_calls == [(artist_image.image_bytes, artist_image.page_url, "Artist")]
-    assert opened_urls == ["https://www.last.fm/music/Artist"]
+    assert opened_commands == [
+        ("firefox", ["--private-window", "https://www.last.fm/music/Artist"])
+    ]
 
 
 def test_controller_ignores_stale_artist_image_results(qapp) -> None:
@@ -1025,7 +1028,10 @@ def test_controller_ignores_stale_artist_image_results(qapp) -> None:
 
 
 def test_controller_handles_artist_image_edge_cases(qapp, monkeypatch) -> None:
-    monkeypatch.setattr(controller_module.QDesktopServices, "openUrl", lambda _url: False)
+    def fail_start_detached(_program: str, _arguments: list[str]) -> tuple[bool, int]:
+        return False, -1
+
+    monkeypatch.setattr(controller_module.QProcess, "startDetached", fail_start_detached)
     window = MainWindow()
     image_calls: list[tuple[bytes | None, str | None]] = []
     window.set_artist_image = (  # type: ignore[method-assign]
