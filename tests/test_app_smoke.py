@@ -36,8 +36,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.132"
-    assert __display_version__ == "0.0.132"
+    assert __version__ == "0.0.133"
+    assert __display_version__ == "0.0.133"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -74,7 +74,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.132"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.133"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -191,7 +191,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.132\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.133\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -650,8 +650,7 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
     assert controls_layout.itemAt(1).widget() is window.artist_image_group
     assert controls_layout.count() == 2
     assert controls_layout.stretch(1) == 1
-    assert window.artist_image_group.title() == ""
-    assert window.artist_heading_label.text() == "Artist: <b>Artist</b>"
+    assert window.artist_image_group.title() == "Artist: Artist"
     assert (
         window.artist_image_group.sizePolicy().horizontalPolicy()
         == QSizePolicy.Policy.Expanding
@@ -679,7 +678,7 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
     window.set_artist_image(None, None)
 
     assert window.artist_image_label.isHidden()
-    assert window.artist_heading_label.text() == "Artist"
+    assert window.artist_image_group.title() == "Artist"
 
 
 def test_main_window_artist_image_ignores_invalid_data_and_non_left_clicks(qapp) -> None:
