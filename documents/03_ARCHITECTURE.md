@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the workflow implemented in the application as of version `0.0.20`. It focuses on how a Last.fm username such as `first` is fetched, stored, and shown in the UI.
+This document describes the workflow implemented in the application as of version `0.0.136`. It focuses on how a Last.fm username such as `first` is fetched, stored, shown in the UI, resolved, downloaded, and played.
 
 ## Current Scope
 
@@ -16,13 +16,13 @@ Implemented:
 - Local playback service for selected downloaded tracks.
 - Automatic fetch-to-lookup-to-download workflow.
 - Priority lookup/download when Play is pressed on a track that is not downloaded yet.
-- Startup checks for `yt-dlp` and `ffmpeg`.
+- Artist preview loading and private-window Last.fm artist page opening.
+- Startup checks for `yt-dlp`, `ffmpeg`, and `ffprobe`.
 - Status-bar progress and stdout logging.
 
 Not yet implemented:
 
-- True pause/resume UI for active downloads.
-- Automatic playback after download. Playback remains an explicit selected-track action.
+- Pause/resume UI for active downloads. Downloads can be stopped, and Fetch can be paused/resumed.
 
 ## Data Sources
 
@@ -31,10 +31,12 @@ The app currently uses these data sources:
 | Source | Used For | Code |
 | --- | --- | --- |
 | Last.fm Web API | Fetching loved tracks by username | `LastFmLovedTracksApiClient`, `LastFmLovedTracksScraper` |
+| Last.fm Web API and artist pages | Artist preview metadata and image discovery | `LastFmArtistInfoClient` |
 | Local JSON files | Persisting per-user track metadata | `JsonTrackRepository` |
 | Shared local JSON cache | Remembering downloaded tracks by exact artist/title | `JsonTrackRepository` |
 | `yt-dlp` command | YouTube first-result lookup and MP3 download | `YouTubeResolver`, `DownloadManager` |
-| `shutil.which` | Startup dependency checks for `yt-dlp` and `ffmpeg` | `check_external_dependencies` |
+| `ffmpeg` / `ffprobe` commands | Audio post-processing and local metadata probing | `DownloadManager` |
+| `shutil.which` | Startup dependency checks for `yt-dlp`, `ffmpeg`, and `ffprobe` | `check_external_dependencies` |
 
 For a username such as `first`, the Last.fm API request uses:
 
@@ -54,9 +56,12 @@ flowchart LR
     Controller --> LookupWorker[LookupTracksWorker]
     Controller --> DownloadWorker[DownloadTracksWorker]
     Controller --> Playback[PlaybackService]
+    Controller --> ArtistInfo[LastFmArtistInfoClient]
     FetchWorker --> Scraper[LastFmLovedTracksScraper]
     Scraper --> ApiClient[LastFmLovedTracksApiClient]
     ApiClient --> LastFm[Last.fm Web API]
+    ArtistInfo --> LastFm
+    UI --> Firefox[Firefox private window]
     FetchWorker --> Storage[JsonTrackRepository]
     LookupWorker --> Resolver[YouTubeResolver]
     Resolver --> Ytdlp[yt-dlp]
@@ -241,18 +246,17 @@ Current lookup rules:
 
 ## Download Queue Workflow
 
-Downloads start automatically after lookup when queued tracks have a YouTube URL. The explicit download button can still start the queue for already-resolved stored tracks.
+Downloads start automatically after lookup when queued tracks have a YouTube URL. The old manual download panel is no longer part of the main UI; the controller still owns a download entry point for automatic queue work and priority play/retry flows.
 
 ```mermaid
 sequenceDiagram
-    participant UI as MainWindow
     participant Controller as ApplicationController
     participant Worker as DownloadTracksWorker
     participant Manager as DownloadManager
     participant Storage as JsonTrackRepository
     participant Ytdlp as yt-dlp
 
-    UI->>Controller: download_requested signal or automatic lookup completion
+    Controller->>Controller: automatic lookup completion or priority play/retry
     Controller->>Worker: run in QThread
     Worker->>Manager: download_and_store_tracks(username, repository, concurrency)
     Manager->>Storage: load_tracks(username)
@@ -273,6 +277,30 @@ Current download rules:
 - Each failing download is retried up to `3` times.
 - Retry backoff is random between `1` and `5` seconds.
 - Pressing Play on a not-yet-downloaded track starts a one-track priority download once a YouTube URL is available.
+- Stop Downloads cancels pending work and wakes paused download workers.
+
+## Artist Preview Workflow
+
+The right-side artist preview is updated for the selected or playing track. The label title shows `Artist: <name>`, and clicking the image opens the Last.fm artist page in a Firefox private window.
+
+```mermaid
+sequenceDiagram
+    participant Controller as ApplicationController
+    participant Worker as ArtistImageWorker
+    participant ArtistInfo as LastFmArtistInfoClient
+    participant LastFm as Last.fm Web API / artist page
+    participant UI as MainWindow
+    participant Firefox as Firefox
+
+    Controller->>Worker: load artist image for selected artist
+    Worker->>ArtistInfo: fetch_artist_image(artist)
+    ArtistInfo->>LastFm: artist.getInfo
+    ArtistInfo->>LastFm: optional artist page image metadata fetch
+    Worker-->>Controller: ArtistImage(page_url, image_bytes)
+    Controller->>UI: show artist image and page URL
+    UI->>Controller: artist_page_requested(url)
+    Controller->>Firefox: firefox --private-window url
+```
 
 ## Playback Workflow
 

@@ -30,11 +30,11 @@ Who uses the system, and which external systems does it depend on?
             shape=box, style="rounded,filled",
             fillcolor="#1168bd", fontcolor=white, color="#0b4884"];
 
-       lastfm_web [label="Last.fm Website\n[External System]\n\nPublic profile pages scraped\nfor the loved-tracks list\n(no API key required).",
+       lastfm_web [label="Last.fm Website\n[External System]\n\nArtist pages opened by the user\nand inspected for preview images.",
                    shape=box, style="rounded,filled",
                    fillcolor="#999999", fontcolor=white, color="#6b6b6b"];
 
-       lastfm_api [label="Last.fm API\n[External System]\n\nAuthenticated API used for\nnow-playing updates and\ntrack scrobbling.",
+       lastfm_api [label="Last.fm API\n[External System]\n\nLoved-track and artist metadata\nplus authenticated now-playing\nand track scrobbling.",
                    shape=box, style="rounded,filled",
                    fillcolor="#999999", fontcolor=white, color="#6b6b6b"];
 
@@ -43,8 +43,8 @@ Who uses the system, and which external systems does it depend on?
                 fillcolor="#999999", fontcolor=white, color="#6b6b6b"];
 
        user -> app       [label="clicks, playback controls,\nusername input"];
-       app -> lastfm_web [label="HTTPS scrape (loved-track pages)"];
-       app -> lastfm_api [label="pylast API (now-playing + scrobble)"];
+       app -> lastfm_api [label="requests API (loved tracks + artist info)\npylast API (now-playing + scrobble)"];
+       app -> lastfm_web [label="Firefox private window\nartist page links"];
        app -> youtube    [label="yt-dlp search + audio stream download"];
    }
 
@@ -69,7 +69,7 @@ What are the major deployable or runnable parts, and what technology do they use
            label="myLastFmPlayer [Software System]";
            style=dashed; color="#888888"; fontname="Helvetica"; fontsize=11;
 
-           desktop [label="Desktop Application\n[Container: Python 3.12 / PyQt6]\n\nAll UI, business logic, and service\norchestration. Single OS process\nlaunched via my-lastfm-player CLI.",
+           desktop [label="Desktop Application\n[Container: Python 3.12+ / PyQt6]\n\nAll UI, business logic, and service\norchestration. Single OS process\nlaunched via my-lastfm-player CLI.",
                     shape=box, style="rounded,filled",
                     fillcolor="#1168bd", fontcolor=white, color="#0b4884"];
 
@@ -90,7 +90,7 @@ What are the major deployable or runnable parts, and what technology do they use
                shape=box, style="rounded,filled",
                fillcolor="#999999", fontcolor=white, color="#6b6b6b"];
 
-       ffmpeg [label="ffmpeg\n[External CLI tool]\n\nAudio conversion and\npost-processing (via yt-dlp).",
+       ffmpeg [label="ffmpeg + ffprobe\n[External CLI tools]\n\nAudio conversion, post-processing,\nand metadata probing.",
                shape=box, style="rounded,filled",
                fillcolor="#999999", fontcolor=white, color="#6b6b6b"];
 
@@ -107,10 +107,11 @@ What are the major deployable or runnable parts, and what technology do they use
        desktop  -> audio_files[label="reads for local playback\n(QMediaPlayer)"];
        desktop  -> qt_settings[label="load/save\npreferences"];
        desktop  -> ytdlp      [label="subprocess\n(search + download)"];
+       desktop  -> ffmpeg      [label="metadata probe\n(ffprobe)"];
        ytdlp    -> ffmpeg      [label="post-process\naudio"];
        ytdlp    -> audio_files [label="writes mp3"];
-       desktop  -> lastfm_web  [label="HTTPS scrape\n(requests + BeautifulSoup)"];
-       desktop  -> lastfm_api  [label="pylast API calls\n(scrobble)"];
+       desktop  -> lastfm_api  [label="requests API calls\n(loved tracks + artist info)\npylast API calls\n(scrobble)"];
+       desktop  -> lastfm_web  [label="Firefox --private-window\nartist page links"];
    }
 
 Level 3 — Component View
@@ -148,12 +149,13 @@ What are the principal building blocks inside the desktop process?
            style=filled; fillcolor="#f9f9f9"; color="#aaaaaa";
            fontname="Helvetica"; fontsize=10;
 
-           scraper     [label="LastFmLovedTracksScraper\n[HTTP Client]\n\nScrapes Last.fm profile pages\npage-by-page; retries with\nback-off; rate-limits between pages."];
+           scraper     [label="LastFmLovedTracksScraper\n[HTTP Client]\n\nFetches Last.fm Web API pages;\nretries with back-off;\nrate-limits between pages."];
+           artist_info [label="LastFmArtistInfoClient\n[HTTP Client]\n\nFetches artist.getInfo metadata;\nloads artist page preview images\nwith a stdlib HTML parser."];
            resolver    [label="YouTubeResolver\n[yt-dlp wrapper]\n\nChecks lookup-cache first;\nruns yt-dlp search subprocess;\nupdates cache on hit."];
            download_mgr[label="DownloadManager\n[yt-dlp wrapper]\n\nConcurrent mp3 download pool\nwith retry + jitter backoff;\nchecks download-cache to skip existing."];
            playback    [label="PlaybackService\n[Qt Multimedia]\n\nWraps QMediaPlayer;\nseek, pause, stop;\ntracks scrobble threshold."];
            scrobbling  [label="ScrobblingService\n[pylast]\n\nLast.fm web-auth flow;\nnow-playing + scrobble\nAPI calls via pylast."];
-           deps        [label="DependencyChecker\n[shutil.which]\n\nVerifies yt-dlp and ffmpeg\nare present on PATH\nat application startup."];
+           deps        [label="DependencyChecker\n[shutil.which]\n\nVerifies yt-dlp, ffmpeg,\nand ffprobe are present on PATH\nat application startup."];
        }
 
        subgraph cluster_workers {
@@ -198,6 +200,7 @@ What are the principal building blocks inside the desktop process?
 
        controller -> repo      [label="load / save"];
        controller -> scraper;
+       controller -> artist_info;
        controller -> resolver;
        controller -> download_mgr;
        controller -> playback;
@@ -352,19 +355,24 @@ signal. The repository is the single source of truth; workers read from it and
 write back through it, but never own any persistent state themselves.
 
 **External tools as subprocesses, validated at startup.**
-``yt-dlp`` and ``ffmpeg`` are invoked via ``subprocess.run`` rather than
+``yt-dlp``, ``ffmpeg``, and ``ffprobe`` are invoked via subprocesses rather than
 linked as Python libraries. This keeps the runtime dependency surface small and
 lets users upgrade CLI tools independently of the application version.
-``DependencyChecker`` verifies both are on ``PATH`` at startup and surfaces a
-warning in the UI if either is missing.
+``DependencyChecker`` verifies all three are on ``PATH`` at startup and
+surfaces a warning in the UI if any are missing.
 
-**Scraping, not the API, for the loved-tracks list.**
-The Last.fm public loved-tracks page is scraped with ``requests`` +
-``BeautifulSoup`` rather than the authenticated API endpoint. The API paginates
-at 50 tracks per call and throttles aggressively at scale; scraping the public
-page is faster, requires no API key, and the HTML structure has been stable for
-years. The authenticated API is still used for the scrobble path where the rate
-limits are appropriate and a session key is already required.
+**Last.fm Web API for loved tracks, pylast for scrobbling.**
+Loved-track fetching uses Last.fm's ``user.getLovedTracks`` JSON API through
+``requests`` and the bundled or environment-provided application API key. Artist
+preview metadata uses ``artist.getInfo`` and, when needed, a small stdlib HTML
+parser for page image metadata. Authenticated now-playing and scrobble updates
+remain on ``pylast`` because they require the user's Last.fm session key.
+
+**Private artist-page launches are browser-specific.**
+Clicking the artist preview opens the Last.fm artist page with
+``firefox --private-window <url>``. The application intentionally calls Firefox
+directly for this path because ``xdg-open`` and desktop portals do not provide a
+portable private-window option.
 
 **QThread + moveToThread, not QRunnable.**
 Background work uses ``QThread`` with worker objects moved to the thread rather

@@ -4,11 +4,11 @@
 
 **Author: Marcel Petrick <mail@marcelpetrick.it>**
 
-**Note: projected is generated with AI.**
-
 **License: GPLv3 or later. See `LICENSE`.**
 
-Current version: `0.0.135` — work in progress (WIP), but past MVP and actively used
+**Note: projected is generated with AI.**
+
+Current version: `0.0.136` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
@@ -165,14 +165,14 @@ Pylint           : PASS 10.00/10 (100%)
 Translations     : PASS de: 214 strings, 0 untranslated; hr: 214 strings, 0 untranslated; ...
 Docs             : PASS required docs present
 Sphinx           : PASS HTML built with 0 warnings
-Tests+Coverage   : PASS 99.06%; 451 passed, 1 skipped in 3.38s
+Tests+Coverage   : PASS 99.06%; 450 passed, 1 skipped in 3.44s
 Open Docs        : PASS Sphinx index.html was handed to firefox
 Open Coverage    : PASS htmlcov/index.html was handed to firefox
 Clean Build      : PASS Stale package artifacts removed
-Package Build    : PASS Successfully built my_lastfm_player-0.0.127.tar.gz and my_lastfm_player-0.0.127-py3-none-any.whl
-Wheel            : PASS my_lastfm_player-0.0.127-py3-none-any.whl
+Package Build    : PASS Successfully built source and wheel distributions
+Wheel            : PASS my_lastfm_player-<version>-py3-none-any.whl
 Wheel Install    : PASS Built wheel installed into .venv
-Import Check     : PASS 0.0.127+1e838d
+Import Check     : PASS <version>[+commit]
 Launch App       : PASS my-lastfm-player was started once
 ============================================
 ```
@@ -241,20 +241,22 @@ flowchart TD
     F --> H["Install project in editable mode with dev dependencies"]
     G --> H
     H --> I["Ruff lint check"]
-    I --> J["Documentation check"]
-    J --> K["Build Sphinx docs with warnings as errors"]
-    K --> L["Pytest with coverage and HTML report"]
-    L --> M["Open Sphinx and coverage HTML when possible"]
-    M --> N["Remove old build artifacts"]
-    N --> O["Build source/wheel distributions"]
-    O --> P["Find built wheel in dist/"]
-    P --> Q["Force reinstall built wheel without dependencies"]
-    Q --> R["Import package and print version"]
-    R --> S{"RUN_APP=true?"}
-    S -->|yes| T["Start installed my-lastfm-player once"]
-    S -->|no| U["Skip GUI startup"]
-    T --> V["Print stage summary and exit"]
-    U --> V
+    I --> J["Pylint static analysis"]
+    J --> K["Check Qt translation completeness"]
+    K --> L["Documentation check"]
+    L --> M["Build Sphinx docs with warnings as errors"]
+    M --> N["Pytest with coverage and HTML report"]
+    N --> O["Open Sphinx and coverage HTML when possible"]
+    O --> P["Remove old build artifacts"]
+    P --> Q["Build source/wheel distributions"]
+    Q --> R["Find built wheel in dist/"]
+    R --> S["Force reinstall built wheel without dependencies"]
+    S --> T["Import package and print version"]
+    T --> U{"RUN_APP=true?"}
+    U -->|yes| V["Start installed my-lastfm-player once"]
+    U -->|no| W["Skip GUI startup"]
+    V --> X["Print stage summary and exit"]
+    W --> X
 ```
 
 The workflow phases are:

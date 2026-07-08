@@ -1,6 +1,6 @@
 # Development Plan Review
 
-This review checks the current implementation against `documents/02_DEVELOPMENT_PLAN.md` after the user workflow documentation update in version `0.0.20`.
+This historical review checked the implementation against `documents/02_DEVELOPMENT_PLAN.md` after the user workflow documentation update in version `0.0.20`. It is kept as dated project history; use `docs/architecture.rst` and `documents/03_ARCHITECTURE.md` for current architecture.
 
 ## Step 0: Basic PyQt App Setup
 

@@ -83,8 +83,8 @@ Fetch -> Lookup -> Download -> Playback.
   `DownloadTracksWorker`. Worker `run()` methods catch exceptions at the thread
   boundary, emit `error`, and always emit `finished`.
 - `lastfm.py`: `LastFmLovedTracksScraper` orchestrates Last.fm Web API
-  pagination. `LastFmLovedTracksApiClient` fetches `user.getLovedTracks` JSON;
-  the legacy BeautifulSoup parser remains covered by fixture tests.
+  pagination. `LastFmLovedTracksApiClient` fetches `user.getLovedTracks` JSON,
+  and `LastFmArtistInfoClient` fetches artist preview metadata and images.
 - `youtube.py`: shells out to
   `yt-dlp --dump-single-json --no-playlist ytsearch1:<artist title>`.
 - `download.py`: runs `yt-dlp --extract-audio --audio-format mp3` with a FIFO

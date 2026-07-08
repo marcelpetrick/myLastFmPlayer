@@ -42,7 +42,7 @@ but they should be revisited before the MVP is considered finished.
 
 ## Last.fm API
 
-- Loved-track fetching now uses Last.fm's `user.getLovedTracks` API instead of public HTML scraping. The old parser fixture tests remain useful as regression coverage for legacy page parsing, but the normal workflow no longer depends on Last.fm page markup.
+- Loved-track fetching now uses Last.fm's `user.getLovedTracks` API instead of public HTML scraping. Artist preview image discovery uses a small stdlib HTML parser for page metadata, but the normal loved-track workflow no longer depends on Last.fm page markup.
 - API errors are surfaced in the UI through the existing worker error path. If Last.fm omits total-count metadata, the UI still reports cumulative fetched tracks but cannot show `fetched/total`.
 
 ## Logging

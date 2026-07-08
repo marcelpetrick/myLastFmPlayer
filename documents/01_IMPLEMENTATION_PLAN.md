@@ -1,6 +1,6 @@
 # Implementation Plan
 
-This plan turns `documents/REQUIREMENTS.md` into a ten-step implementation sequence for the Linux PyQt MVP. The repository currently has no application code, so the first steps establish a maintainable Python project before adding Last.fm scraping, storage, download orchestration, playback, and UI behavior.
+This historical plan turned `documents/REQUIREMENTS.md` into a ten-step implementation sequence for the Linux PyQt MVP. The implementation now exists; keep this document as planning context, and use `docs/architecture.rst` plus `documents/03_ARCHITECTURE.md` for current runtime architecture.
 
 ## 1. Create the Python Project Skeleton
 
@@ -79,7 +79,7 @@ Validation:
 
 ## 4. Build Last.fm Loved Tracks Scraper
 
-Implement public HTML scraping with pagination and no API credentials.
+Implement public loved-track fetching with pagination using Last.fm's Web API and the bundled or environment-provided application API key.
 
 Deliverables:
 
@@ -229,7 +229,7 @@ Implement steps 1-4 first with unit tests, because these create the data foundat
 
 ## Key Risks to Track During Implementation
 
-- Last.fm HTML can change, so scraper tests should use fixtures and parsing code should fail clearly.
+- Last.fm API responses can change, so fetcher tests should use fixtures and parsing code should fail clearly.
 - YouTube search results can vary, so resolver behavior must be deterministic within the first-result-only MVP rule.
 - `yt-dlp` and `ffmpeg` are external dependencies, so startup checks and download error handling are required early.
 - Downloaded audio may raise legal or terms-of-service concerns depending on user behavior and jurisdiction; the app should avoid implying that all downloads are permitted.

@@ -39,6 +39,7 @@ The application will:
 
 * **yt-dlp** (YouTube extraction)
 * **ffmpeg** (audio conversion)
+* **ffprobe** (downloaded audio metadata probing)
 
 ### 2.3 Constraints
 
@@ -58,18 +59,19 @@ The application will:
 
 ---
 
-### 3.2 Last.fm Scraping
+### 3.2 Last.fm Loved-Track Fetching
 
-* The system shall retrieve loved tracks via public web pages
+* The system shall retrieve loved tracks through Last.fm's public Web API using the bundled or environment-provided application API key
 
 * The system shall:
 
-  * Handle pagination
+  * Handle API pagination
   * Extract:
 
     * Artist name
     * Track title
     * Last.fm track URL (if available)
+    * Loved-at timestamp (if Last.fm returns one)
 
 * The system shall store retrieved tracks locally in JSON
 
@@ -386,7 +388,7 @@ sudo pacman -S yt-dlp ffmpeg
 
 ### Risks
 
-* Last.fm HTML changes
+* Last.fm Web API availability and response-shape changes
 * YouTube search variability
 * External tool availability
 * Legal considerations for downloading content
