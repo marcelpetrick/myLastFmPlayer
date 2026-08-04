@@ -67,6 +67,21 @@ class BlockingRunner:
                 self.active -= 1
 
 
+def queued_track(
+    artist: str = "Artist",
+    title: str = "Title",
+    youtube_url: str = "https://youtu.be/example",
+) -> Track:
+    """Return a queued track with a resolved YouTube URL."""
+
+    return Track(
+        artist=artist,
+        title=title,
+        youtube_url=youtube_url,
+        status=TrackStatus.QUEUED,
+    )
+
+
 def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
     runner = FakeRunner()
     manager = DownloadManager(
@@ -74,12 +89,7 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
         backoff_factory=lambda: 0,
         sleeper=lambda _seconds: None,
     )
-    track = Track(
-        artist="Artist",
-        title="Title",
-        youtube_url="https://youtu.be/example",
-        status=TrackStatus.QUEUED,
-    )
+    track = queued_track()
     progress: list[tuple[int, str]] = []
     track_updates: list[Track] = []
 
@@ -205,12 +215,7 @@ def test_download_manager_stop_wakes_blocked_threads_and_marks_failed(tmp_path: 
         backoff_factory=lambda: 0,
         sleeper=lambda _: None,
     )
-    track = Track(
-        artist="Artist",
-        title="Title",
-        youtube_url="https://youtu.be/example",
-        status=TrackStatus.QUEUED,
-    )
+    track = queued_track()
 
     import concurrent.futures
 
@@ -231,12 +236,7 @@ def test_download_manager_stop_aborts_pending_retries(tmp_path: Path) -> None:
         sleeper=lambda _: None,
     )
     manager.stop()
-    track = Track(
-        artist="Artist",
-        title="Title",
-        youtube_url="https://youtu.be/example",
-        status=TrackStatus.QUEUED,
-    )
+    track = queued_track()
 
     tracks = manager.download_tracks([track], tmp_path)
 
@@ -425,12 +425,7 @@ def test_download_manager_includes_cookies_browser_flag(tmp_path: Path) -> None:
         backoff_factory=lambda: 0,
         sleeper=lambda _: None,
     )
-    track = Track(
-        artist="Artist",
-        title="Title",
-        youtube_url="https://youtu.be/example",
-        status=TrackStatus.QUEUED,
-    )
+    track = queued_track()
 
     manager.download_tracks([track], tmp_path)
 
@@ -448,12 +443,7 @@ def test_download_manager_fails_when_output_file_not_found(tmp_path: Path) -> No
         sleeper=lambda _: None,
         max_retries=1,
     )
-    track = Track(
-        artist="Artist",
-        title="Title",
-        youtube_url="https://youtu.be/example",
-        status=TrackStatus.QUEUED,
-    )
+    track = queued_track()
 
     tracks = manager.download_tracks([track], tmp_path)
 
@@ -546,12 +536,7 @@ def test_download_manager_marks_failed_on_timeout(tmp_path: Path) -> None:
         backoff_factory=lambda: 0,
         sleeper=lambda _: None,
     )
-    track = Track(
-        artist="Artist",
-        title="Title",
-        youtube_url="https://youtu.be/example",
-        status=TrackStatus.QUEUED,
-    )
+    track = queued_track()
 
     tracks = manager.download_tracks([track], tmp_path)
 

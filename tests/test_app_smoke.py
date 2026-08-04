@@ -29,6 +29,7 @@ from my_lastfm_player.themes import ThemeMode
 from my_lastfm_player.ui import main_window as main_window_module
 from my_lastfm_player.ui.main_window import (
     ERROR_TEXT_COLOR,
+    ArtistImageLabel,
     MainWindow,
     TrackFilterProxyModel,
     application_title,
@@ -51,8 +52,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.144"
-    assert __display_version__ == "0.0.144"
+    assert __version__ == "0.0.145"
+    assert __display_version__ == "0.0.145"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -89,7 +90,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.144"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.145"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 0
@@ -259,7 +260,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     window_instance = created_windows[0]
     assert bytes(window_instance.restored_geometry or QByteArray()) == b"stored-geometry"
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.144\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.145\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -863,6 +864,25 @@ def test_main_window_playback_controls_emit_signals(qapp) -> None:
     window.next_button.click()
 
     assert events == ["play", "pause", "stop", "next"]
+
+
+def test_artist_image_label_rescales_its_pixmap_on_resize(qapp) -> None:
+    label = ArtistImageLabel()
+    label.show()
+
+    label.resize(200, 200)
+    assert label.pixmap().isNull()  # nothing loaded yet, so nothing to scale
+
+    label.set_artist_image(png_bytes(), "https://www.last.fm/music/Artist")
+    label.resize(140, 140)  # the label enforces a 120px minimum
+    qapp.processEvents()
+    small = label.pixmap().size()
+    label.resize(260, 260)
+    qapp.processEvents()
+    large = label.pixmap().size()
+
+    assert small.width() <= 140
+    assert large.width() > small.width()
 
 
 def test_main_window_artist_image_is_clickable(qapp) -> None:

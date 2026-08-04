@@ -133,6 +133,17 @@ def api_loved_payload(page: int, total_pages: int = 2, total: int = 3) -> dict[s
     }
 
 
+def two_page_api_session() -> ApiFakeSession:
+    """Return a session serving the standard two-page loved-tracks payload."""
+
+    return ApiFakeSession(
+        {
+            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
+            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
+        }
+    )
+
+
 def test_api_client_fetches_loved_tracks_with_loved_at_metadata() -> None:
     session = ApiFakeSession(
         {1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1))}
@@ -471,6 +482,19 @@ def test_artist_page_image_parser_prefers_social_metadata_and_ignores_placeholde
     assert _is_lastfm_placeholder_image_url("https://last.fm/2a96cbd8b46e442fc41c2b86b821562f.png")
 
 
+def test_artist_page_image_parser_returns_none_without_usable_candidates() -> None:
+    page_url = "https://www.last.fm/music/Artist"
+    placeholder = "https://lastfm.freetls.fastly.net/i/u/ar0/2a96cbd8b46e442fc41c2b86b821562f.png"
+
+    assert _select_artist_page_image_url("<p>no images here</p>", page_url) is None
+    assert (
+        _select_artist_page_image_url(
+            f'<meta property="og:image" content="{placeholder}">', page_url
+        )
+        is None
+    )
+
+
 def test_artist_page_image_parser_uses_header_background_image() -> None:
     page_url = "https://www.last.fm/music/Artist"
     html = """
@@ -558,12 +582,7 @@ def test_api_client_retries_request_exception_then_succeeds() -> None:
 
 
 def test_scraper_fetches_paginated_loved_tracks_through_api() -> None:
-    session = ApiFakeSession(
-        {
-            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
-            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
-        }
-    )
+    session = two_page_api_session()
 
     tracks = LastFmLovedTracksScraper(
         api_key="test-key",
@@ -580,12 +599,7 @@ def test_scraper_fetches_paginated_loved_tracks_through_api() -> None:
 
 
 def test_scraper_reports_fetch_progress() -> None:
-    session = ApiFakeSession(
-        {
-            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
-            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
-        }
-    )
+    session = two_page_api_session()
     progress_events: list[FetchProgress] = []
 
     LastFmLovedTracksScraper(
@@ -668,12 +682,7 @@ def test_scraper_reports_progress_without_total_count() -> None:
 
 
 def test_scraper_reports_cumulative_tracks_after_each_page() -> None:
-    session = ApiFakeSession(
-        {
-            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
-            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
-        }
-    )
+    session = two_page_api_session()
     track_events: list[list[Track]] = []
 
     LastFmLovedTracksScraper(
@@ -692,12 +701,7 @@ def test_scraper_reports_cumulative_tracks_after_each_page() -> None:
 
 
 def test_scraper_stops_paginated_fetch_when_control_callback_returns_false() -> None:
-    session = ApiFakeSession(
-        {
-            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
-            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
-        }
-    )
+    session = two_page_api_session()
     control_calls = 0
 
     def control_callback() -> bool:
@@ -905,12 +909,7 @@ def test_scraper_sleeps_between_pages_when_page_delay_is_positive(monkeypatch) -
         "my_lastfm_player.lastfm._controlled_sleep",
         lambda delay, _cb: (sleep_calls.append(delay), True)[1],
     )
-    session = ApiFakeSession(
-        {
-            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
-            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
-        }
-    )
+    session = two_page_api_session()
 
     tracks = LastFmLovedTracksScraper(
         api_key="test-key",
@@ -929,12 +928,7 @@ def test_scraper_stops_during_page_delay_when_controlled_sleep_returns_false(
         "my_lastfm_player.lastfm._controlled_sleep",
         lambda _delay, _cb: False,
     )
-    session = ApiFakeSession(
-        {
-            1: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(1)),
-            2: FakeResponse("", LASTFM_API_URL, json_payload=api_loved_payload(2)),
-        }
-    )
+    session = two_page_api_session()
 
     tracks = LastFmLovedTracksScraper(
         api_key="test-key",

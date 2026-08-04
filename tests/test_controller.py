@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
 from PyQt6.QtCore import QSettings, Qt
 
 from my_lastfm_player import controller as controller_module
@@ -12,10 +13,68 @@ from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.dependencies import DependencyCheckResult
 from my_lastfm_player.lastfm import ArtistImage
 from my_lastfm_player.models import Track, TrackStatus
+from my_lastfm_player.scrobbling import ScrobblingService
 from my_lastfm_player.settings import AppSettings
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import LookupTracksWorker
+
+
+class FakeScrobbleNetwork:
+    """Minimal pylast network stand-in that records submitted scrobbles."""
+
+    def __init__(self, scrobbles: list[dict]) -> None:
+        self.scrobbles = scrobbles
+
+    def get_authenticated_user(self) -> SimpleNamespace:
+        return SimpleNamespace(get_name=lambda properly_capitalized=False: "user")
+
+    def scrobble(self, **kwargs) -> None:
+        self.scrobbles.append(kwargs)
+
+    def update_now_playing(self, **kwargs) -> None:
+        pass
+
+
+def scrobbling_controller(window, playback) -> tuple[ApplicationController, list[dict]]:
+    """Return a controller wired to a connected scrobbling service and its recorded scrobbles."""
+
+    scrobbles: list[dict] = []
+    service = ScrobblingService(
+        api_key="k",
+        api_secret="s",
+        session_key="sess",
+        username="user",
+        network_factory=lambda **_kwargs: FakeScrobbleNetwork(scrobbles),
+    )
+    service.try_connect()
+    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
+    controller._scrobbling_service = service
+    return controller, scrobbles
+
+
+def downloaded_track(tmp_path, artist: str = "Artist", title: str = "Title") -> Track:
+    """Create one downloaded track backed by a fake audio file."""
+
+    return downloaded_tracks(tmp_path, ((artist, title),))[0]
+
+
+def downloaded_tracks(tmp_path, specs: tuple[tuple[str, str], ...]) -> list[Track]:
+    """Create downloaded tracks backed by real (fake-content) audio files."""
+
+    tracks: list[Track] = []
+    for index, (artist, title) in enumerate(specs):
+        audio_path = tmp_path / f"track{index}.mp3"
+        audio_path.write_bytes(b"fake mp3")
+        tracks.append(
+            Track(
+                artist=artist,
+                title=title,
+                local_path=str(audio_path),
+                status=TrackStatus.DOWNLOADED,
+            )
+        )
+    return tracks
 
 
 class FakeSignal:
@@ -906,14 +965,7 @@ class FakePlaybackService:
 def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("user")
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake mp3")
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     window.set_tracks([track])
     window.track_table.selectRow(0)
     playback = FakePlaybackService()
@@ -935,14 +987,7 @@ def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
 
 def test_controller_fetches_artist_image_when_playback_starts(qapp, tmp_path) -> None:
     window = MainWindow()
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake mp3")
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     window.set_tracks([track])
     window.track_table.selectRow(0)
     playback = FakePlaybackService()
@@ -974,14 +1019,7 @@ def test_controller_shows_cached_artist_image_and_opens_artist_page(
 
     monkeypatch.setattr(controller_module.QProcess, "startDetached", fake_start_detached)
     window = MainWindow()
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake mp3")
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     window.set_tracks([track])
     window.track_table.selectRow(0)
     playback = FakePlaybackService()
@@ -1019,21 +1057,33 @@ def test_controller_shows_cached_artist_image_and_opens_artist_page(
     ]
 
 
-def test_controller_ignores_stale_artist_image_results(qapp) -> None:
+def test_controller_shows_artist_image_only_for_the_current_track(qapp) -> None:
     window = MainWindow()
     playback = FakePlaybackService()
     playback.current_track = Track(artist="Current", title="Title")
     controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
-
-    controller._handle_artist_image_loaded(
-        ArtistImage(
-            artist="Previous",
-            page_url="https://www.last.fm/music/Previous",
-            image_bytes=b"image",
+    shown: list[tuple[bytes | None, str | None, str | None]] = []
+    window.set_artist_image = (  # type: ignore[method-assign]
+        lambda image_bytes, page_url, artist_name=None: shown.append(
+            (image_bytes, page_url, artist_name)
         )
     )
 
-    assert window.artist_image_label.isHidden()
+    stale = ArtistImage(
+        artist="Previous",
+        page_url="https://www.last.fm/music/Previous",
+        image_bytes=b"stale",
+    )
+    current = ArtistImage(
+        artist="Current",
+        page_url="https://www.last.fm/music/Current",
+        image_bytes=b"current",
+    )
+    controller._handle_artist_image_loaded(stale)
+    controller._handle_artist_image_loaded(current)
+
+    assert shown == [(b"current", "https://www.last.fm/music/Current", "Current")]
+    assert controller._artist_image_cache["Previous"] is stale
 
 
 def test_controller_handles_artist_image_edge_cases(qapp, monkeypatch) -> None:
@@ -1061,400 +1111,175 @@ def test_controller_handles_artist_image_edge_cases(qapp, monkeypatch) -> None:
     assert controller._active_artist_image_workers == []
 
 
-def test_controller_auto_plays_next_track_after_finished_in_sort_order(
-    qapp,
-    tmp_path,
-) -> None:
-    window = MainWindow()
-    window.username_input.setText("user")
-    audio_paths = {
-        "last": tmp_path / "last.mp3",
-        "first": tmp_path / "first.mp3",
-        "second": tmp_path / "second.mp3",
-    }
-    for audio_path in audio_paths.values():
-        audio_path.write_bytes(b"fake mp3")
-    tracks = [
-        Track(
-            artist="Zed",
-            title="Last",
-            local_path=str(audio_paths["last"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Alpha",
-            title="First",
-            local_path=str(audio_paths["first"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Middle",
-            title="Second",
-            local_path=str(audio_paths["second"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-    ]
-    window.set_tracks(tracks)
-    window.track_sort_model.sort(0, Qt.SortOrder.AscendingOrder)
-    window.select_track_row(1)
-    playback = FakePlaybackService()
-    controller = ApplicationController(
-        window,
-        repository=JsonTrackRepository(data_dir=tmp_path),
-        playback_service=playback,  # type: ignore[arg-type]
-    )
+@dataclass(frozen=True)
+class ContinuationCase:
+    """One playback-continuation scenario for the parametrized tests below."""
 
-    controller.play_selected_track()
-    assert playback.finished_callback is not None
-    playback.finished_callback()
-
-    assert playback.events == ["play:First", "play:Second"]
-    assert window.track_model.track_at(1).status == TrackStatus.DOWNLOADED
-    assert window.track_model.track_at(2).status == TrackStatus.DOWNLOADED
-    assert window.track_model.playing_cache_key() == tracks[2].cache_key
-    assert window.selected_track() == tracks[2]
-    assert "Continuing with next track: Middle - Second." in window.feedback_log.toPlainText()
+    tracks: tuple[tuple[str, str], ...]
+    selected_row: int
+    expected_events: tuple[str, ...]
+    expected_row: int
+    sort_by_artist: bool = False
+    filter_text: str = ""
+    advance: str = "finished"
+    expected_log: str = ""
+    expected_candidates: tuple[tuple[int, int], ...] | None = None
 
 
-def test_controller_auto_plays_next_track_from_filtered_rows(
-    qapp,
-    tmp_path,
-) -> None:
-    window = MainWindow()
-    window.username_input.setText("user")
-    audio_paths = {
-        "one": tmp_path / "one.mp3",
-        "skip": tmp_path / "skip.mp3",
-        "two": tmp_path / "two.mp3",
-    }
-    for audio_path in audio_paths.values():
-        audio_path.write_bytes(b"fake mp3")
-    tracks = [
-        Track(
-            artist="Alpha",
-            title="Keep One",
-            local_path=str(audio_paths["one"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Beta",
-            title="Skip",
-            local_path=str(audio_paths["skip"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Gamma",
-            title="Keep Two",
-            local_path=str(audio_paths["two"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-    ]
-    window.set_tracks(tracks)
-    window.track_sort_model.sort(0, Qt.SortOrder.AscendingOrder)
-    window.track_filter_input.setText("keep")
-    window.select_track_row(0)
-    playback = FakePlaybackService()
-    controller = ApplicationController(
-        window,
-        repository=JsonTrackRepository(data_dir=tmp_path),
-        playback_service=playback,  # type: ignore[arg-type]
-    )
+def advance_playback(controller: ApplicationController, playback, advance: str) -> None:
+    """Finish the current track or press Next, depending on ``advance``."""
 
-    controller.play_selected_track()
-    assert playback.finished_callback is not None
-    playback.finished_callback()
-
-    assert playback.events == ["play:Keep One", "play:Keep Two"]
-    assert window.selected_track() == tracks[2]
-    assert "Continuing with next track: Gamma - Keep Two." in window.feedback_log.toPlainText()
-
-
-def test_controller_next_button_plays_next_track_from_filtered_rows(
-    qapp,
-    tmp_path,
-) -> None:
-    window = MainWindow()
-    window.username_input.setText("user")
-    audio_paths = {
-        "one": tmp_path / "one.mp3",
-        "skip": tmp_path / "skip.mp3",
-        "two": tmp_path / "two.mp3",
-    }
-    for audio_path in audio_paths.values():
-        audio_path.write_bytes(b"fake mp3")
-    tracks = [
-        Track(
-            artist="Alpha",
-            title="Keep One",
-            local_path=str(audio_paths["one"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Beta",
-            title="Skip",
-            local_path=str(audio_paths["skip"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Gamma",
-            title="Keep Two",
-            local_path=str(audio_paths["two"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-    ]
-    window.set_tracks(tracks)
-    window.track_filter_input.setText("keep")
-    window.select_track_row(0)
-    playback = FakePlaybackService()
-    controller = ApplicationController(
-        window,
-        repository=JsonTrackRepository(data_dir=tmp_path),
-        playback_service=playback,  # type: ignore[arg-type]
-    )
-
-    controller.play_selected_track()
+    if advance == "finished":
+        assert playback.finished_callback is not None
+        playback.finished_callback()
+        return
     controller.play_next_track()
 
-    assert playback.events == ["play:Keep One", "play:Keep Two"]
-    assert window.selected_track() == tracks[2]
-    assert window.track_model.playing_cache_key() == tracks[2].cache_key
-    assert "Continuing with next track: Gamma - Keep Two." in window.feedback_log.toPlainText()
 
+def run_continuation_case(case: ContinuationCase, tmp_path, randomize: bool):
+    """Play the selected track, advance once, and return the window and recorded picks."""
 
-def test_controller_wraps_to_first_sorted_track_after_last_track_finishes(
-    qapp,
-    tmp_path,
-) -> None:
     window = MainWindow()
     window.username_input.setText("user")
-    last_path = tmp_path / "last.mp3"
-    first_path = tmp_path / "first.mp3"
-    last_path.write_bytes(b"fake mp3")
-    first_path.write_bytes(b"fake mp3")
-    tracks = [
-        Track(
-            artist="Zed",
-            title="Last",
-            local_path=str(last_path),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Alpha",
-            title="First",
-            local_path=str(first_path),
-            status=TrackStatus.DOWNLOADED,
-        ),
-    ]
+    tracks = downloaded_tracks(tmp_path, case.tracks)
     window.set_tracks(tracks)
-    window.track_sort_model.sort(0, Qt.SortOrder.AscendingOrder)
-    window.select_track_row(0)
+    if case.sort_by_artist:
+        window.track_sort_model.sort(0, Qt.SortOrder.AscendingOrder)
+    if case.filter_text:
+        window.track_filter_input.setText(case.filter_text)
+    window.select_track_row(case.selected_row)
+    window.set_randomize_playback(randomize)
     playback = FakePlaybackService()
     controller = ApplicationController(
         window,
         repository=JsonTrackRepository(data_dir=tmp_path),
         playback_service=playback,  # type: ignore[arg-type]
     )
+    offered_candidates: list[list[tuple[int, Track]]] = []
+    if randomize:
+        def choose(candidates: list[tuple[int, Track]]) -> tuple[int, Track]:
+            offered_candidates.append(candidates)
+            return candidates[-1]
+
+        controller._random = SimpleNamespace(choice=choose)  # type: ignore[assignment]
 
     controller.play_selected_track()
-    assert playback.finished_callback is not None
-    playback.finished_callback()
+    advance_playback(controller, playback, case.advance)
 
-    assert playback.events == ["play:Last", "play:First"]
-    assert window.track_model.track_at(0).status == TrackStatus.DOWNLOADED
-    assert window.track_model.track_at(1).status == TrackStatus.DOWNLOADED
-    assert window.track_model.playing_cache_key() == tracks[1].cache_key
-    assert window.selected_track() == tracks[1]
+    assert list(playback.events) == list(case.expected_events)
+    assert window.selected_track() == tracks[case.expected_row]
+    assert window.track_model.playing_cache_key() == tracks[case.expected_row].cache_key
+    if case.expected_log:
+        assert case.expected_log in window.feedback_log.toPlainText()
+    return tracks, offered_candidates
 
 
-def test_controller_auto_plays_random_track_after_finished_when_enabled(
-    qapp,
-    tmp_path,
-) -> None:
-    window = MainWindow()
-    window.username_input.setText("user")
-    audio_paths = {
-        "one": tmp_path / "one.mp3",
-        "two": tmp_path / "two.mp3",
-        "three": tmp_path / "three.mp3",
-    }
-    for audio_path in audio_paths.values():
-        audio_path.write_bytes(b"fake mp3")
-    tracks = [
-        Track(
-            artist="Artist",
-            title="One",
-            local_path=str(audio_paths["one"]),
-            status=TrackStatus.DOWNLOADED,
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(
+            ContinuationCase(
+                tracks=(("Zed", "Last"), ("Alpha", "First"), ("Middle", "Second")),
+                sort_by_artist=True,
+                selected_row=1,
+                expected_events=("play:First", "play:Second"),
+                expected_row=2,
+                expected_log="Continuing with next track: Middle - Second.",
+            ),
+            id="follows_sort_order",
         ),
-        Track(
-            artist="Artist",
-            title="Two",
-            local_path=str(audio_paths["two"]),
-            status=TrackStatus.DOWNLOADED,
+        pytest.param(
+            ContinuationCase(
+                tracks=(("Zed", "Last"), ("Alpha", "First")),
+                sort_by_artist=True,
+                selected_row=0,
+                expected_events=("play:Last", "play:First"),
+                expected_row=1,
+                expected_log="Continuing with next track: Alpha - First.",
+            ),
+            id="wraps_after_last_track",
         ),
-        Track(
-            artist="Artist",
-            title="Three",
-            local_path=str(audio_paths["three"]),
-            status=TrackStatus.DOWNLOADED,
+        pytest.param(
+            ContinuationCase(
+                tracks=(("Alpha", "Keep One"), ("Beta", "Skip"), ("Gamma", "Keep Two")),
+                sort_by_artist=True,
+                filter_text="keep",
+                selected_row=0,
+                expected_events=("play:Keep One", "play:Keep Two"),
+                expected_row=2,
+                expected_log="Continuing with next track: Gamma - Keep Two.",
+            ),
+            id="skips_filtered_out_rows",
         ),
+        pytest.param(
+            ContinuationCase(
+                tracks=(("Alpha", "Keep One"), ("Beta", "Skip"), ("Gamma", "Keep Two")),
+                filter_text="keep",
+                selected_row=0,
+                advance="next",
+                expected_events=("play:Keep One", "play:Keep Two"),
+                expected_row=2,
+                expected_log="Continuing with next track: Gamma - Keep Two.",
+            ),
+            id="next_button_skips_filtered_out_rows",
+        ),
+    ],
+)
+def test_controller_continues_playback_in_order(case: ContinuationCase, qapp, tmp_path) -> None:
+    run_continuation_case(case, tmp_path, randomize=False)
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(
+            ContinuationCase(
+                tracks=(("Artist", "One"), ("Artist", "Two"), ("Artist", "Three")),
+                selected_row=0,
+                expected_events=("play:One", "play:Three"),
+                expected_row=2,
+                expected_log="Continuing with random track: Artist - Three.",
+                expected_candidates=((1, 1), (2, 2)),
+            ),
+            id="random_after_finished",
+        ),
+        pytest.param(
+            ContinuationCase(
+                tracks=(("Artist", "Keep One"), ("Artist", "Keep Two"), ("Other", "Skip")),
+                filter_text="keep",
+                selected_row=0,
+                expected_events=("play:Keep One", "play:Keep Two"),
+                expected_row=1,
+                expected_candidates=((1, 1),),
+            ),
+            id="random_within_filtered_rows",
+        ),
+        pytest.param(
+            ContinuationCase(
+                tracks=(("Artist", "One"), ("Artist", "Two"), ("Artist", "Three")),
+                selected_row=0,
+                advance="next",
+                expected_events=("play:One", "play:Three"),
+                expected_row=2,
+                expected_log="Continuing with random track: Artist - Three.",
+                expected_candidates=((1, 1), (2, 2)),
+            ),
+            id="next_button_picks_random",
+        ),
+    ],
+)
+def test_controller_continues_playback_randomly(case: ContinuationCase, qapp, tmp_path) -> None:
+    tracks, offered_candidates = run_continuation_case(case, tmp_path, randomize=True)
+
+    assert case.expected_candidates is not None
+    assert offered_candidates == [
+        [(row, tracks[index]) for row, index in case.expected_candidates]
     ]
-    window.set_tracks(tracks)
-    window.select_track_row(0)
-    window.set_randomize_playback(True)
-    playback = FakePlaybackService()
-    controller = ApplicationController(
-        window,
-        repository=JsonTrackRepository(data_dir=tmp_path),
-        playback_service=playback,  # type: ignore[arg-type]
-    )
-    random_candidates: list[list[tuple[int, Track]]] = []
-
-    def choose(candidates: list[tuple[int, Track]]) -> tuple[int, Track]:
-        random_candidates.append(candidates)
-        return candidates[-1]
-
-    controller._random = SimpleNamespace(choice=choose)  # type: ignore[assignment]
-
-    controller.play_selected_track()
-    assert playback.finished_callback is not None
-    playback.finished_callback()
-
-    assert playback.events == ["play:One", "play:Three"]
-    assert random_candidates == [[(1, tracks[1]), (2, tracks[2])]]
-    assert window.selected_track() == tracks[2]
-    assert "Continuing with random track: Artist - Three." in window.feedback_log.toPlainText()
-
-
-def test_controller_auto_plays_random_track_from_filtered_rows(
-    qapp,
-    tmp_path,
-) -> None:
-    window = MainWindow()
-    window.username_input.setText("user")
-    audio_paths = {
-        "one": tmp_path / "one.mp3",
-        "two": tmp_path / "two.mp3",
-        "skip": tmp_path / "skip.mp3",
-    }
-    for audio_path in audio_paths.values():
-        audio_path.write_bytes(b"fake mp3")
-    tracks = [
-        Track(
-            artist="Artist",
-            title="Keep One",
-            local_path=str(audio_paths["one"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Artist",
-            title="Keep Two",
-            local_path=str(audio_paths["two"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Other",
-            title="Skip",
-            local_path=str(audio_paths["skip"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-    ]
-    window.set_tracks(tracks)
-    window.track_filter_input.setText("keep")
-    window.select_track_row(0)
-    window.set_randomize_playback(True)
-    playback = FakePlaybackService()
-    controller = ApplicationController(
-        window,
-        repository=JsonTrackRepository(data_dir=tmp_path),
-        playback_service=playback,  # type: ignore[arg-type]
-    )
-    random_candidates: list[list[tuple[int, Track]]] = []
-
-    def choose(candidates: list[tuple[int, Track]]) -> tuple[int, Track]:
-        random_candidates.append(candidates)
-        return candidates[-1]
-
-    controller._random = SimpleNamespace(choice=choose)  # type: ignore[assignment]
-
-    controller.play_selected_track()
-    assert playback.finished_callback is not None
-    playback.finished_callback()
-
-    assert playback.events == ["play:Keep One", "play:Keep Two"]
-    assert random_candidates == [[(1, tracks[1])]]
-    assert window.selected_track() == tracks[1]
-
-
-def test_controller_next_button_plays_random_track_when_enabled(
-    qapp,
-    tmp_path,
-) -> None:
-    window = MainWindow()
-    window.username_input.setText("user")
-    audio_paths = {
-        "one": tmp_path / "one.mp3",
-        "two": tmp_path / "two.mp3",
-        "three": tmp_path / "three.mp3",
-    }
-    for audio_path in audio_paths.values():
-        audio_path.write_bytes(b"fake mp3")
-    tracks = [
-        Track(
-            artist="Artist",
-            title="One",
-            local_path=str(audio_paths["one"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Artist",
-            title="Two",
-            local_path=str(audio_paths["two"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-        Track(
-            artist="Artist",
-            title="Three",
-            local_path=str(audio_paths["three"]),
-            status=TrackStatus.DOWNLOADED,
-        ),
-    ]
-    window.set_tracks(tracks)
-    window.select_track_row(0)
-    window.set_randomize_playback(True)
-    playback = FakePlaybackService()
-    controller = ApplicationController(
-        window,
-        repository=JsonTrackRepository(data_dir=tmp_path),
-        playback_service=playback,  # type: ignore[arg-type]
-    )
-    random_candidates: list[list[tuple[int, Track]]] = []
-
-    def choose(candidates: list[tuple[int, Track]]) -> tuple[int, Track]:
-        random_candidates.append(candidates)
-        return candidates[-1]
-
-    controller._random = SimpleNamespace(choice=choose)  # type: ignore[assignment]
-
-    controller.play_selected_track()
-    controller.play_next_track()
-
-    assert playback.events == ["play:One", "play:Three"]
-    assert random_candidates == [[(1, tracks[1]), (2, tracks[2])]]
-    assert window.selected_track() == tracks[2]
-    assert "Continuing with random track: Artist - Three." in window.feedback_log.toPlainText()
 
 
 def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
     window = MainWindow()
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake mp3")
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     window.set_tracks([track])
     window.set_playing_track(track.cache_key)
     playback = FakePlaybackService()
@@ -1474,14 +1299,7 @@ def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
 
 def test_controller_pause_toggles_to_resume(qapp, tmp_path) -> None:
     window = MainWindow()
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake mp3")
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     playback = FakePlaybackService()
     playback.current_track = track
     controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
@@ -1496,15 +1314,8 @@ def test_controller_pause_toggles_to_resume(qapp, tmp_path) -> None:
 
 
 def test_playback_button_states(qapp, tmp_path) -> None:
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake mp3")
     window = MainWindow()
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     window.set_tracks([track])
     playback = FakePlaybackService()
     controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
@@ -1898,41 +1709,11 @@ def test_controller_prepares_stale_downloaded_track_again(qapp, tmp_path) -> Non
 
 def test_controller_scrobbles_at_33_percent(qapp, tmp_path) -> None:
     window = MainWindow()
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake")
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     window.set_tracks([track])
     playback = FakePlaybackService()
     playback.duration = 200_000
-    from my_lastfm_player.scrobbling import ScrobblingService
-
-    scrobbles: list[dict] = []
-
-    class FakeNetwork:
-        def get_authenticated_user(self):
-            class U:
-                def get_name(self, properly_capitalized=False):
-                    return "user"
-            return U()
-
-        def scrobble(self, **kwargs):
-            scrobbles.append(kwargs)
-
-        def update_now_playing(self, **kwargs):
-            pass
-
-    svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="sess", username="user",
-        network_factory=lambda **kw: FakeNetwork(),
-    )
-    svc.try_connect()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
-    controller._scrobbling_service = svc
+    controller, scrobbles = scrobbling_controller(window, playback)
 
     controller._play_track(track)
     controller._maybe_scrobble(65_999, 200_000)  # just below 33%
@@ -1949,41 +1730,11 @@ def test_controller_scrobbles_at_33_percent(qapp, tmp_path) -> None:
 
 def test_controller_scrobble_resets_on_seek(qapp, tmp_path) -> None:
     window = MainWindow()
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake")
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     window.set_tracks([track])
     playback = FakePlaybackService()
     playback.duration = 200_000
-    from my_lastfm_player.scrobbling import ScrobblingService
-
-    scrobbles: list[dict] = []
-
-    class FakeNetwork:
-        def get_authenticated_user(self):
-            class U:
-                def get_name(self, properly_capitalized=False):
-                    return "user"
-            return U()
-
-        def scrobble(self, **kwargs):
-            scrobbles.append(kwargs)
-
-        def update_now_playing(self, **kwargs):
-            pass
-
-    svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="sess", username="user",
-        network_factory=lambda **kw: FakeNetwork(),
-    )
-    svc.try_connect()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
-    controller._scrobbling_service = svc
+    controller, scrobbles = scrobbling_controller(window, playback)
 
     controller._play_track(track)
     # Seek to 50% — 33% threshold now requires reaching 50%+33%=83%
@@ -2000,42 +1751,12 @@ def test_controller_scrobble_resets_on_seek(qapp, tmp_path) -> None:
 
 def test_controller_scrobble_resets_on_new_track(qapp, tmp_path) -> None:
     window = MainWindow()
-    audio_path = tmp_path / "t.mp3"
-    audio_path.write_bytes(b"fake mp3")
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     window.set_tracks([track])
     playback = FakePlaybackService()
     playback.duration = 100_000
 
-    from my_lastfm_player.scrobbling import ScrobblingService
-
-    scrobbles: list[dict] = []
-
-    class FakeNetwork:
-        def get_authenticated_user(self):
-            class U:
-                def get_name(self, properly_capitalized=False):
-                    return "user"
-            return U()
-
-        def scrobble(self, **kwargs):
-            scrobbles.append(kwargs)
-
-        def update_now_playing(self, **kwargs):
-            pass
-
-    svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="sess", username="user",
-        network_factory=lambda **kw: FakeNetwork(),
-    )
-    svc.try_connect()
-    controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
-    controller._scrobbling_service = svc
+    controller, scrobbles = scrobbling_controller(window, playback)
 
     controller._play_track(track)
     controller._maybe_scrobble(33_000, 100_000)
@@ -2532,14 +2253,7 @@ def test_controller_play_prepared_track_not_yet_downloaded(qapp) -> None:
 
 def test_controller_play_prepared_track_plays_when_downloaded(qapp, tmp_path) -> None:
     window = MainWindow()
-    audio_path = tmp_path / "song.mp3"
-    audio_path.write_bytes(b"fake")
-    track = Track(
-        artist="A",
-        title="T",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path, artist="A", title="T")
     window.set_tracks([track])
     playback = FakePlaybackService()
     controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
@@ -2725,14 +2439,7 @@ def test_controller_applies_and_persists_volume_and_mute(qapp, tmp_path) -> None
 
 
 def test_controller_applies_audio_settings_when_playback_starts(qapp, tmp_path) -> None:
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake mp3")
-    track = Track(
-        artist="Artist",
-        title="Title",
-        local_path=str(audio_path),
-        status=TrackStatus.DOWNLOADED,
-    )
+    track = downloaded_track(tmp_path)
     window = MainWindow()
     window.set_tracks([track])
     window.track_table.selectRow(0)

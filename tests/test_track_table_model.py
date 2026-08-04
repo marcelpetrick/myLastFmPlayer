@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QFontMetrics, QPainter, QPixmap
+from PyQt6.QtGui import QFont, QFontMetrics, QImage, QPainter, QPixmap
 from PyQt6.QtWidgets import QApplication, QStyle, QStyleOptionViewItem
 
 from my_lastfm_player.models import Track, TrackStatus
@@ -162,16 +162,18 @@ def test_track_table_model_bolds_currently_playing_row() -> None:
     assert model.data(model.index(1, 0), Qt.ItemDataRole.FontRole) is None
 
 
-def test_elided_text_delegate_paints_selected_row(qapp) -> None:
+def render_elided_cell(state: QStyle.StateFlag) -> QImage:
+    """Paint one table cell through the delegate and return the result."""
+
     model = TrackTableModel([Track(artist="Artist", title="A very long title")])
     delegate = ElidedTextDelegate()
     pixmap = QPixmap(160, 32)
-    pixmap.fill(Qt.GlobalColor.white)
+    pixmap.fill(Qt.GlobalColor.gray)
     painter = QPainter(pixmap)
     option = QStyleOptionViewItem()
     option.rect = pixmap.rect()
     option.widget = None
-    option.state = QStyle.StateFlag.State_Selected
+    option.state = state
     option.palette = QApplication.palette()
     option.font = QApplication.font()
     option.fontMetrics = QFontMetrics(option.font)
@@ -181,7 +183,19 @@ def test_elided_text_delegate_paints_selected_row(qapp) -> None:
     finally:
         painter.end()
 
-    assert not pixmap.isNull()
+    return pixmap.toImage()
+
+
+def test_elided_text_delegate_paints_text_with_a_state_specific_pen(qapp) -> None:
+    blank = QPixmap(160, 32)
+    blank.fill(Qt.GlobalColor.gray)
+
+    selected = render_elided_cell(QStyle.StateFlag.State_Selected)
+    unselected = render_elided_cell(QStyle.StateFlag.State_Enabled)
+
+    assert selected != blank.toImage()
+    assert unselected != blank.toImage()
+    assert selected != unselected
 
 
 def test_track_table_model_retranslate_emits_header_and_data_changes() -> None:

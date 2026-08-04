@@ -58,6 +58,24 @@ def test_search_first_result_uses_ytdlp_search_and_webpage_url() -> None:
     ]
 
 
+def test_search_first_result_passes_configured_browser_cookies() -> None:
+    runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=abc"}))
+    resolver = YouTubeResolver(command_runner=runner, executable="yt-dlp-test")
+    resolver.cookies_browser = "firefox"
+
+    assert resolver.search_first_result("Artist Title") == "https://youtube.example/watch?v=abc"
+    assert runner.commands == [
+        [
+            "yt-dlp-test",
+            "--dump-single-json",
+            "--no-playlist",
+            "--cookies-from-browser",
+            "firefox",
+            "ytsearch1:Artist Title",
+        ]
+    ]
+
+
 def test_search_first_result_uses_first_entry_when_entries_are_returned() -> None:
     runner = FakeRunner(
         stdout=json.dumps(

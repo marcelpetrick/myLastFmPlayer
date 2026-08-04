@@ -66,17 +66,23 @@ class FakePlaybackBackend:
         self.muted = muted
 
 
-def test_playback_service_plays_downloaded_track(tmp_path: Path) -> None:
-    audio_path = tmp_path / "track.mp3"
-    audio_path.write_bytes(b"fake mp3")
-    backend = FakePlaybackBackend()
-    service = PlaybackService(backend=backend)
-    track = Track(
+def downloaded_track(audio_path: Path) -> Track:
+    """Return a downloaded track pointing at ``audio_path``."""
+
+    return Track(
         artist="Artist",
         title="Title",
         local_path=str(audio_path),
         status=TrackStatus.DOWNLOADED,
     )
+
+
+def test_playback_service_plays_downloaded_track(tmp_path: Path) -> None:
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
+    backend = FakePlaybackBackend()
+    service = PlaybackService(backend=backend)
+    track = downloaded_track(audio_path)
 
     playing_track = service.play(track)
 
@@ -124,12 +130,7 @@ def test_playback_service_pause_and_stop(tmp_path: Path) -> None:
     backend = FakePlaybackBackend()
     service = PlaybackService(backend=backend)
     service.play(
-        Track(
-            artist="Artist",
-            title="Title",
-            local_path=str(audio_path),
-            status=TrackStatus.DOWNLOADED,
-        )
+        downloaded_track(audio_path)
     )
 
     service.pause()
@@ -147,12 +148,7 @@ def test_playback_service_resume_and_state_transitions(tmp_path: Path) -> None:
     backend = FakePlaybackBackend()
     service = PlaybackService(backend=backend)
     service.play(
-        Track(
-            artist="Artist",
-            title="Title",
-            local_path=str(audio_path),
-            status=TrackStatus.DOWNLOADED,
-        )
+        downloaded_track(audio_path)
     )
 
     service.pause()
@@ -172,12 +168,7 @@ def test_playback_service_rejects_resume_without_paused_track(tmp_path: Path) ->
         service.resume()
 
     service.play(
-        Track(
-            artist="Artist",
-            title="Title",
-            local_path=str(audio_path),
-            status=TrackStatus.DOWNLOADED,
-        )
+        downloaded_track(audio_path)
     )
 
     with pytest.raises(PlaybackError, match="No paused track"):
@@ -199,12 +190,7 @@ def test_playback_service_finishes_current_track_without_stopping_backend(
     backend = FakePlaybackBackend()
     service = PlaybackService(backend=backend)
     service.play(
-        Track(
-            artist="Artist",
-            title="Title",
-            local_path=str(audio_path),
-            status=TrackStatus.DOWNLOADED,
-        )
+        downloaded_track(audio_path)
     )
 
     finished_track = service.finish_current()
@@ -221,12 +207,7 @@ def test_playback_service_seeks_current_track(tmp_path: Path) -> None:
     backend = FakePlaybackBackend()
     service = PlaybackService(backend=backend)
     service.play(
-        Track(
-            artist="Artist",
-            title="Title",
-            local_path=str(audio_path),
-            status=TrackStatus.DOWNLOADED,
-        )
+        downloaded_track(audio_path)
     )
 
     service.seek(42_500)
@@ -305,6 +286,7 @@ class FakeQtMediaPlayer:
         self.audio_output = None
         self.source = None
         self.play_called = False
+        self.play_count = 0
         self.pause_called = False
         self.stop_called = False
         self.position_value = -10
@@ -318,6 +300,7 @@ class FakeQtMediaPlayer:
 
     def play(self) -> None:
         self.play_called = True
+        self.play_count += 1
 
     def pause(self) -> None:
         self.pause_called = True
@@ -361,6 +344,7 @@ def test_qt_playback_backend_wraps_player_and_normalizes_values(
     backend.on_finished(lambda: finished.append(True))
     backend.play(audio_path)
     backend.pause()
+    backend.resume()
     backend.stop()
     backend.seek(-100)
     backend._notify_position_changed(-5)
@@ -371,6 +355,7 @@ def test_qt_playback_backend_wraps_player_and_normalizes_values(
     assert player.audio_output == "audio-output"
     assert player.source is not None
     assert player.play_called
+    assert player.play_count == 2  # play() and resume() both start the player
     assert player.pause_called
     assert player.stop_called
     assert player.position_value == 0

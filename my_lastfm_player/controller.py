@@ -1325,14 +1325,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 title=finished_track.title,
             )
         )
-        next_track = self._next_playback_track(finished_track.cache_key)
-        if next_track is None:
-            self._report_user_action(
-                translate("ApplicationController", "Playback finished.")
-            )
-            return
-
-        self._continue_playback_with(next_track)
+        self._continue_playback_from(finished_track.cache_key)
 
     def _continue_playback_from(self, cache_key: str) -> None:
         next_track = self._next_playback_track(cache_key)
