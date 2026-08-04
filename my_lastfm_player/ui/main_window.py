@@ -60,6 +60,8 @@ from my_lastfm_player.ui.track_table_model import (
 
 LOGGER = logging.getLogger(__name__)
 ARTIST_IMAGE_SIZE = 120
+ERROR_TEXT_COLOR = "#d64545"
+ERROR_INDICATOR_MAX_LENGTH = 80
 
 
 class TrackFilterProxyModel(QSortFilterProxyModel):
@@ -193,6 +195,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._build_actions()
         self._build_menus()
         self._build_central_widget()
+        self._build_status_bar()
         self._set_example_tracks()
         self.statusBar().showMessage(self.tr("Ready"))
         self.retranslate_ui()
@@ -468,6 +471,12 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         return panel
 
+    def _build_status_bar(self) -> None:
+        self.error_indicator_label = QLabel()
+        self.error_indicator_label.setStyleSheet(f"color: {ERROR_TEXT_COLOR};")
+        self.error_indicator_label.hide()
+        self.statusBar().addPermanentWidget(self.error_indicator_label)
+
     def _build_feedback_panel(self) -> QWidget:
         panel = QWidget()
         layout = QVBoxLayout(panel)
@@ -480,7 +489,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.progress_bar.setFormat(self.tr("Idle"))
+        self.progress_bar.setFormat(format_progress_text(self.tr("Idle")))
 
         self.clear_feedback_button = QPushButton()
         self.clear_feedback_button.clicked.connect(self.clear_feedback_log)
@@ -732,7 +741,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         bounded_value = max(0, min(100, value))
         self.progress_bar.setValue(bounded_value)
-        self.progress_bar.setFormat(label)
+        self.progress_bar.setFormat(format_progress_text(label))
         self._last_progress_label = label
         self.show_status(label)
 
@@ -742,9 +751,23 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.feedback_log.appendPlainText(format_feedback_message(message))
         self.show_status(message)
 
-    def clear_feedback_log(self) -> None:
-        """Clear the feedback log and reset its scroll bars."""
+    def append_error(self, message: str) -> None:
+        """Append ``message`` as a highlighted error and keep it visible in the status bar."""
 
+        LOGGER.error("UI error: %s", message)
+        line = escape(format_feedback_message(message))
+        self.feedback_log.appendHtml(f'<span style="color: {ERROR_TEXT_COLOR};">{line}</span>')
+        self.error_indicator_label.setText(f"⚠ {shorten_error(message)}")
+        self.error_indicator_label.setToolTip(message)
+        self.error_indicator_label.show()
+        self.show_status(message)
+
+    def clear_feedback_log(self) -> None:
+        """Clear the feedback log, the error indicator, and reset the scroll bars."""
+
+        self.error_indicator_label.clear()
+        self.error_indicator_label.setToolTip("")
+        self.error_indicator_label.hide()
         self.feedback_log.clear()
         self.feedback_log.verticalScrollBar().setValue(
             self.feedback_log.verticalScrollBar().minimum()
@@ -1019,7 +1042,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
                 self.tr("Dependencies: yt-dlp, ffmpeg, and ffprobe not checked yet")
             )
         if self._last_progress_label == "Idle":
-            self.progress_bar.setFormat(self.tr("Idle"))
+            self.progress_bar.setFormat(format_progress_text(self.tr("Idle")))
         self.set_fetch_control_state(
             active=self.fetch_pause_button.isEnabled(),
             paused=self._fetch_paused,
@@ -1049,6 +1072,21 @@ def format_feedback_message(message: str, time: QTime | None = None) -> str:
 
     timestamp = (time or QTime.currentTime()).toString("HH:mm:ss")
     return f"{timestamp}: {message}"
+
+
+def format_progress_text(label: str) -> str:
+    """Return a progress-bar format string that keeps ``label`` and shows the percentage."""
+
+    return f"{label} — %p%"
+
+
+def shorten_error(message: str, max_length: int = ERROR_INDICATOR_MAX_LENGTH) -> str:
+    """Return ``message`` collapsed to a single line, truncated to ``max_length``."""
+
+    collapsed = " ".join(message.split())
+    if len(collapsed) <= max_length:
+        return collapsed
+    return f"{collapsed[: max_length - 1].rstrip()}…"
 
 
 def format_playback_time(milliseconds: int) -> str:

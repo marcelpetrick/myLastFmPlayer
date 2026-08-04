@@ -16,11 +16,14 @@ from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.themes import ThemeMode
 from my_lastfm_player.ui import main_window as main_window_module
 from my_lastfm_player.ui.main_window import (
+    ERROR_TEXT_COLOR,
     MainWindow,
     TrackFilterProxyModel,
     application_title,
     format_feedback_message,
     format_playback_time,
+    format_progress_text,
+    shorten_error,
 )
 from my_lastfm_player.version import display_version
 
@@ -36,8 +39,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.139"
-    assert __display_version__ == "0.0.139"
+    assert __version__ == "0.0.140"
+    assert __display_version__ == "0.0.140"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -74,11 +77,11 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.139"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.140"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
-    assert window.progress_bar.format() == "Idle"
+    assert window.progress_bar.format() == "Idle — %p%"
     assert window.fetch_pause_button.text() == "Pause"
     assert window.fetch_stop_button.text() == "Stop"
     assert not window.fetch_pause_button.isEnabled()
@@ -191,7 +194,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.139\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.140\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -395,8 +398,54 @@ def test_main_window_updates_progress_and_feedback(qapp) -> None:
     window.append_feedback("Network error")
 
     assert window.progress_bar.value() == 100
-    assert window.progress_bar.format() == "Downloading"
+    assert window.progress_bar.format() == "Downloading — %p%"
     assert "Network error" in window.feedback_log.toPlainText()
+
+
+def test_main_window_marks_errors_in_the_log_and_status_bar(qapp) -> None:
+    window = MainWindow()
+
+    window.append_feedback("Routine progress")
+    window.append_error("Could not open data folder: /home/x")
+
+    document = window.feedback_log.document()
+    routine_block = document.findBlockByNumber(0)
+    error_block = document.findBlockByNumber(1)
+    routine_colors = {run.format.foreground().color().name() for run in routine_block.textFormats()}
+    error_colors = {run.format.foreground().color().name() for run in error_block.textFormats()}
+
+    assert ERROR_TEXT_COLOR not in routine_colors
+    assert error_colors == {ERROR_TEXT_COLOR}
+    assert "Could not open data folder: /home/x" in window.feedback_log.toPlainText()
+    assert not window.error_indicator_label.isHidden()
+    assert window.error_indicator_label.text() == "⚠ Could not open data folder: /home/x"
+    assert window.error_indicator_label.toolTip() == "Could not open data folder: /home/x"
+    assert window.statusBar().currentMessage() == "Could not open data folder: /home/x"
+
+
+def test_main_window_clearing_the_log_also_clears_the_error_indicator(qapp) -> None:
+    window = MainWindow()
+    window.append_error("Download failed")
+    assert window.error_indicator_label.text()
+
+    window.clear_feedback_button.click()
+
+    assert window.error_indicator_label.text() == ""
+    assert window.error_indicator_label.toolTip() == ""
+    assert window.error_indicator_label.isHidden()
+
+
+def test_progress_format_keeps_label_and_shows_percentage() -> None:
+    assert format_progress_text("Searching 3/282") == "Searching 3/282 — %p%"
+
+
+def test_error_indicator_text_is_collapsed_and_truncated() -> None:
+    assert shorten_error("short\n  message") == "short message"
+    long_message = "y" * 120
+    shortened = shorten_error(long_message)
+    assert len(shortened) == 80
+    assert shortened.endswith("…")
+    assert shorten_error("y" * 80) == "y" * 80
 
 
 def test_feedback_messages_include_timestamp_prefix() -> None:
@@ -870,7 +919,7 @@ def test_main_window_retranslate_refreshes_example_rows_and_idle_labels(qapp) ->
         window.dependency_label.text()
         == "Dependencies: yt-dlp, ffmpeg, and ffprobe not checked yet"
     )
-    assert window.progress_bar.format() == "Idle"
+    assert window.progress_bar.format() == "Idle — %p%"
     assert window.statusBar().currentMessage() == "Ready"
 
 

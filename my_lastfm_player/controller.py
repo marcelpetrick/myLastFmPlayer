@@ -295,7 +295,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             data_dir.mkdir(parents=True, exist_ok=True)
         except OSError as error:
             LOGGER.exception("Could not create data directory %s", data_dir)
-            self.window.append_feedback(
+            self.window.append_error(
                 translate(
                     "ApplicationController",
                     "Could not open data folder: {error}",
@@ -314,7 +314,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
             return
 
-        self.window.append_feedback(
+        self.window.append_error(
             translate(
                 "ApplicationController",
                 "Could not open data folder: {path}",
@@ -326,7 +326,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         """Open an artist Last.fm page in a Firefox private window."""
 
         if not _open_firefox_private_window(url):
-            self.window.append_feedback(
+            self.window.append_error(
                 translate(
                     "ApplicationController",
                     "Could not open artist page: {url}",
@@ -652,7 +652,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             try:
                 self.playback_service.resume()
             except PlaybackError as error:
-                self.window.append_feedback(str(error))
+                self.window.append_error(str(error))
                 return
             self._report_user_action(
                 translate("ApplicationController", "Playback resumed.")
@@ -661,7 +661,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             try:
                 self.playback_service.pause()
             except PlaybackError as error:
-                self.window.append_feedback(str(error))
+                self.window.append_error(str(error))
                 return
             self._report_user_action(
                 translate("ApplicationController", "Playback paused.")
@@ -704,7 +704,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         try:
             self.playback_service.seek(position_ms)
         except PlaybackError as error:
-            self.window.append_feedback(str(error))
+            self.window.append_error(str(error))
             return
         self._scrobble_submitted = False
         self._scrobble_seek_start_ms = position_ms
@@ -992,7 +992,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
 
     def _handle_worker_error(self, message: str) -> None:
         LOGGER.error("Worker error: %s", message)
-        self.window.append_feedback(message)
+        self.window.append_error(message)
         self.window.set_progress(0, translate("ApplicationController", "Failed"))
 
     def _update_track_by_cache_key(self, track: Track) -> None:
@@ -1014,7 +1014,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         try:
             self.playback_service.play(track)
         except PlaybackError as error:
-            self.window.append_feedback(str(error))
+            self.window.append_error(str(error))
             return
 
         self.window.set_playing_track(track.cache_key)

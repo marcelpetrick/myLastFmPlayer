@@ -1679,7 +1679,7 @@ def test_controller_handles_invalid_worker_payloads(qapp) -> None:
     assert "invalid partial data" in feedback
     assert "invalid track update" in feedback
     assert "boom" in feedback
-    assert window.progress_bar.format() == "Failed"
+    assert window.progress_bar.format() == "Failed — %p%"
 
 
 def test_controller_handles_downloaded_tracks_and_pending_play(qapp, tmp_path) -> None:
