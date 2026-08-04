@@ -6,7 +6,15 @@ from collections.abc import Callable
 from html import escape
 
 from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
-from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMouseEvent, QPixmap, QResizeEvent
+from PyQt6.QtGui import (
+    QAction,
+    QActionGroup,
+    QCloseEvent,
+    QKeySequence,
+    QMouseEvent,
+    QPixmap,
+    QResizeEvent,
+)
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -196,6 +204,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
     def _build_actions(self) -> None:
         self.refresh_action = QAction(self)
+        self.refresh_action.setShortcut(QKeySequence.StandardKey.Refresh)
         self.refresh_action.triggered.connect(self.fetch_requested.emit)
 
         self.preferences_action = QAction(self)
@@ -260,6 +269,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.theme_menu.addAction(self.theme_mint_action)
 
         self.main_menu = QMenu(self)
+        self.main_menu.addAction(self.refresh_action)
+        self.main_menu.addSeparator()
         self.main_menu.addMenu(self.theme_menu)
         self.main_menu.addAction(self.preferences_action)
         self.main_menu.addAction(self.file_cache_action)

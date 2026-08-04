@@ -6,7 +6,7 @@ import types
 
 import pytest
 from PyQt6.QtCore import QBuffer, QByteArray, QEvent, QIODevice, QModelIndex, QPointF, Qt, QTime
-from PyQt6.QtGui import QColor, QMouseEvent, QPixmap, QStandardItemModel
+from PyQt6.QtGui import QColor, QKeySequence, QMouseEvent, QPixmap, QStandardItemModel
 from PyQt6.QtWidgets import QSizePolicy
 
 from my_lastfm_player import __display_version__, __version__
@@ -36,8 +36,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.138"
-    assert __display_version__ == "0.0.138"
+    assert __version__ == "0.0.139"
+    assert __display_version__ == "0.0.139"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -74,7 +74,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.138"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.139"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 2
@@ -191,7 +191,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.138\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.139\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -465,12 +465,28 @@ def test_main_window_has_main_menu_actions_in_requested_order(qapp) -> None:
     window = MainWindow()
 
     assert window.main_menu.title() == "Main"
-    assert [action.text() for action in window.main_menu.actions()] == [
+    assert [
+        action.text() for action in window.main_menu.actions() if not action.isSeparator()
+    ] == [
+        "Fetch loved tracks",
         "Theme",
         "Preferences",
         "Open data folder in file manager",
         "Quit",
     ]
+
+
+def test_main_window_fetch_action_is_reachable_from_the_main_menu(qapp) -> None:
+    window = MainWindow()
+    emissions: list[bool] = []
+    window.fetch_requested.connect(lambda: emissions.append(True))
+
+    assert window.refresh_action in window.main_menu.actions()
+    assert window.refresh_action.shortcut() == QKeySequence(QKeySequence.StandardKey.Refresh)
+
+    window.main_menu.actions()[0].trigger()
+
+    assert emissions == [True]
 
 
 def test_main_window_file_cache_menu_action_emits_request(qapp) -> None:
