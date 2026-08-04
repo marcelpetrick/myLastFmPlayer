@@ -746,6 +746,10 @@
         <translation>筛选</translation>
     </message>
     <message>
+        <source>Enter your Last.fm username and press Fetch to load your loved tracks.</source>
+        <translation>请输入您的 Last.fm 用户名并点击「获取」以加载喜爱曲目。</translation>
+    </message>
+    <message>
         <location filename="../ui/main_window.py" line="970" />
         <source>Artist or track title</source>
         <translation>艺术家或曲名</translation>
@@ -1015,26 +1019,6 @@ Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
         <location filename="../ui/track_table_model.py" line="102" />
         <source>File</source>
         <translation>文件</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="195" />
-        <source>Example Artist</source>
-        <translation>示例艺术家</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="196" />
-        <source>Example Track</source>
-        <translation>示例曲目</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="200" />
-        <source>Another Artist</source>
-        <translation>另一位艺术家</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="201" />
-        <source>Waiting for implementation</source>
-        <translation>等待处理</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="210" />

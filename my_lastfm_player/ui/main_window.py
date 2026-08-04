@@ -54,7 +54,6 @@ from my_lastfm_player.ui.icons import (
 from my_lastfm_player.ui.track_table_model import (
     ElidedTextDelegate,
     TrackTableModel,
-    example_tracks,
     translated_track_status,
 )
 
@@ -186,7 +185,6 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._last_status_message = "Ready"
         self._playback_duration_ms = 0
         self._track_count = 0
-        self._showing_example_tracks = False
         self._now_playing_idle = True
         self._artist_title_name: str | None = None
         self.set_application_title(__display_version__)
@@ -196,7 +194,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._build_menus()
         self._build_central_widget()
         self._build_status_bar()
-        self._set_example_tracks()
+        self._update_track_count_label()
         self.statusBar().showMessage(self.tr("Ready"))
         self.retranslate_ui()
 
@@ -356,6 +354,10 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         filter_layout.addWidget(self.track_filter_input, stretch=1)
         filter_layout.addWidget(self.track_filter_reset_button)
 
+        self.empty_state_label = QLabel()
+        self.empty_state_label.setWordWrap(True)
+        self.empty_state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         self.track_model = TrackTableModel()
         self.track_sort_model = TrackFilterProxyModel(self)
         self.track_sort_model.setSourceModel(self.track_model)
@@ -383,6 +385,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
 
         layout.addLayout(filter_layout)
+        layout.addWidget(self.empty_state_label)
         layout.addWidget(self.track_table, stretch=1)
         return panel
 
@@ -510,22 +513,15 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         self.track_model.set_tracks(tracks)
         self._track_count = len(tracks)
-        self._showing_example_tracks = False
         self._update_track_count_label()
         LOGGER.info("Table now contains %d tracks", len(tracks))
         self.show_status(self.tr("Loaded {count} tracks").format(count=len(tracks)))
-
-    def _set_example_tracks(self) -> None:
-        tracks = example_tracks()
-        self.track_model.set_tracks(tracks)
-        self._track_count = len(tracks)
-        self._showing_example_tracks = True
-        self._update_track_count_label()
 
     def _update_track_count_label(self) -> None:
         self.track_count_label.setText(
             self.tr("Playlist: {count} titles").format(count=self._track_count)
         )
+        self.empty_state_label.setVisible(self._track_count == 0)
 
     def username(self) -> str:
         """Return the trimmed Last.fm username currently entered by the user."""
@@ -1018,6 +1014,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.track_filter_label.setText(self.tr("Filter"))
         self.track_filter_input.setPlaceholderText(self.tr("Artist or track title"))
         self.track_filter_reset_button.setText(self.tr("Reset"))
+        self.empty_state_label.setText(
+            self.tr("Enter your Last.fm username and press Fetch to load your loved tracks.")
+        )
         self.playback_group.setTitle(self.tr("Playback"))
         if self._now_playing_idle:
             self.now_playing_label.setText(self.tr("Not playing"))
@@ -1035,8 +1034,6 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             self.tr("Status updates and errors will appear here.")
         )
         self._update_track_count_label()
-        if self._showing_example_tracks:
-            self._set_example_tracks()
         if not self.dependency_label.text():
             self.dependency_label.setText(
                 self.tr("Dependencies: yt-dlp, ffmpeg, and ffprobe not checked yet")

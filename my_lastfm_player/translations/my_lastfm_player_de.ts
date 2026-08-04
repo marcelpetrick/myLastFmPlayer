@@ -746,6 +746,10 @@
         <translation>Filter</translation>
     </message>
     <message>
+        <source>Enter your Last.fm username and press Fetch to load your loved tracks.</source>
+        <translation>Geben Sie Ihren Last.fm-Benutzernamen ein und klicken Sie auf «Abrufen», um Ihre favorisierten Titel zu laden.</translation>
+    </message>
+    <message>
         <location filename="../ui/main_window.py" line="970" />
         <source>Artist or track title</source>
         <translation>Künstler oder Songtitel</translation>
@@ -1015,26 +1019,6 @@ Legen Sie die Umgebungsvariablen LASTFM_API_KEY und LASTFM_API_SECRET fest.</tra
         <location filename="../ui/track_table_model.py" line="102" />
         <source>File</source>
         <translation>Datei</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="195" />
-        <source>Example Artist</source>
-        <translation>Beispielkünstler</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="196" />
-        <source>Example Track</source>
-        <translation>Beispieltitel</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="200" />
-        <source>Another Artist</source>
-        <translation>Ein anderer Künstler</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="201" />
-        <source>Waiting for implementation</source>
-        <translation>Wartet auf Verarbeitung</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="210" />

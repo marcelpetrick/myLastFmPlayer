@@ -8,7 +8,7 @@
 
 **Note: projected is generated with AI.**
 
-Current version: `0.0.140` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.141` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 

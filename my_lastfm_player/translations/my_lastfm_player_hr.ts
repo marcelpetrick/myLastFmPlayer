@@ -746,6 +746,10 @@
         <translation>Filtar</translation>
     </message>
     <message>
+        <source>Enter your Last.fm username and press Fetch to load your loved tracks.</source>
+        <translation>Unesite svoje korisničko ime za Last.fm i pritisnite «Dohvati» za učitavanje omiljenih pjesama.</translation>
+    </message>
+    <message>
         <location filename="../ui/main_window.py" line="970" />
         <source>Artist or track title</source>
         <translation>Izvođač ili naslov pjesme</translation>
@@ -1015,26 +1019,6 @@ Postavite varijable okoline LASTFM_API_KEY i LASTFM_API_SECRET.</translation>
         <location filename="../ui/track_table_model.py" line="102" />
         <source>File</source>
         <translation>Datoteka</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="195" />
-        <source>Example Artist</source>
-        <translation>Primjer izvođača</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="196" />
-        <source>Example Track</source>
-        <translation>Primjer pjesme</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="200" />
-        <source>Another Artist</source>
-        <translation>Drugi izvođač</translation>
-    </message>
-    <message>
-        <location filename="../ui/track_table_model.py" line="201" />
-        <source>Waiting for implementation</source>
-        <translation>Čeka obradu</translation>
     </message>
     <message>
         <location filename="../ui/track_table_model.py" line="210" />

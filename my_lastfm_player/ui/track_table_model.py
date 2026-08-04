@@ -187,23 +187,6 @@ class TrackTableModel(QAbstractTableModel):
             self.dataChanged.emit(top_left, bottom_right, [Qt.ItemDataRole.DisplayRole])
 
 
-def example_tracks() -> list[Track]:
-    """Return placeholder tracks used before real data is loaded."""
-
-    return [
-        Track(
-            artist=QCoreApplication.translate("TrackTableModel", "Example Artist"),
-            title=QCoreApplication.translate("TrackTableModel", "Example Track"),
-            status=TrackStatus.FETCHED,
-        ),
-        Track(
-            artist=QCoreApplication.translate("TrackTableModel", "Another Artist"),
-            title=QCoreApplication.translate("TrackTableModel", "Waiting for implementation"),
-            status=TrackStatus.QUEUED,
-        ),
-    ]
-
-
 def translated_track_status(status: TrackStatus) -> str:
     match status:
         case TrackStatus.FETCHED:

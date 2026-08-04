@@ -9,7 +9,6 @@ from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.ui.track_table_model import (
     ElidedTextDelegate,
     TrackTableModel,
-    example_tracks,
     translated_track_status,
 )
 
@@ -132,12 +131,6 @@ def test_track_table_model_rejects_out_of_range_updates() -> None:
 
     with pytest.raises(IndexError, match="out of range"):
         model.update_track(0, Track(artist="Artist", title="Title"))
-
-
-def test_example_tracks_match_mvp_shell() -> None:
-    tracks = example_tracks()
-
-    assert [track.status for track in tracks] == [TrackStatus.FETCHED, TrackStatus.QUEUED]
 
 
 def test_track_table_model_bolds_currently_playing_row() -> None:

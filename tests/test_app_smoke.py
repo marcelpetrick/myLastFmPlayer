@@ -5,7 +5,17 @@ import sys
 import types
 
 import pytest
-from PyQt6.QtCore import QBuffer, QByteArray, QEvent, QIODevice, QModelIndex, QPointF, Qt, QTime
+from PyQt6.QtCore import (
+    QBuffer,
+    QByteArray,
+    QEvent,
+    QIODevice,
+    QModelIndex,
+    QPoint,
+    QPointF,
+    Qt,
+    QTime,
+)
 from PyQt6.QtGui import QColor, QKeySequence, QMouseEvent, QPixmap, QStandardItemModel
 from PyQt6.QtWidgets import QSizePolicy
 
@@ -39,8 +49,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.140"
-    assert __display_version__ == "0.0.140"
+    assert __version__ == "0.0.141"
+    assert __display_version__ == "0.0.141"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -77,10 +87,10 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.140"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.141"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
-    assert window.track_model.rowCount() == 2
+    assert window.track_model.rowCount() == 0
     assert window.progress_bar.format() == "Idle — %p%"
     assert window.fetch_pause_button.text() == "Pause"
     assert window.fetch_stop_button.text() == "Stop"
@@ -194,7 +204,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.140\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.141\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
@@ -400,6 +410,24 @@ def test_main_window_updates_progress_and_feedback(qapp) -> None:
     assert window.progress_bar.value() == 100
     assert window.progress_bar.format() == "Downloading — %p%"
     assert "Network error" in window.feedback_log.toPlainText()
+
+
+def test_main_window_starts_empty_and_hides_the_hint_once_tracks_load(qapp) -> None:
+    window = MainWindow()
+    window.show()
+
+    assert window.track_model.rowCount() == 0
+    assert window.track_count_label.text() == "Playlist: 0 titles"
+    assert window.empty_state_label.isVisible()
+
+    window.set_tracks([Track(artist="Artist", title="Title")])
+
+    assert not window.empty_state_label.isVisible()
+    assert window.track_count_label.text() == "Playlist: 1 titles"
+
+    window.set_tracks([])
+
+    assert window.empty_state_label.isVisible()
 
 
 def test_main_window_marks_errors_in_the_log_and_status_bar(qapp) -> None:
@@ -905,7 +933,7 @@ def test_main_window_set_language_updates_manager_actions_and_visible_text(qapp)
     window.set_language("en")
 
 
-def test_main_window_retranslate_refreshes_example_rows_and_idle_labels(qapp) -> None:
+def test_main_window_retranslate_refreshes_empty_state_and_idle_labels(qapp) -> None:
     TranslationManager(qapp).set_language("en")
     window = MainWindow()
     window.dependency_label.clear()
@@ -914,7 +942,10 @@ def test_main_window_retranslate_refreshes_example_rows_and_idle_labels(qapp) ->
 
     window.retranslate_ui()
 
-    assert window.track_model.rowCount() == 2
+    assert window.track_model.rowCount() == 0
+    assert window.empty_state_label.text() == (
+        "Enter your Last.fm username and press Fetch to load your loved tracks."
+    )
     assert (
         window.dependency_label.text()
         == "Dependencies: yt-dlp, ffmpeg, and ffprobe not checked yet"
@@ -925,6 +956,7 @@ def test_main_window_retranslate_refreshes_example_rows_and_idle_labels(qapp) ->
 
 def test_main_window_context_menu_emits_retry_for_track(qapp, monkeypatch) -> None:
     window = MainWindow()
+    window.set_tracks([Track(artist="Artist", title="Title", status=TrackStatus.FAILED)])
     retries: list[str] = []
     window.retry_download_requested.connect(retries.append)
     index = window.track_sort_model.index(0, 0)
@@ -939,6 +971,28 @@ def test_main_window_context_menu_emits_retry_for_track(qapp, monkeypatch) -> No
     window._show_track_context_menu(pos)
 
     assert retries == [window.track_model.track_at(0).cache_key]
+
+
+def test_main_window_context_menu_ignores_clicks_outside_any_row(qapp, monkeypatch) -> None:
+    window = MainWindow()
+    retries: list[str] = []
+    window.retry_download_requested.connect(retries.append)
+    monkeypatch.setattr(
+        main_window_module.QMenu,
+        "exec",
+        lambda self, _global_pos: self.actions()[0],
+    )
+
+    window._show_track_context_menu(QPoint(5, 5))
+
+    assert retries == []
+
+
+def test_main_window_next_track_after_unknown_key_without_filter_returns_none(qapp) -> None:
+    window = MainWindow()
+    window.set_tracks([Track(artist="Artist", title="Title")])
+
+    assert window.next_track_after("missing-cache-key") is None
 
 
 def test_main_window_selection_and_random_fallbacks(qapp) -> None:
