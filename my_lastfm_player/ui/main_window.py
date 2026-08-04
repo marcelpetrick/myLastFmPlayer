@@ -43,6 +43,7 @@ from PyQt6.QtWidgets import (
 from my_lastfm_player import __display_version__
 from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track, TrackStatus
+from my_lastfm_player.playback import MAX_VOLUME_PERCENT, MIN_VOLUME_PERCENT
 from my_lastfm_player.ui.flags import flag_icon
 from my_lastfm_player.ui.icons import (
     folder_icon,
@@ -172,6 +173,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
     language_changed = pyqtSignal()
     theme_requested = pyqtSignal(str)
     randomize_playback_changed = pyqtSignal(bool)
+    volume_changed = pyqtSignal(int)
+    mute_toggled = pyqtSignal(bool)
     preferences_requested = pyqtSignal()
     file_cache_requested = pyqtSignal()
     quit_requested = pyqtSignal()
@@ -456,9 +459,22 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.now_playing_label = QLabel()
         self.now_playing_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        volume_layout = QHBoxLayout()
+        self.volume_label = QLabel()
+        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.volume_slider.setRange(MIN_VOLUME_PERCENT, MAX_VOLUME_PERCENT)
+        self.volume_slider.setValue(MAX_VOLUME_PERCENT)
+        self.volume_slider.valueChanged.connect(self.volume_changed.emit)
+        self.mute_checkbox = QCheckBox()
+        self.mute_checkbox.toggled.connect(self.mute_toggled.emit)
+        volume_layout.addWidget(self.volume_label)
+        volume_layout.addWidget(self.volume_slider, stretch=1)
+        volume_layout.addWidget(self.mute_checkbox)
+
         playback_layout.addWidget(self.now_playing_label)
         playback_layout.addLayout(playback_button_layout)
         playback_layout.addLayout(playback_timeline_layout)
+        playback_layout.addLayout(volume_layout)
         playback_layout.addWidget(self.randomize_checkbox)
 
         self.artist_image_group = QGroupBox()
@@ -668,6 +684,30 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.randomize_checkbox.blockSignals(True)
         self.randomize_checkbox.setChecked(enabled)
         self.randomize_checkbox.blockSignals(False)
+
+    def volume_percent(self) -> int:
+        """Return the volume percentage currently selected in the UI."""
+
+        return self.volume_slider.value()
+
+    def set_volume_percent(self, volume_percent: int) -> None:
+        """Set the volume slider without emitting persistence signals."""
+
+        self.volume_slider.blockSignals(True)
+        self.volume_slider.setValue(volume_percent)
+        self.volume_slider.blockSignals(False)
+
+    def is_muted(self) -> bool:
+        """Return whether the mute toggle is active."""
+
+        return self.mute_checkbox.isChecked()
+
+    def set_muted(self, muted: bool) -> None:
+        """Set the mute toggle without emitting persistence signals."""
+
+        self.mute_checkbox.blockSignals(True)
+        self.mute_checkbox.setChecked(muted)
+        self.mute_checkbox.blockSignals(False)
 
     def select_track_row(self, source_row: int) -> None:
         """Select ``source_row`` in the table while respecting the active sort order."""
@@ -1024,6 +1064,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.pause_button.setText(self.tr("Pause"))
         self.stop_button.setText(self.tr("Stop"))
         self.next_button.setText(self.tr("Next"))
+        self.volume_label.setText(self.tr("Volume"))
+        self.volume_slider.setToolTip(self.tr("Volume"))
+        self.mute_checkbox.setText(self.tr("Mute"))
         self.randomize_checkbox.setText(self.tr("Randomize"))
         self._set_artist_title(self._artist_title_name)
         self.artist_image_label.setToolTip(self.tr("Open artist page on Last.fm"))

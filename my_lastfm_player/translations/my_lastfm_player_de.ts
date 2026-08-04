@@ -775,6 +775,14 @@
         <translation>Weiter</translation>
     </message>
     <message>
+        <source>Volume</source>
+        <translation>Lautstärke</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Stumm</translation>
+    </message>
+    <message>
         <location filename="../ui/main_window.py" line="979" />
         <source>Randomize</source>
         <translation>Zufallswiedergabe</translation>

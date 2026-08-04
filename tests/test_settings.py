@@ -6,13 +6,16 @@ from PyQt6.QtCore import QSettings
 
 from my_lastfm_player.settings import (
     DEFAULT_DOWNLOAD_CONCURRENCY,
+    DEFAULT_VOLUME_PERCENT,
     DOWNLOAD_CONCURRENCY_KEY,
     KEEP_DATA_ON_QUIT_KEY,
     LANGUAGE_KEY,
     MAX_DOWNLOAD_CONCURRENCY,
     MIN_DOWNLOAD_CONCURRENCY,
+    MUTED_KEY,
     RANDOMIZE_PLAYBACK_KEY,
     THEME_KEY,
+    VOLUME_KEY,
     AppSettings,
 )
 from my_lastfm_player.themes import ThemeMode
@@ -138,3 +141,34 @@ def test_download_concurrency_uses_default_for_invalid_raw_value(tmp_path: Path)
     raw.setValue(DOWNLOAD_CONCURRENCY_KEY, "many")
 
     assert AppSettings(raw).download_concurrency() == DEFAULT_DOWNLOAD_CONCURRENCY
+
+
+def test_settings_persist_volume_and_mute(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    settings = AppSettings(_ini_settings(path))
+
+    assert settings.volume_percent() == DEFAULT_VOLUME_PERCENT
+    assert not settings.muted()
+
+    settings.set_volume_percent(42)
+    settings.set_muted(True)
+
+    reloaded = AppSettings(_ini_settings(path))
+    assert reloaded.volume_percent() == 42
+    assert reloaded.muted()
+    assert reloaded._settings.value(VOLUME_KEY, type=int) == 42
+    assert reloaded._settings.value(MUTED_KEY, type=bool)
+
+
+def test_settings_clamp_volume_and_survive_invalid_values(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    settings = AppSettings(_ini_settings(path))
+
+    settings.set_volume_percent(500)
+    assert settings.volume_percent() == 100
+
+    settings.set_volume_percent(-5)
+    assert settings.volume_percent() == 0
+
+    settings._settings.setValue(VOLUME_KEY, "loud")
+    assert settings.volume_percent() == DEFAULT_VOLUME_PERCENT

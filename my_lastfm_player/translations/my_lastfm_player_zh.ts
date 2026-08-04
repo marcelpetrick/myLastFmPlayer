@@ -775,6 +775,14 @@
         <translation>下一首</translation>
     </message>
     <message>
+        <source>Volume</source>
+        <translation>音量</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>静音</translation>
+    </message>
+    <message>
         <location filename="../ui/main_window.py" line="979" />
         <source>Randomize</source>
         <translation>随机播放</translation>

@@ -5,6 +5,7 @@ from __future__ import annotations
 from PyQt6.QtCore import QSettings
 
 from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, language_by_code
+from my_lastfm_player.playback import clamp_volume
 from my_lastfm_player.themes import ThemeMode
 
 THEME_KEY = "appearance/theme"
@@ -14,6 +15,10 @@ YTDLP_BROWSER_KEY = "download/cookiesbrowser"
 DOWNLOAD_CONCURRENCY_KEY = "download/concurrency"
 KEEP_DATA_ON_QUIT_KEY = "privacy/keepdataonquit"
 RANDOMIZE_PLAYBACK_KEY = "playback/randomize"
+VOLUME_KEY = "playback/volume"
+MUTED_KEY = "playback/muted"
+
+DEFAULT_VOLUME_PERCENT = 100
 
 YTDLP_BROWSER_CHOICES = ["", "firefox", "chromium", "chrome", "brave"]
 DEFAULT_DOWNLOAD_CONCURRENCY = 2
@@ -110,6 +115,34 @@ class AppSettings:
         """Persist whether playback should continue with a random track."""
 
         self._settings.setValue(RANDOMIZE_PLAYBACK_KEY, enabled)
+
+
+    def volume_percent(self) -> int:
+        """Return the persisted playback volume as a 0-100 percentage."""
+
+        return clamp_volume(_as_int(self._settings.value(VOLUME_KEY, DEFAULT_VOLUME_PERCENT)))
+
+    def set_volume_percent(self, volume_percent: int) -> None:
+        """Persist the playback volume percentage."""
+
+        self._settings.setValue(VOLUME_KEY, clamp_volume(volume_percent))
+
+    def muted(self) -> bool:
+        """Return True when playback should start muted."""
+
+        return bool(self._settings.value(MUTED_KEY, False, bool))
+
+    def set_muted(self, muted: bool) -> None:
+        """Persist whether playback is muted."""
+
+        self._settings.setValue(MUTED_KEY, muted)
+
+
+def _as_int(value: object) -> int:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return DEFAULT_VOLUME_PERCENT
 
 
 def _clamp_download_concurrency(value: object) -> int:

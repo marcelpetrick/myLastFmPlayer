@@ -143,6 +143,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.window.artist_page_requested.connect(self.open_artist_page)
         self.window.language_changed.connect(self.check_dependencies)
         self.window.randomize_playback_changed.connect(AppSettings().set_randomize_playback)
+        self.window.volume_changed.connect(self.set_volume)
+        self.window.mute_toggled.connect(self.set_muted)
         self.window.preferences_requested.connect(self._show_preferences)
         self.window.file_cache_requested.connect(self.open_file_cache)
         self.window.quit_requested.connect(self._handle_quit)
@@ -686,6 +688,22 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._playback_start_time = None
         self._report_user_action(translate("ApplicationController", "Playback stopped."))
 
+    def set_volume(self, volume_percent: int) -> None:
+        """Apply and persist the playback volume."""
+
+        self.playback_service.set_volume(volume_percent)
+        AppSettings().set_volume_percent(volume_percent)
+
+    def set_muted(self, muted: bool) -> None:
+        """Apply and persist the mute state."""
+
+        self.playback_service.set_muted(muted)
+        AppSettings().set_muted(muted)
+
+    def _apply_audio_settings(self) -> None:
+        self.playback_service.set_volume(self.window.volume_percent())
+        self.playback_service.set_muted(self.window.is_muted())
+
     def play_next_track(self) -> None:
         """Skip active playback to the next track using normal continuation rules."""
 
@@ -1017,6 +1035,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self.window.append_error(str(error))
             return
 
+        self._apply_audio_settings()
         self.window.set_playing_track(track.cache_key)
         self.window.set_now_playing(track)
         self.window.set_playback_controls(active=True)

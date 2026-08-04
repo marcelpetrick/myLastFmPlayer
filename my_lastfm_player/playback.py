@@ -6,12 +6,14 @@ from pathlib import Path
 from typing import Protocol
 
 from PyQt6.QtCore import QUrl
-from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PyQt6.QtMultimedia import QAudio, QAudioOutput, QMediaPlayer
 
 from my_lastfm_player.models import Track, TrackStatus
 
 LOGGER = logging.getLogger(__name__)
 _END_OF_MEDIA_STATUS = QMediaPlayer.MediaStatus.EndOfMedia
+MIN_VOLUME_PERCENT = 0
+MAX_VOLUME_PERCENT = 100
 
 
 class PlaybackError(RuntimeError):
@@ -68,6 +70,16 @@ class PlaybackBackend(Protocol):
 
     def on_finished(self, callback: Callable[[], None]) -> None:
         """Register ``callback`` for normal playback completion."""
+
+        ...
+
+    def set_volume(self, volume_percent: int) -> None:
+        """Set the output volume from a 0-100 percentage."""
+
+        ...
+
+    def set_muted(self, muted: bool) -> None:
+        """Mute or unmute the audio output."""
 
         ...
 
@@ -136,6 +148,16 @@ class QtPlaybackBackend:
         """Register ``callback`` for Qt end-of-media notifications."""
 
         self._finished_callbacks.append(callback)
+
+    def set_volume(self, volume_percent: int) -> None:
+        """Apply ``volume_percent`` to the audio output on a perceptual scale."""
+
+        self.audio_output.setVolume(linear_volume(volume_percent))
+
+    def set_muted(self, muted: bool) -> None:
+        """Mute or unmute the Qt audio output."""
+
+        self.audio_output.setMuted(muted)
 
     def _notify_position_changed(self, position_ms: int) -> None:
         for callback in self._position_callbacks:
@@ -261,6 +283,32 @@ class PlaybackService:
         """Register ``callback`` for normal playback completion."""
 
         self.backend.on_finished(callback)
+
+    def set_volume(self, volume_percent: int) -> None:
+        """Set the output volume from a 0-100 percentage."""
+
+        self.backend.set_volume(clamp_volume(volume_percent))
+
+    def set_muted(self, muted: bool) -> None:
+        """Mute or unmute playback."""
+
+        self.backend.set_muted(muted)
+
+
+def clamp_volume(volume_percent: int) -> int:
+    """Return ``volume_percent`` bounded to the 0-100 range."""
+
+    return max(MIN_VOLUME_PERCENT, min(MAX_VOLUME_PERCENT, volume_percent))
+
+
+def linear_volume(volume_percent: int) -> float:
+    """Convert a 0-100 slider percentage into a linear audio amplitude."""
+
+    return QAudio.convertVolume(
+        clamp_volume(volume_percent) / MAX_VOLUME_PERCENT,
+        QAudio.VolumeScale.LogarithmicVolumeScale,
+        QAudio.VolumeScale.LinearVolumeScale,
+    )
 
 
 def _validated_local_path(track: Track) -> Path:

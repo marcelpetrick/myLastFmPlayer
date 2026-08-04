@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSettings, Qt
 
 from my_lastfm_player import controller as controller_module
 from my_lastfm_player.app_credentials import LastFmApiCredentials
@@ -12,6 +12,7 @@ from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.dependencies import DependencyCheckResult
 from my_lastfm_player.lastfm import ArtistImage
 from my_lastfm_player.models import Track, TrackStatus
+from my_lastfm_player.settings import AppSettings
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import LookupTracksWorker
@@ -837,6 +838,8 @@ class FakePlaybackService:
         self.fail_pause = False
         self.fail_seek = False
         self._paused = False
+        self.volume_percent: int | None = None
+        self.muted: bool | None = None
 
     def play(self, track: Track) -> Track:
         self.events.append(f"play:{track.title}")
@@ -892,6 +895,12 @@ class FakePlaybackService:
 
     def on_finished(self, callback) -> None:
         self.finished_callback = callback
+
+    def set_volume(self, volume_percent: int) -> None:
+        self.volume_percent = volume_percent
+
+    def set_muted(self, muted: bool) -> None:
+        self.muted = muted
 
 
 def test_controller_plays_selected_downloaded_track(qapp, tmp_path) -> None:
@@ -2692,3 +2701,50 @@ def test_controller_handle_playback_finished_reports_done_when_no_next(qapp, tmp
     log = window.feedback_log.toPlainText()
     assert "Finished playback for Artist - Title." in log
     assert "Playback finished." in log
+
+
+def test_controller_applies_and_persists_volume_and_mute(qapp, tmp_path) -> None:
+    window = MainWindow()
+    playback = FakePlaybackService()
+    settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+    )
+    controller.window.volume_changed.connect(controller.set_volume)
+    controller.window.mute_toggled.connect(controller.set_muted)
+
+    with patch.object(controller_module, "AppSettings", lambda: AppSettings(settings)):
+        window.volume_slider.setValue(30)
+        window.mute_checkbox.setChecked(True)
+
+    assert playback.volume_percent == 30
+    assert playback.muted is True
+    assert AppSettings(settings).volume_percent() == 30
+    assert AppSettings(settings).muted()
+
+
+def test_controller_applies_audio_settings_when_playback_starts(qapp, tmp_path) -> None:
+    audio_path = tmp_path / "track.mp3"
+    audio_path.write_bytes(b"fake mp3")
+    track = Track(
+        artist="Artist",
+        title="Title",
+        local_path=str(audio_path),
+        status=TrackStatus.DOWNLOADED,
+    )
+    window = MainWindow()
+    window.set_tracks([track])
+    window.track_table.selectRow(0)
+    window.set_volume_percent(70)
+    window.set_muted(True)
+    playback = FakePlaybackService()
+    controller = ApplicationController(
+        window,
+        playback_service=playback,  # type: ignore[arg-type]
+    )
+
+    controller.play_selected_track()
+
+    assert playback.volume_percent == 70
+    assert playback.muted is True

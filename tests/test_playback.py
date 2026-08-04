@@ -7,7 +7,14 @@ import pytest
 
 from my_lastfm_player import playback as playback_module
 from my_lastfm_player.models import Track, TrackStatus
-from my_lastfm_player.playback import PlaybackError, PlaybackService, QtPlaybackBackend
+from my_lastfm_player.playback import (
+    MAX_VOLUME_PERCENT,
+    PlaybackError,
+    PlaybackService,
+    QtPlaybackBackend,
+    clamp_volume,
+    linear_volume,
+)
 
 
 class FakePlaybackBackend:
@@ -15,6 +22,8 @@ class FakePlaybackBackend:
         self.events: list[tuple[str, Path | None]] = []
         self.position = 0
         self.duration = 180_000
+        self.volume_percent: int | None = None
+        self.muted: bool | None = None
         self.position_callbacks: list[Callable[[int], None]] = []
         self.duration_callbacks: list[Callable[[int], None]] = []
         self.finished_callbacks: list[Callable[[], None]] = []
@@ -49,6 +58,12 @@ class FakePlaybackBackend:
 
     def on_finished(self, callback: Callable[[], None]) -> None:
         self.finished_callbacks.append(callback)
+
+    def set_volume(self, volume_percent: int) -> None:
+        self.volume_percent = volume_percent
+
+    def set_muted(self, muted: bool) -> None:
+        self.muted = muted
 
 
 def test_playback_service_plays_downloaded_track(tmp_path: Path) -> None:
@@ -364,3 +379,34 @@ def test_qt_playback_backend_wraps_player_and_normalizes_values(
     assert positions == [0]
     assert durations == [0]
     assert finished == [True]
+
+
+def test_playback_service_clamps_volume_and_forwards_mute() -> None:
+    backend = FakePlaybackBackend()
+    service = PlaybackService(backend=backend)
+
+    service.set_volume(140)
+    assert backend.volume_percent == MAX_VOLUME_PERCENT
+
+    service.set_volume(-10)
+    assert backend.volume_percent == 0
+
+    service.set_muted(True)
+    assert backend.muted is True
+
+
+def test_volume_conversion_uses_a_perceptual_scale() -> None:
+    assert clamp_volume(50) == 50
+    assert linear_volume(0) == 0.0
+    assert linear_volume(100) == 1.0
+    assert 0.0 < linear_volume(50) < 0.5
+
+
+def test_qt_backend_applies_volume_and_mute_to_the_audio_output(qapp) -> None:
+    backend = QtPlaybackBackend()
+
+    backend.set_volume(50)
+    backend.set_muted(True)
+
+    assert backend.audio_output.volume() == pytest.approx(linear_volume(50))
+    assert backend.audio_output.isMuted()

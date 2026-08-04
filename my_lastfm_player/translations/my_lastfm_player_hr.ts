@@ -775,6 +775,14 @@
         <translation>Sljedeća</translation>
     </message>
     <message>
+        <source>Volume</source>
+        <translation>Glasnoća</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Bez zvuka</translation>
+    </message>
+    <message>
         <location filename="../ui/main_window.py" line="979" />
         <source>Randomize</source>
         <translation>Nasumični redoslijed</translation>

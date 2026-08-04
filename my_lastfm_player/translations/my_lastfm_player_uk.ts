@@ -775,6 +775,14 @@
         <translation>Далі</translation>
     </message>
     <message>
+        <source>Volume</source>
+        <translation>Гучність</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Без звуку</translation>
+    </message>
+    <message>
         <location filename="../ui/main_window.py" line="979" />
         <source>Randomize</source>
         <translation>У випадковому порядку</translation>

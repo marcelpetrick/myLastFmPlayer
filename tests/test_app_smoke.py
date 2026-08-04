@@ -49,8 +49,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.141"
-    assert __display_version__ == "0.0.141"
+    assert __version__ == "0.0.142"
+    assert __display_version__ == "0.0.142"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -87,7 +87,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.141"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.142"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 0
@@ -123,6 +123,8 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
     applied_themes: list[ThemeMode] = []
     selected_themes: list[str] = []
     selected_randomize: list[bool] = []
+    selected_volumes: list[int] = []
+    selected_mutes: list[bool] = []
 
     class FakeApplication:
         def __init__(self, _args: list[str]) -> None:
@@ -161,6 +163,12 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
         def set_randomize_playback(self, enabled: bool) -> None:
             selected_randomize.append(enabled)
 
+        def set_volume_percent(self, volume_percent: int) -> None:
+            selected_volumes.append(volume_percent)
+
+        def set_muted(self, muted: bool) -> None:
+            selected_mutes.append(muted)
+
         def show(self) -> None:
             return None
 
@@ -179,6 +187,12 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
             return ThemeMode.MINT
 
         def randomize_playback(self) -> bool:
+            return True
+
+        def volume_percent(self) -> int:
+            return 55
+
+        def muted(self) -> bool:
             return True
 
         def set_language_code(self, code: str) -> None:
@@ -204,10 +218,12 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.141\n"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.142\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
+    assert selected_volumes == [55]
+    assert selected_mutes == [True]
     assert saved_languages == []
     assert saved_themes == []
 
@@ -410,6 +426,43 @@ def test_main_window_updates_progress_and_feedback(qapp) -> None:
     assert window.progress_bar.value() == 100
     assert window.progress_bar.format() == "Downloading — %p%"
     assert "Network error" in window.feedback_log.toPlainText()
+
+
+def test_main_window_volume_and_mute_emit_changes(qapp) -> None:
+    window = MainWindow()
+    volumes: list[int] = []
+    mutes: list[bool] = []
+    window.volume_changed.connect(volumes.append)
+    window.mute_toggled.connect(mutes.append)
+
+    assert window.volume_percent() == 100
+    assert not window.is_muted()
+    assert window.volume_label.text() == "Volume"
+    assert window.mute_checkbox.text() == "Mute"
+
+    window.volume_slider.setValue(40)
+    window.mute_checkbox.setChecked(True)
+
+    assert volumes == [40]
+    assert mutes == [True]
+    assert window.volume_percent() == 40
+    assert window.is_muted()
+
+
+def test_main_window_restores_volume_and_mute_without_emitting(qapp) -> None:
+    window = MainWindow()
+    volumes: list[int] = []
+    mutes: list[bool] = []
+    window.volume_changed.connect(volumes.append)
+    window.mute_toggled.connect(mutes.append)
+
+    window.set_volume_percent(25)
+    window.set_muted(True)
+
+    assert window.volume_percent() == 25
+    assert window.is_muted()
+    assert volumes == []
+    assert mutes == []
 
 
 def test_main_window_starts_empty_and_hides_the_hint_once_tracks_load(qapp) -> None:
