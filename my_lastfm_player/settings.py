@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QSettings
+from PyQt6.QtCore import QByteArray, QSettings
 
 from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, language_by_code
 from my_lastfm_player.playback import clamp_volume
@@ -17,6 +17,8 @@ KEEP_DATA_ON_QUIT_KEY = "privacy/keepdataonquit"
 RANDOMIZE_PLAYBACK_KEY = "playback/randomize"
 VOLUME_KEY = "playback/volume"
 MUTED_KEY = "playback/muted"
+LAST_USERNAME_KEY = "lastfm/lastusername"
+WINDOW_GEOMETRY_KEY = "window/geometry"
 
 DEFAULT_VOLUME_PERCENT = 100
 
@@ -26,7 +28,7 @@ MIN_DOWNLOAD_CONCURRENCY = 1
 MAX_DOWNLOAD_CONCURRENCY = 10
 
 
-class AppSettings:
+class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter pair per setting
     """Load and save application preferences that should survive restarts."""
 
     def __init__(self, settings: QSettings | None = None) -> None:
@@ -136,6 +138,31 @@ class AppSettings:
         """Persist whether playback is muted."""
 
         self._settings.setValue(MUTED_KEY, muted)
+
+
+    def last_username(self) -> str:
+        """Return the Last.fm username used in the previous session."""
+
+        value = self._settings.value(LAST_USERNAME_KEY, "", str)
+        return value.strip() if isinstance(value, str) else ""
+
+    def set_last_username(self, username: str) -> None:
+        """Persist the Last.fm username for the next session."""
+
+        self._settings.setValue(LAST_USERNAME_KEY, username.strip())
+
+    def window_geometry(self) -> QByteArray | None:
+        """Return the persisted main-window geometry, or None when unset."""
+
+        value = self._settings.value(WINDOW_GEOMETRY_KEY)
+        if isinstance(value, QByteArray) and not value.isEmpty():
+            return value
+        return None
+
+    def set_window_geometry(self, geometry: QByteArray) -> None:
+        """Persist the main-window geometry."""
+
+        self._settings.setValue(WINDOW_GEOMETRY_KEY, geometry)
 
 
 def _as_int(value: object) -> int:

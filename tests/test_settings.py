@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import QSettings
+from PyQt6.QtCore import QByteArray, QSettings
 
 from my_lastfm_player.settings import (
     DEFAULT_DOWNLOAD_CONCURRENCY,
@@ -10,6 +10,7 @@ from my_lastfm_player.settings import (
     DOWNLOAD_CONCURRENCY_KEY,
     KEEP_DATA_ON_QUIT_KEY,
     LANGUAGE_KEY,
+    LAST_USERNAME_KEY,
     MAX_DOWNLOAD_CONCURRENCY,
     MIN_DOWNLOAD_CONCURRENCY,
     MUTED_KEY,
@@ -172,3 +173,37 @@ def test_settings_clamp_volume_and_survive_invalid_values(tmp_path: Path) -> Non
 
     settings._settings.setValue(VOLUME_KEY, "loud")
     assert settings.volume_percent() == DEFAULT_VOLUME_PERCENT
+
+
+def test_settings_persist_last_username(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    settings = AppSettings(_ini_settings(path))
+
+    assert settings.last_username() == ""
+
+    settings.set_last_username("  marcel  ")
+
+    reloaded = AppSettings(_ini_settings(path))
+    assert reloaded.last_username() == "marcel"
+    assert reloaded._settings.value(LAST_USERNAME_KEY) == "marcel"
+
+
+def test_settings_persist_window_geometry(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    settings = AppSettings(_ini_settings(path))
+
+    assert settings.window_geometry() is None
+
+    settings.set_window_geometry(QByteArray(b"geometry-blob"))
+
+    restored = AppSettings(_ini_settings(path)).window_geometry()
+    assert restored is not None
+    assert bytes(restored) == b"geometry-blob"
+
+
+def test_settings_ignore_empty_window_geometry(tmp_path: Path) -> None:
+    settings = AppSettings(_ini_settings(tmp_path / "settings.ini"))
+
+    settings.set_window_geometry(QByteArray())
+
+    assert settings.window_geometry() is None

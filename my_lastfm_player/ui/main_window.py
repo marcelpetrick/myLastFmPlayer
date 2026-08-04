@@ -544,6 +544,11 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         return self.username_input.text().strip()
 
+    def set_username(self, username: str) -> None:
+        """Prefill the Last.fm username input."""
+
+        self.username_input.setText(username)
+
     def set_fetch_enabled(self, enabled: bool) -> None:
         """Enable or disable username entry and fetch actions."""
 

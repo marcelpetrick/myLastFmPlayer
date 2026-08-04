@@ -13,6 +13,7 @@ from PyQt6.QtCore import (
     QModelIndex,
     QPoint,
     QPointF,
+    QSettings,
     Qt,
     QTime,
 )
@@ -23,6 +24,7 @@ from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
 from my_lastfm_player.i18n import SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track, TrackStatus
+from my_lastfm_player.settings import AppSettings
 from my_lastfm_player.themes import ThemeMode
 from my_lastfm_player.ui import main_window as main_window_module
 from my_lastfm_player.ui.main_window import (
@@ -49,8 +51,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.142"
-    assert __display_version__ == "0.0.142"
+    assert __version__ == "0.0.143"
+    assert __display_version__ == "0.0.143"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -87,7 +89,7 @@ def test_main_window_builds_mvp_shell(qapp) -> None:
     window = MainWindow()
 
     assert qapp.applicationName() in {"", "myLastFmPlayer"}
-    assert window.windowTitle() == "myLastFmPlayer v0.0.142"
+    assert window.windowTitle() == "myLastFmPlayer v0.0.143"
     assert window.username_input.placeholderText() == "Enter username"
     assert window.track_model.columnCount() == 5
     assert window.track_model.rowCount() == 0
@@ -125,6 +127,9 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
     selected_randomize: list[bool] = []
     selected_volumes: list[int] = []
     selected_mutes: list[bool] = []
+    restored_usernames: list[str] = []
+    saved_usernames: list[str] = []
+    saved_geometries: list[QByteArray] = []
 
     class FakeApplication:
         def __init__(self, _args: list[str]) -> None:
@@ -156,6 +161,21 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
             self.theme_requested = _FakeSignal()
             self.language_changed = _FakeSignal()
             self.randomize_playback_changed = _FakeSignal()
+            self.quit_requested = _FakeSignal()
+            self.restored_geometry: QByteArray | None = None
+
+        def set_username(self, username: str) -> None:
+            restored_usernames.append(username)
+
+        def username(self) -> str:
+            return "typed-name"
+
+        def restoreGeometry(self, geometry: QByteArray) -> bool:
+            self.restored_geometry = geometry
+            return True
+
+        def saveGeometry(self) -> QByteArray:
+            return QByteArray(b"saved-geometry")
 
         def set_theme_mode(self, mode: str) -> None:
             selected_themes.append(mode)
@@ -195,6 +215,18 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
         def muted(self) -> bool:
             return True
 
+        def last_username(self) -> str:
+            return "stored-name"
+
+        def window_geometry(self) -> QByteArray | None:
+            return QByteArray(b"stored-geometry")
+
+        def set_last_username(self, username: str) -> None:
+            saved_usernames.append(username)
+
+        def set_window_geometry(self, geometry: QByteArray) -> None:
+            saved_geometries.append(geometry)
+
         def set_language_code(self, code: str) -> None:
             saved_languages.append(code)
 
@@ -209,8 +241,15 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
             self.current_language = code
             return True
 
+    created_windows: list[FakeMainWindow] = []
+
+    def make_window(**kwargs) -> FakeMainWindow:
+        window = FakeMainWindow(**kwargs)
+        created_windows.append(window)
+        return window
+
     monkeypatch.setattr(main_module, "QApplication", FakeApplication)
-    monkeypatch.setattr(main_module, "MainWindow", FakeMainWindow)
+    monkeypatch.setattr(main_module, "MainWindow", make_window)
     monkeypatch.setattr(main_module, "ApplicationController", FakeController)
     monkeypatch.setattr(main_module, "TranslationManager", FakeTranslationManager)
     monkeypatch.setattr(main_module, "apply_theme", lambda _app, mode: applied_themes.append(mode))
@@ -218,14 +257,56 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
     assert main_module.main() == 0
 
-    assert capsys.readouterr().out == "myLastFmPlayer 0.0.142\n"
+    window_instance = created_windows[0]
+    assert bytes(window_instance.restored_geometry or QByteArray()) == b"stored-geometry"
+    assert capsys.readouterr().out == "myLastFmPlayer 0.0.143\n"
     assert applied_themes == [ThemeMode.MINT]
     assert selected_themes == ["mint"]
     assert selected_randomize == [True]
     assert selected_volumes == [55]
     assert selected_mutes == [True]
+    assert restored_usernames == ["stored-name"]
+
+    window_instance.quit_requested.emit()
+
+    assert saved_usernames == ["typed-name"]
+    assert [bytes(geometry) for geometry in saved_geometries] == [b"saved-geometry"]
     assert saved_languages == []
     assert saved_themes == []
+
+
+def test_main_session_helpers_round_trip_username_and_geometry(qapp, tmp_path) -> None:
+    settings = AppSettings(
+        QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+    )
+    saved_window = MainWindow()
+    saved_window.set_username("  marcel  ")
+    saved_window.resize(900, 640)
+
+    main_module._save_session(saved_window, settings)
+
+    assert settings.last_username() == "marcel"
+
+    restored_window = MainWindow()
+    main_module._restore_session(restored_window, settings)
+
+    assert restored_window.username() == "marcel"
+    # Width can be clamped to the available screen area, height is restored verbatim.
+    assert restored_window.height() == saved_window.height()
+    assert restored_window.size() != MainWindow().size()
+
+
+def test_main_restore_session_keeps_default_geometry_when_unset(qapp, tmp_path) -> None:
+    settings = AppSettings(
+        QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+    )
+    window = MainWindow()
+    default_size = window.size()
+
+    main_module._restore_session(window, settings)
+
+    assert window.username() == ""
+    assert window.size() == default_size
 
 
 def test_main_theme_handler_applies_and_persists_theme(monkeypatch) -> None:

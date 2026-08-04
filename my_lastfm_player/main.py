@@ -32,15 +32,33 @@ def main() -> int:
     window.set_randomize_playback(settings.randomize_playback())
     window.set_volume_percent(settings.volume_percent())
     window.set_muted(settings.muted())
+    _restore_session(window, settings)
     window.theme_requested.connect(lambda mode: _apply_and_save_theme(app, settings, mode))
     window.language_changed.connect(
         lambda: settings.set_language_code(translation_manager.current_language)
     )
+    window.quit_requested.connect(lambda: _save_session(window, settings))
     controller = ApplicationController(window)
     controller.start()
     window.show()
 
     return app.exec()
+
+
+def _restore_session(window: MainWindow, settings: AppSettings) -> None:
+    """Restore the previous username and window geometry."""
+
+    window.set_username(settings.last_username())
+    geometry = settings.window_geometry()
+    if geometry is not None:
+        window.restoreGeometry(geometry)
+
+
+def _save_session(window: MainWindow, settings: AppSettings) -> None:
+    """Remember the current username and window geometry for the next start."""
+
+    settings.set_last_username(window.username())
+    settings.set_window_geometry(window.saveGeometry())
 
 
 def _apply_and_save_theme(app: QApplication, settings: AppSettings, mode: str) -> None:
