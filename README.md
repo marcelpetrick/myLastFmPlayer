@@ -1,5 +1,8 @@
 # myLastFmPlayer
 
+[![Local Pipeline](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/local-pipeline.yml/badge.svg?branch=master)](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/local-pipeline.yml)
+[![Manual Release](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/manual-release.yml/badge.svg)](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/manual-release.yml)
+
 `myLastFmPlayer` is a (Linux) desktop application for collecting a user's loved tracks from Last.fm, resolving them via YouTube, downloading audio, and playing tracks locally. Written in Python with PyQt6. The full workflow is implemented and in active daily use — this is a working product, not a proof of concept.
 
 **Author: Marcel Petrick <mail@marcelpetrick.it>**
@@ -8,7 +11,7 @@
 
 **Note: projected is generated with AI.**
 
-Current version: `0.0.149` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.150` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
