@@ -8,7 +8,7 @@
 
 **Note: projected is generated with AI.**
 
-Current version: `0.0.146` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.147` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
@@ -44,7 +44,7 @@ development runs show only the base version when that generated metadata is abse
 ## Requirements
 
 - Linux x86_64
-- Python 3.12 or newer
+- Python 3.14 or newer
 - `venv` support for Python
 - `yt-dlp`
 - `ffmpeg`

@@ -1,31 +1,31 @@
 [build-system]
-requires = ["setuptools>=83.0.0"]
+requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "my-lastfm-player"
 description = "Linux desktop app for fetching Last.fm loved tracks and preparing local playback."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 license = "GPL-3.0-or-later"
 authors = [
     { name = "Marcel Petrick", email = "mail@marcelpetrick.it" }
 ]
 dynamic = ["version"]
 dependencies = [
-    "pylast>=7.1.0",
-    "PyQt6>=6.11.0",
-    "requests>=2.34.2",
+    "pylast==7.1.0",
+    "PyQt6==6.11.0",
+    "requests==2.34.2",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "build>=1.5.0",
-    "pytest>=9.1.1",
-    "pytest-cov>=7.1.0",
-    "pylint>=4.0.6",
-    "ruff>=0.16.1",
-    "sphinx>=9.1.0",
+    "build==1.5.0",
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "pylint==4.0.6",
+    "ruff==0.16.1",
+    "sphinx==9.1.0",
 ]
 
 [project.scripts]
@@ -61,7 +61,7 @@ skip_covered = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -71,7 +71,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pylint.main]
-py-version = "3.12"
+py-version = "3.14"
 jobs = 0
 recursive = true
 

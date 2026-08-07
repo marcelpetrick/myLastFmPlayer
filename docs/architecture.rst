@@ -69,7 +69,7 @@ What are the major deployable or runnable parts, and what technology do they use
            label="myLastFmPlayer [Software System]";
            style=dashed; color="#888888"; fontname="Helvetica"; fontsize=11;
 
-           desktop [label="Desktop Application\n[Container: Python 3.12+ / PyQt6]\n\nAll UI, business logic, and service\norchestration. Single OS process\nlaunched via my-lastfm-player CLI.",
+           desktop [label="Desktop Application\n[Container: Python 3.14+ / PyQt6]\n\nAll UI, business logic, and service\norchestration. Single OS process\nlaunched via my-lastfm-player CLI.",
                     shape=box, style="rounded,filled",
                     fillcolor="#1168bd", fontcolor=white, color="#0b4884"];
 
