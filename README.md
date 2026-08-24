@@ -11,7 +11,7 @@
 
 **Note: projected is generated with AI.**
 
-Current version: `0.0.150` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.151` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
