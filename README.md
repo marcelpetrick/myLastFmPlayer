@@ -9,7 +9,7 @@
 
 **License: GPLv3 or later. See `LICENSE`.**
 
-**Note: projected is generated with AI.**
+**Note: project is generated with AI.**
 
 Current version: `0.0.151` — work in progress (WIP), but past MVP and actively used
 
