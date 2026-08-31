@@ -331,6 +331,24 @@ def test_lookup_cache_restores_resolved_and_missing_tracks(tmp_path: Path) -> No
     assert marked_tracks[2].status == TrackStatus.FETCHED
 
 
+def test_lookup_cache_restores_the_not_found_attempt_count(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    missing = Track(
+        artist="Missing",
+        title="Track",
+        status=TrackStatus.NOT_FOUND,
+        retry_count=2,
+    )
+
+    repository.save_lookup_cache([missing])
+    marked_tracks = repository.mark_cached_lookups(
+        [Track(artist="Missing", title="Track", status=TrackStatus.FETCHED)]
+    )
+
+    assert marked_tracks[0].status == TrackStatus.NOT_FOUND
+    assert marked_tracks[0].retry_count == 2
+
+
 def test_lookup_cache_leaves_unresolved_cached_tracks_unchanged(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     repository.lookup_cache_path.write_text(

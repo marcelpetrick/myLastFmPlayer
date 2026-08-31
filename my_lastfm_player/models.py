@@ -86,7 +86,10 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
     def merge_preserving(cls, old: Track, new: Track) -> Track:
         """Merge two snapshots: status never goes backwards; None in ``new`` preserves ``old``."""
         advances = _STATUS_RANK[new.status] > _STATUS_RANK[old.status]
-        merged_status = new.status if advances else old.status
+        # NOT_FOUND outranks every pre-download status, so a later lookup that finally
+        # produced a URL would otherwise be discarded and the track stay stuck.
+        recovers = old.status is TrackStatus.NOT_FOUND and bool(new.youtube_url)
+        merged_status = new.status if advances or recovers else old.status
         return cls(
             artist=new.artist,
             title=new.title,

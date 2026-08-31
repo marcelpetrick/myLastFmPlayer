@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
 from collections.abc import Callable, Sequence
 from dataclasses import replace
@@ -15,6 +16,14 @@ LOGGER = logging.getLogger(__name__)
 
 YTDLP_SEARCH_PREFIX = "ytsearch1:"
 LOOKUP_TIMEOUT_SECONDS = 120
+# An empty search result is transient often enough (YouTube gating, an over-specific
+# artist field) that NOT_FOUND is re-checked this many times before it sticks.
+MAX_LOOKUP_ATTEMPTS = 3
+# Last.fm artist fields carry store suffixes ("Name - EU Store") and decorative symbols
+# ("ETHER ensemble", "artist -*-") that YouTube search matches literally and so finds nothing.
+ARTIST_SUFFIX_SEPARATOR = " - "
+DECORATIVE_CHARS = re.compile(r"[^\w\s&\'()./-]", re.UNICODE)
+COLLAPSED_WHITESPACE = re.compile(r"\s+")
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 ProgressCallback = Callable[[int, str], None]
@@ -39,17 +48,46 @@ class YouTubeResolver:
         self.cookies_browser = cookies_browser
 
     def build_query(self, track: Track) -> str:
-        """Return the search query used for ``track``."""
+        """Return the primary search query used for ``track``."""
 
         return f"{track.artist} {track.title}"
+
+    def build_queries(self, track: Track) -> list[str]:
+        """Return the ordered search queries tried for ``track``, most specific first."""
+
+        simplified_artist = _simplify_artist(track.artist)
+        candidates = [
+            self.build_query(track),
+            f"{simplified_artist} {track.title}" if simplified_artist else "",
+            track.title,
+        ]
+        return list(dict.fromkeys(query for query in candidates if query.strip()))
 
     def resolve_track(self, track: Track) -> Track:
         """Resolve one track and return a copy with its lookup status updated."""
 
-        search_result = self.search_first_result(self.build_query(track))
-        if search_result is None:
-            return replace(track, youtube_url=None, status=TrackStatus.NOT_FOUND)
-        return replace(track, youtube_url=search_result, status=TrackStatus.QUEUED, error=None)
+        last_error: YouTubeLookupError | None = None
+        for query in self.build_queries(track):
+            try:
+                search_result = self.search_first_result(query)
+            except YouTubeLookupError as error:
+                last_error = error
+                continue
+            if search_result is not None:
+                return replace(
+                    track,
+                    youtube_url=search_result,
+                    status=TrackStatus.QUEUED,
+                    error=None,
+                )
+        if last_error is not None:
+            raise last_error
+        return replace(
+            track,
+            youtube_url=None,
+            status=TrackStatus.NOT_FOUND,
+            retry_count=track.retry_count + 1,
+        )
 
     def resolve_tracks(  # pylint: disable=too-many-locals
         self,
@@ -65,7 +103,7 @@ class YouTubeResolver:
         unresolved_indexes = [
             index
             for index, track in enumerate(tracks)
-            if not track.youtube_url and track.status is not TrackStatus.NOT_FOUND
+            if not track.youtube_url and _needs_lookup(track)
         ]
         unresolved_indexes = _prioritize_indexes(
             unresolved_indexes,
@@ -107,6 +145,7 @@ class YouTubeResolver:
                     searching_track,
                     youtube_url=None,
                     status=TrackStatus.NOT_FOUND,
+                    retry_count=searching_track.retry_count + 1,
                     error=str(exc),
                 )
             _report_track_update(track_update_callback, resolved_track)
@@ -148,7 +187,7 @@ class YouTubeResolver:
     def search_first_result(self, query: str) -> str | None:
         """Return the first YouTube URL for ``query`` or ``None`` when no result exists."""
 
-        command = [self.executable, "--dump-single-json", "--no-playlist"]
+        command = [self.executable, "--dump-single-json", "--no-playlist", "--flat-playlist"]
         if self.cookies_browser:
             command += ["--cookies-from-browser", self.cookies_browser]
         command.append(f"{YTDLP_SEARCH_PREFIX}{query}")
@@ -177,6 +216,20 @@ class YouTubeResolver:
             ) from error
         except OSError as error:
             raise YouTubeLookupError(f"Could not run {self.executable}: {error}") from error
+
+
+def _needs_lookup(track: Track) -> bool:
+    if track.status is not TrackStatus.NOT_FOUND:
+        return True
+    return track.retry_count < MAX_LOOKUP_ATTEMPTS
+
+
+def _simplify_artist(artist: str) -> str:
+    """Return ``artist`` without store suffixes and decorative symbols."""
+
+    simplified = artist.split(ARTIST_SUFFIX_SEPARATOR, 1)[0]
+    simplified = DECORATIVE_CHARS.sub(" ", simplified)
+    return COLLAPSED_WHITESPACE.sub(" ", simplified).strip()
 
 
 def _extract_youtube_url(stdout: str) -> str | None:

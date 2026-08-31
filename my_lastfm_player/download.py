@@ -18,7 +18,20 @@ from my_lastfm_player.storage import JsonTrackRepository
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_CONCURRENCY = 2
-MAX_RETRIES = 3
+# YouTube gates some innertube clients behind a PO token. A gated client reports no media
+# formats at all ("Requested format is not available", whatever -f asks for) or serves a
+# 403 on the media fetch, and both stick for as long as that client answers - so retrying
+# the same one is pointless. Each attempt therefore forces a different client family; the
+# empty entry keeps yt-dlp's own rotation as the first and fastest try. Names must exist in
+# yt-dlp's INNERTUBE_CLIENTS, otherwise the attempt is silently skipped and wasted.
+PLAYER_CLIENT_LADDER: tuple[str, ...] = (
+    "",
+    "web_embedded,android_vr",
+    "tv_downgraded,android,web_creator",
+)
+# Fall back to a combined stream for the rare video that exposes no audio-only format.
+AUDIO_FORMAT_SELECTOR = "bestaudio/bestaudio*/best"
+MAX_RETRIES = len(PLAYER_CLIENT_LADDER)
 BACKOFF_RANGE_SECONDS = (1.0, 5.0)
 DOWNLOAD_TIMEOUT_SECONDS = 600
 PROBE_TIMEOUT_SECONDS = 30
@@ -180,7 +193,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
             if self._stop_requested:
                 return replace(current_track, status=TrackStatus.FAILED, error="Download stopped.")
             try:
-                local_path = self._download_track(current_track, downloads_dir)
+                local_path = self._download_track(current_track, downloads_dir, attempt)
                 file_type, bitrate_kbps = _probe_audio_file(local_path)
                 return replace(
                     current_track,
@@ -206,12 +219,15 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
 
         return replace(current_track, status=TrackStatus.FAILED, error=last_error)
 
-    def _download_track(self, track: Track, downloads_dir: Path) -> Path:
+    def _download_track(self, track: Track, downloads_dir: Path, attempt: int = 1) -> Path:
         if not track.youtube_url:
             raise DownloadError("Track has no YouTube URL")
 
         output_template = str(downloads_dir / f"{track.audio_base_name}.%(ext)s")
-        command = [self.executable, "-f", "bestaudio", "--no-playlist"]
+        command = [self.executable, "-f", AUDIO_FORMAT_SELECTOR, "--no-playlist"]
+        player_client = _player_client_for_attempt(attempt)
+        if player_client:
+            command += ["--extractor-args", f"youtube:player_client={player_client}"]
         if self.cookies_browser:
             command += ["--cookies-from-browser", self.cookies_browser]
         command += ["--output", output_template, track.youtube_url]
@@ -244,6 +260,12 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
             ) from error
         except OSError as error:
             raise DownloadError(f"Could not run {self.executable}: {error}") from error
+
+
+def _player_client_for_attempt(attempt: int) -> str:
+    """Return the YouTube player client to force on a one-based retry ``attempt``."""
+
+    return PLAYER_CLIENT_LADDER[(attempt - 1) % len(PLAYER_CLIENT_LADDER)]
 
 
 def _should_download(track: Track) -> bool:

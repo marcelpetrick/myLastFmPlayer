@@ -7,9 +7,12 @@ from pathlib import Path
 import pytest
 
 from my_lastfm_player.download import (
+    MAX_RETRIES,
+    PLAYER_CLIENT_LADDER,
     DownloadManager,
     _bit_rate_to_kbps,
     _format_name_to_file_type,
+    _player_client_for_attempt,
     _probe_audio_file,
 )
 from my_lastfm_player.models import Track, TrackStatus
@@ -114,7 +117,7 @@ def test_download_manager_downloads_queued_tracks(tmp_path: Path) -> None:
         [
             "yt-dlp",
             "-f",
-            "bestaudio",
+            "bestaudio/bestaudio*/best",
             "--no-playlist",
             "--output",
             str(tmp_path / "Artist - Title.%(ext)s"),
@@ -173,7 +176,7 @@ def test_probe_audio_file_reads_ffprobe_metadata(monkeypatch, tmp_path: Path) ->
 
 
 def test_download_manager_retries_and_marks_failed(tmp_path: Path) -> None:
-    runner = FakeRunner(return_codes=[1, 1, 1])
+    runner = FakeRunner(return_codes=[1] * MAX_RETRIES)
     manager = DownloadManager(
         command_runner=runner,
         backoff_factory=lambda: 0,
@@ -183,10 +186,55 @@ def test_download_manager_retries_and_marks_failed(tmp_path: Path) -> None:
 
     tracks = manager.download_tracks([track], tmp_path)
 
-    assert len(runner.commands) == 3
+    assert len(runner.commands) == MAX_RETRIES
     assert tracks[0].status == TrackStatus.FAILED
-    assert tracks[0].retry_count == 3
+    assert tracks[0].retry_count == MAX_RETRIES
     assert tracks[0].error == "download failed"
+
+
+def test_download_manager_walks_the_player_client_ladder_across_retries(tmp_path: Path) -> None:
+    runner = FakeRunner(return_codes=[1] * MAX_RETRIES)
+    manager = DownloadManager(
+        command_runner=runner,
+        backoff_factory=lambda: 0,
+        sleeper=lambda _seconds: None,
+    )
+    track = Track(artist="Artist", title="Title", youtube_url="https://youtu.be/example")
+
+    manager.download_tracks([track], tmp_path)
+
+    forced_clients = [
+        command[command.index("--extractor-args") + 1] if "--extractor-args" in command else ""
+        for command in runner.commands
+    ]
+    assert forced_clients == [
+        f"youtube:player_client={client}" if client else "" for client in PLAYER_CLIENT_LADDER
+    ]
+
+
+def test_download_manager_recovers_when_a_later_player_client_succeeds(tmp_path: Path) -> None:
+    runner = FakeRunner(return_codes=[1, 0])
+    manager = DownloadManager(
+        command_runner=runner,
+        backoff_factory=lambda: 0,
+        sleeper=lambda _seconds: None,
+    )
+    track = Track(artist="Artist", title="Title", youtube_url="https://youtu.be/example")
+
+    tracks = manager.download_tracks([track], tmp_path)
+
+    assert tracks[0].status == TrackStatus.DOWNLOADED
+    assert len(runner.commands) == 2
+    assert "--extractor-args" not in runner.commands[0]
+    assert runner.commands[1][runner.commands[1].index("--extractor-args") + 1] == (
+        f"youtube:player_client={PLAYER_CLIENT_LADDER[1]}"
+    )
+
+
+def test_player_client_for_attempt_wraps_around_the_ladder() -> None:
+    assert _player_client_for_attempt(1) == PLAYER_CLIENT_LADDER[0]
+    assert _player_client_for_attempt(2) == PLAYER_CLIENT_LADDER[1]
+    assert _player_client_for_attempt(len(PLAYER_CLIENT_LADDER) + 1) == PLAYER_CLIENT_LADDER[0]
 
 
 def test_download_manager_pause_and_resume_toggle_queue_state() -> None:

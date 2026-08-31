@@ -8,7 +8,12 @@ import pytest
 
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
-from my_lastfm_player.youtube import YouTubeLookupError, YouTubeResolver, _percent
+from my_lastfm_player.youtube import (
+    MAX_LOOKUP_ATTEMPTS,
+    YouTubeLookupError,
+    YouTubeResolver,
+    _percent,
+)
 
 
 class FakeRunner:
@@ -53,6 +58,7 @@ def test_search_first_result_uses_ytdlp_search_and_webpage_url() -> None:
             "yt-dlp-test",
             "--dump-single-json",
             "--no-playlist",
+            "--flat-playlist",
             "ytsearch1:Artist Title",
         ]
     ]
@@ -69,6 +75,7 @@ def test_search_first_result_passes_configured_browser_cookies() -> None:
             "yt-dlp-test",
             "--dump-single-json",
             "--no-playlist",
+            "--flat-playlist",
             "--cookies-from-browser",
             "firefox",
             "ytsearch1:Artist Title",
@@ -202,12 +209,8 @@ def test_resolve_tracks_reports_no_result_progress() -> None:
 
 
 def test_resolve_tracks_marks_not_found_on_per_track_lookup_error() -> None:
-    call_count = 0
-
-    def runner_that_fails_once(command, **_kwargs) -> subprocess.CompletedProcess[str]:
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
+    def runner_that_fails_one_track(command, **_kwargs) -> subprocess.CompletedProcess[str]:
+        if "Restricted" in command[-1]:
             return subprocess.CompletedProcess(
                 args=command, returncode=1, stdout="", stderr="Sign in to confirm your age"
             )
@@ -218,7 +221,7 @@ def test_resolve_tracks_marks_not_found_on_per_track_lookup_error() -> None:
             stderr="",
         )
 
-    resolver = YouTubeResolver(command_runner=runner_that_fails_once)
+    resolver = YouTubeResolver(command_runner=runner_that_fails_one_track)
     first = Track(artist="Age", title="Restricted")
     second = Track(artist="Fine", title="Track")
 
@@ -226,6 +229,7 @@ def test_resolve_tracks_marks_not_found_on_per_track_lookup_error() -> None:
 
     assert tracks[0].status == TrackStatus.NOT_FOUND
     assert tracks[0].error is not None
+    assert tracks[0].retry_count == 1
     assert tracks[1].status == TrackStatus.QUEUED
     assert tracks[1].youtube_url == "https://youtube.example/watch?v=ok"
 
@@ -239,13 +243,94 @@ def test_resolve_tracks_skips_tracks_that_already_have_youtube_urls() -> None:
     assert runner.commands == []
 
 
-def test_resolve_tracks_skips_cached_not_found_tracks() -> None:
+def test_resolve_tracks_skips_not_found_tracks_that_exhausted_their_retries() -> None:
     runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=new"}))
     resolver = YouTubeResolver(command_runner=runner)
-    missing = Track(artist="Artist", title="Title", status=TrackStatus.NOT_FOUND)
+    missing = Track(
+        artist="Artist",
+        title="Title",
+        status=TrackStatus.NOT_FOUND,
+        retry_count=MAX_LOOKUP_ATTEMPTS,
+    )
 
     assert resolver.resolve_tracks([missing]) == [missing]
     assert runner.commands == []
+
+
+def test_resolve_tracks_retries_not_found_tracks_below_the_attempt_bound() -> None:
+    runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=new"}))
+    resolver = YouTubeResolver(command_runner=runner)
+    missing = Track(
+        artist="Artist",
+        title="Title",
+        status=TrackStatus.NOT_FOUND,
+        retry_count=MAX_LOOKUP_ATTEMPTS - 1,
+    )
+
+    tracks = resolver.resolve_tracks([missing])
+
+    assert tracks[0].status == TrackStatus.QUEUED
+    assert tracks[0].youtube_url == "https://youtube.example/watch?v=new"
+
+
+def test_build_queries_falls_back_to_simplified_artist_then_title_only() -> None:
+    resolver = YouTubeResolver()
+    track = Track(artist="Michelle Gurevich - EU Store", title="Aviva")
+
+    assert resolver.build_queries(track) == [
+        "Michelle Gurevich - EU Store Aviva",
+        "Michelle Gurevich Aviva",
+        "Aviva",
+    ]
+
+
+def test_build_queries_strips_decorative_symbols_and_deduplicates() -> None:
+    resolver = YouTubeResolver()
+
+    assert resolver.build_queries(Track(artist="Angelo Tardanico \u266a", title="Tengri")) == [
+        "Angelo Tardanico \u266a Tengri",
+        "Angelo Tardanico Tengri",
+        "Tengri",
+    ]
+    # A plain artist collapses the first two variants into one query.
+    assert resolver.build_queries(Track(artist="Artist", title="Title")) == [
+        "Artist Title",
+        "Title",
+    ]
+
+
+def test_resolve_track_uses_a_later_query_when_the_exact_one_finds_nothing() -> None:
+    def runner(command, **_kwargs) -> subprocess.CompletedProcess[str]:
+        if command[-1] != "ytsearch1:Aviva":
+            return subprocess.CompletedProcess(
+                args=command, returncode=0, stdout=json.dumps({"entries": []}), stderr=""
+            )
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout=json.dumps({"entries": [{"id": "found"}]}),
+            stderr="",
+        )
+
+    resolver = YouTubeResolver(command_runner=runner)
+    track = Track(artist="Michelle Gurevich - EU Store", title="Aviva")
+
+    resolved = resolver.resolve_track(track)
+
+    assert resolved.status == TrackStatus.QUEUED
+    assert resolved.youtube_url == "https://www.youtube.com/watch?v=found"
+
+
+def test_resolve_track_counts_an_exhausted_query_ladder_as_one_attempt() -> None:
+    runner = FakeRunner(stdout=json.dumps({"entries": []}))
+    resolver = YouTubeResolver(command_runner=runner)
+    track = Track(artist="Artist", title="Title", retry_count=1)
+
+    resolved = resolver.resolve_track(track)
+
+    assert resolved.status == TrackStatus.NOT_FOUND
+    assert resolved.retry_count == 2
+    assert len(runner.commands) == 2
 
 
 def test_resolve_tracks_prioritizes_and_limits_selected_track() -> None:

@@ -207,6 +207,25 @@ def test_merge_preserving_never_downgrades_not_found() -> None:
     assert result.status == TrackStatus.NOT_FOUND
 
 
+def test_merge_preserving_lets_a_resolved_lookup_leave_not_found() -> None:
+    old = _track(status=TrackStatus.NOT_FOUND)
+    new = _track(status=TrackStatus.QUEUED, youtube_url="https://youtube.example/watch?v=abc")
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.status == TrackStatus.QUEUED
+    assert result.youtube_url == "https://youtube.example/watch?v=abc"
+
+
+def test_merge_preserving_keeps_not_found_when_the_retry_found_nothing() -> None:
+    old = _track(status=TrackStatus.NOT_FOUND)
+    new = _track(status=TrackStatus.SEARCHING)
+
+    result = Track.merge_preserving(old, new)
+
+    assert result.status == TrackStatus.NOT_FOUND
+
+
 def test_merge_preserving_never_downgrades_failed() -> None:
     old = _track(status=TrackStatus.FAILED, error="network error")
     new = _track(status=TrackStatus.DOWNLOADING)
