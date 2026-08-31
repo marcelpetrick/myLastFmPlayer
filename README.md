@@ -11,7 +11,7 @@
 
 **Note: project is generated with AI.**
 
-Current version: `0.0.153` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.154` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
@@ -312,6 +312,18 @@ MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 ./localPipeline.sh --noRun
 ```
 
 That test fetches all loved-track API pages from Last.fm for `first` and prints the tracks during the test run.
+
+To include the live yt-dlp end-to-end tests, run:
+
+```sh
+MY_LASTFM_PLAYER_RUN_YTDLP_E2E=1 ./localPipeline.sh --noRun
+```
+
+Those tests check the download retry ladder against the installed `yt-dlp`: every forced
+YouTube player client must still be one `yt-dlp` supports, the audio format selector must
+still resolve, and a real download must complete. A client name that `yt-dlp` no longer
+knows is only reported as a skipped-client warning, so without this check that rung of the
+ladder would quietly waste a retry.
 
 ## Translations
 

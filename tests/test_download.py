@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import threading
 from pathlib import Path
@@ -228,6 +229,25 @@ def test_download_manager_recovers_when_a_later_player_client_succeeds(tmp_path:
     assert "--extractor-args" not in runner.commands[0]
     assert runner.commands[1][runner.commands[1].index("--extractor-args") + 1] == (
         f"youtube:player_client={PLAYER_CLIENT_LADDER[1]}"
+    )
+
+
+def test_player_client_ladder_only_names_usable_clients() -> None:
+    # yt-dlp silently skips a client name it does not know ("Skipping unsupported client"),
+    # which turns that rung into a wasted retry. The live e2e test checks the names against
+    # the installed yt-dlp; this one catches the structural mistakes offline.
+    assert PLAYER_CLIENT_LADDER, "the ladder must offer at least one attempt"
+    assert PLAYER_CLIENT_LADDER[0] == "", "attempt 1 must use yt-dlp's own client rotation"
+
+    forced_clients = [
+        client for rung in PLAYER_CLIENT_LADDER[1:] for client in rung.split(",") if rung
+    ]
+    assert forced_clients, "every retry after the first must force explicit clients"
+    assert all(re.fullmatch(r"[a-z][a-z0-9_]*", client) for client in forced_clients), (
+        f"ladder holds a malformed client name: {forced_clients}"
+    )
+    assert len(forced_clients) == len(set(forced_clients)), (
+        f"a client repeated across rungs wastes a retry: {forced_clients}"
     )
 
 
