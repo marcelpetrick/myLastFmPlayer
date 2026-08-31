@@ -182,6 +182,27 @@ class JsonTrackRepository:
                 [track.to_dict() for track in sorted_tracks],
             )
 
+    def clear_not_found_lookups(self) -> int:
+        """Drop cached NOT_FOUND lookups so they are searched again; return how many went."""
+
+        with self._lock:
+            cache = self.load_lookup_cache()
+            missing_keys = [
+                key
+                for key, track in cache.items()
+                if track.status is TrackStatus.NOT_FOUND
+            ]
+            if not missing_keys:
+                return 0
+            for key in missing_keys:
+                del cache[key]
+            sorted_tracks = sorted(cache.values(), key=lambda item: item.cache_key)
+            _atomic_write_json(
+                self.lookup_cache_path,
+                [track.to_dict() for track in sorted_tracks],
+            )
+            return len(missing_keys)
+
     def mark_cached_lookups(self, tracks: list[Track]) -> list[Track]:
         """Return ``tracks`` with cached YouTube lookup results restored."""
 

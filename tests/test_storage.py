@@ -331,6 +331,25 @@ def test_lookup_cache_restores_resolved_and_missing_tracks(tmp_path: Path) -> No
     assert marked_tracks[2].status == TrackStatus.FETCHED
 
 
+def test_clear_not_found_lookups_drops_only_the_missing_entries(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    resolved = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtube.example/watch?v=abc",
+        status=TrackStatus.QUEUED,
+    )
+    missing = Track(artist="Missing", title="Track", status=TrackStatus.NOT_FOUND, retry_count=3)
+    repository.save_lookup_cache([resolved, missing])
+
+    assert repository.clear_not_found_lookups() == 1
+
+    cache = repository.load_lookup_cache()
+    assert set(cache) == {resolved.cache_key}
+    # A second sweep has nothing left to drop.
+    assert repository.clear_not_found_lookups() == 0
+
+
 def test_lookup_cache_restores_the_not_found_attempt_count(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     missing = Track(

@@ -11,7 +11,7 @@
 
 **Note: project is generated with AI.**
 
-Current version: `0.0.154` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.155` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
@@ -179,6 +179,21 @@ Import Check     : PASS <version>[+commit]
 Launch App       : PASS my-lastfm-player was started once
 ============================================
 ```
+
+### Recovering Tracks That Failed Earlier
+
+`Not found` and `Failed` are verdicts about YouTube rather than about the track, and
+YouTube changes its mind, so the player keeps re-checking them:
+
+- **Downloads** retry over a ladder of YouTube player clients. YouTube gates some of its
+  internal clients, and a gated one offers no audio at all, so retrying the same client
+  cannot help; each retry forces a different one instead.
+- **Lookups** try several searches — artist and title, the artist stripped of store
+  suffixes and decorative symbols, then the title alone — before giving up. A miss counts
+  as one attempt out of a few, not as a permanent verdict.
+- **On startup** the player automatically re-checks everything the previous run gave up
+  on: tracks marked `Not found` are searched again, and `Failed` downloads are queued
+  again. Nothing happens when no track is stuck.
 
 ## Stored Files
 

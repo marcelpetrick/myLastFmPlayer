@@ -151,8 +151,8 @@ What are the principal building blocks inside the desktop process?
 
            scraper     [label="LastFmLovedTracksScraper\n[HTTP Client]\n\nFetches Last.fm Web API pages;\nretries with back-off;\nrate-limits between pages."];
            artist_info [label="LastFmArtistInfoClient\n[HTTP Client]\n\nFetches artist.getInfo metadata;\nloads artist page preview images\nwith a stdlib HTML parser."];
-           resolver    [label="YouTubeResolver\n[yt-dlp wrapper]\n\nChecks lookup-cache first;\nruns yt-dlp search subprocess;\nupdates cache on hit."];
-           download_mgr[label="DownloadManager\n[yt-dlp wrapper]\n\nConcurrent mp3 download pool\nwith retry + jitter backoff;\nchecks download-cache to skip existing."];
+           resolver    [label="YouTubeResolver\n[yt-dlp wrapper]\n\nChecks lookup-cache first;\nruns yt-dlp search subprocess over a\nquery ladder; updates cache on hit."];
+           download_mgr[label="DownloadManager\n[yt-dlp wrapper]\n\nConcurrent audio download pool with\nretry + jitter backoff; each retry forces\nanother YouTube player client."];
            playback    [label="PlaybackService\n[Qt Multimedia]\n\nWraps QMediaPlayer;\nseek, pause, stop;\ntracks scrobble threshold."];
            scrobbling  [label="ScrobblingService\n[pylast]\n\nLast.fm web-auth flow;\nnow-playing + scrobble\nAPI calls via pylast."];
            deps        [label="DependencyChecker\n[shutil.which]\n\nVerifies yt-dlp, ffmpeg,\nand ffprobe are present on PATH\nat application startup."];
@@ -249,14 +249,44 @@ progress survives a restart.
 
        FETCHED     -> SEARCHING   [label="lookup starts\n(no cache hit)"];
        FETCHED     -> QUEUED      [label="lookup-cache hit\n(URL already known)"];
-       SEARCHING   -> QUEUED      [label="URL resolved"];
-       SEARCHING   -> NOT_FOUND   [label="no yt-dlp result"];
+       SEARCHING   -> QUEUED      [label="URL resolved\n(any query in the ladder)"];
+       SEARCHING   -> NOT_FOUND   [label="every query missed"];
        QUEUED      -> DOWNLOADING [label="download starts"];
-       DOWNLOADING -> DOWNLOADED  [label="mp3 written"];
-       DOWNLOADING -> FAILED      [label="error / retries exhausted"];
-       NOT_FOUND   -> FETCHED     [label="user retries", style=dashed];
+       DOWNLOADING -> DOWNLOADED  [label="audio written\n(any client in the ladder)"];
+       DOWNLOADING -> FAILED      [label="every client failed"];
+       NOT_FOUND   -> SEARCHING   [label="re-checked while under\nthe attempt bound",
+                                   style=dashed];
+       NOT_FOUND   -> FETCHED     [label="app start / user retries", style=dashed];
+       FAILED      -> DOWNLOADING [label="app start / next download pass", style=dashed];
        FAILED      -> FETCHED     [label="user retries", style=dashed];
    }
+
+Recovering Stuck Tracks
+-----------------------
+
+``NOT FOUND`` and ``FAILED`` are verdicts about YouTube, not about the track, and
+YouTube changes its mind. Both states are therefore treated as provisional.
+
+YouTube gates some of its internal player clients behind a proof-of-origin token.
+A gated client answers with no media formats at all, so ``yt-dlp`` reports
+*"Requested format is not available"* whatever format is asked for, or serves a
+``403`` on the media fetch. Which clients are gated changes over time, so no single
+choice stays correct. ``DownloadManager`` therefore treats its retries as a ladder:
+the first attempt uses ``yt-dlp``'s own client rotation, and each retry forces a
+different client family. Repeating one client would only reproduce the same refusal.
+
+Lookup has the same shape. A single ``artist title`` search misses when the Last.fm
+artist field carries store suffixes or decorative symbols, so ``YouTubeResolver``
+walks a query ladder — exact, artist stripped of that noise, then title alone — and
+searches flat so a gated client cannot break the search itself. An empty result is
+counted as one bounded attempt rather than a permanent verdict, with the count kept
+in ``lookup-cache.json`` so it survives a restart.
+
+On startup the controller sweeps whatever the previous run gave up on: ``NOT FOUND``
+tracks are cleared from the lookup cache and re-searched, and ``FAILED`` downloads go
+straight back to the download queue. ``Track.merge_preserving`` normally refuses to
+move a status backwards, which would discard such a recovery, so it makes one
+exception: a track may leave ``NOT FOUND`` once a lookup finally produces a URL.
 
 Worker Lifecycle
 ----------------

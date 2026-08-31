@@ -151,6 +151,56 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._init_scrobbling()
         self._apply_ytdlp_settings()
         self.check_dependencies()
+        self._recheck_stuck_tracks()
+
+    def _recheck_stuck_tracks(self) -> None:
+        """Re-check tracks earlier runs gave up on and let the normal queues take over.
+
+        A NOT_FOUND verdict and a FAILED download both come from a YouTube state that is
+        usually temporary (search gating, a client that serves no formats), so each start
+        gives them one more pass instead of leaving them stuck for good.
+        """
+
+        username = self.window.username()
+        if not username:
+            return
+
+        tracks = self.repository.load_tracks(username)
+        missing_count = sum(1 for track in tracks if track.status is TrackStatus.NOT_FOUND)
+        failed_count = sum(
+            1 for track in tracks if track.status is TrackStatus.FAILED and track.youtube_url
+        )
+        if not missing_count and not failed_count:
+            return
+
+        if missing_count:
+            self.repository.clear_not_found_lookups()
+            tracks = [
+                replace(
+                    track,
+                    status=TrackStatus.FETCHED,
+                    youtube_url=None,
+                    retry_count=0,
+                    error=None,
+                )
+                if track.status is TrackStatus.NOT_FOUND
+                else track
+                for track in tracks
+            ]
+            self.repository.save_tracks(username, tracks)
+        self.window.set_tracks(tracks)
+        self._report_user_action(
+            translate(
+                "ApplicationController",
+                "Re-checking {missing} not-found and {failed} failed tracks from the last run.",
+                missing=missing_count,
+                failed=failed_count,
+            )
+        )
+        if missing_count:
+            self.resolve_youtube_urls(username)
+        else:
+            self.download_tracks(username)
 
     def _handle_quit(self) -> None:
         if not AppSettings().keep_data_on_quit():

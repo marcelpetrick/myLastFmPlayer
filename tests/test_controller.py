@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -222,6 +223,102 @@ def test_controller_start_connects_file_cache_menu_action(qapp, tmp_path, monkey
     assert opened_paths == [str(repository.data_dir)]
     assert repository.data_dir.is_dir()
     assert "Opened data folder:" in window.feedback_log.toPlainText()
+
+
+def _stuck_track_controller(tmp_path, tracks: list[Track]) -> tuple:
+    """Return a controller whose queues are recorded instead of started."""
+
+    window = MainWindow()
+    window.set_username("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    # load_tracks re-queues a download whose file has vanished, so give them a real one.
+    for track in tracks:
+        if track.local_path:
+            Path(track.local_path).touch()
+    repository.save_tracks("user", tracks)
+    repository.save_lookup_cache(tracks)
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        dependency_checker=lambda: DependencyCheckResult(installed=(), missing=()),
+    )
+    started: dict[str, list] = {"lookup": [], "download": []}
+    controller.resolve_youtube_urls = lambda *a, **k: started["lookup"].append((a, k))
+    controller.download_tracks = lambda *a, **k: started["download"].append((a, k))
+    return controller, window, repository, started
+
+
+def test_start_rechecks_not_found_tracks(qapp, tmp_path) -> None:
+    tracks = [
+        Track(artist="Missing", title="Track", status=TrackStatus.NOT_FOUND, retry_count=3),
+        Track(
+            artist="Done",
+            title="Track",
+            youtube_url="https://youtube.example/watch?v=ok",
+            local_path=str(tmp_path / "Done - Track.webm"),
+            status=TrackStatus.DOWNLOADED,
+        ),
+    ]
+    controller, _window, repository, started = _stuck_track_controller(tmp_path, tracks)
+
+    controller.start()
+
+    stored = {track.artist: track for track in repository.load_tracks("user")}
+    assert stored["Missing"].status is TrackStatus.FETCHED
+    assert stored["Missing"].retry_count == 0
+    assert stored["Done"].status is TrackStatus.DOWNLOADED
+    assert repository.load_lookup_cache().get("Missing\x1fTrack") is None
+    assert started["lookup"] == [(("user",), {})]
+    assert started["download"] == []
+
+
+def test_start_retries_failed_downloads_without_a_lookup_pass(qapp, tmp_path) -> None:
+    tracks = [
+        Track(
+            artist="Failed",
+            title="Track",
+            youtube_url="https://youtube.example/watch?v=ok",
+            status=TrackStatus.FAILED,
+        )
+    ]
+    controller, _window, repository, started = _stuck_track_controller(tmp_path, tracks)
+
+    controller.start()
+
+    # A failed download already has its URL, so it goes straight back to the download queue.
+    assert started["download"] == [(("user",), {})]
+    assert started["lookup"] == []
+    assert repository.load_tracks("user")[0].status is TrackStatus.FAILED
+
+
+def test_start_leaves_a_healthy_library_alone(qapp, tmp_path) -> None:
+    tracks = [
+        Track(
+            artist="Done",
+            title="Track",
+            youtube_url="https://youtube.example/watch?v=ok",
+            local_path=str(tmp_path / "Done - Track.webm"),
+            status=TrackStatus.DOWNLOADED,
+        )
+    ]
+    controller, window, _repository, started = _stuck_track_controller(tmp_path, tracks)
+
+    controller.start()
+
+    assert started["lookup"] == []
+    assert started["download"] == []
+    assert "Re-checking" not in window.feedback_log.toPlainText()
+
+
+def test_start_skips_the_recheck_without_a_username(qapp, tmp_path) -> None:
+    tracks = [Track(artist="Missing", title="Track", status=TrackStatus.NOT_FOUND)]
+    controller, window, _repository, started = _stuck_track_controller(tmp_path, tracks)
+    window.set_username("")
+
+    controller.start()
+
+    assert started["lookup"] == []
+    assert started["download"] == []
 
 
 def test_controller_reports_file_cache_open_failure(qapp, tmp_path, monkeypatch) -> None:
