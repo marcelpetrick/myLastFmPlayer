@@ -550,10 +550,10 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.username_input.setText(username)
 
     def set_fetch_enabled(self, enabled: bool) -> None:
-        """Enable or disable username entry and fetch actions."""
+        """Enable or disable fetch actions while keeping username entry available."""
 
         self.fetch_button.setEnabled(enabled)
-        self.username_input.setEnabled(enabled)
+        self.username_input.setEnabled(True)
         self.refresh_action.setEnabled(enabled)
 
     def set_fetch_control_state(self, active: bool, paused: bool = False) -> None:

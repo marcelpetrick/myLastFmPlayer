@@ -297,6 +297,19 @@ the worker is moved to the thread before the thread starts (Qt's
 ``moveToThread`` pattern). Progress and completion signals cross back to the
 main thread through Qt's queued connections.
 
+Last.fm pages feed YouTube lookup as they arrive, and resolved tracks feed downloading
+without waiting for the lookup batch to finish. One shared coordinator, restricted to
+one through five operations and defaulting to five, caps all lookup and download
+subprocesses together. Each completed track is first written to an append-only journal;
+the full JSON library and shared caches are compacted once at the end of a run.
+
+When the username changes, the controller cancels the old user's operation-owned stop
+events. Running ``yt-dlp``/``ffprobe`` process groups are terminated promptly, queued
+items return to retryable states, and completed journal entries remain available.
+Username-scoped signal filtering prevents late updates from replacing the new user's
+UI state, while a per-track coordinator key prevents two overlapping users from
+writing the same audio target concurrently.
+
 .. graphviz::
    :caption: Background worker lifecycle
 
@@ -365,7 +378,7 @@ platform-native ``QSettings`` store (``~/.config/`` on Linux).
      - Default output folder for downloaded mp3 files (overridable).
    * - QSettings (OS store)
      - Platform-native
-     - Theme, UI language, scrobbling enabled, download concurrency,
+     - Theme, UI language, scrobbling enabled, YouTube-work concurrency,
        yt-dlp cookie browser, and keep-data-on-quit flag.
 
 Key Design Decisions

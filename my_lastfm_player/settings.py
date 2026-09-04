@@ -23,9 +23,9 @@ WINDOW_GEOMETRY_KEY = "window/geometry"
 DEFAULT_VOLUME_PERCENT = 100
 
 YTDLP_BROWSER_CHOICES = ["", "firefox", "chromium", "chrome", "brave"]
-DEFAULT_DOWNLOAD_CONCURRENCY = 2
+DEFAULT_DOWNLOAD_CONCURRENCY = 5
 MIN_DOWNLOAD_CONCURRENCY = 1
-MAX_DOWNLOAD_CONCURRENCY = 10
+MAX_DOWNLOAD_CONCURRENCY = 5
 
 
 class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter pair per setting

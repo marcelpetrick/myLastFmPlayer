@@ -125,10 +125,11 @@ def test_download_concurrency_defaults_persists_and_clamps(tmp_path: Path) -> No
     path = tmp_path / "settings.ini"
     settings = AppSettings(_ini_settings(path))
 
+    assert DEFAULT_DOWNLOAD_CONCURRENCY == 5
     assert settings.download_concurrency() == DEFAULT_DOWNLOAD_CONCURRENCY
 
-    settings.set_download_concurrency(7)
-    assert AppSettings(_ini_settings(path)).download_concurrency() == 7
+    settings.set_download_concurrency(4)
+    assert AppSettings(_ini_settings(path)).download_concurrency() == 4
 
     settings.set_download_concurrency(0)
     assert settings.download_concurrency() == MIN_DOWNLOAD_CONCURRENCY

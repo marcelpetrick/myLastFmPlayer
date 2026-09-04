@@ -164,12 +164,13 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         )
         self.youtube_group.setTitle(self.tr("YouTube Downloads"))
         self.browser_label.setText(self.tr("Browser cookies:"))
-        self.concurrency_label.setText(self.tr("Parallel downloads:"))
+        self.concurrency_label.setText(self.tr("Parallel YouTube checks and downloads:"))
         self.youtube_hint.setText(
             self.tr(
                 "Select the browser whose YouTube login cookies yt-dlp should use. "
                 "Required for age-restricted videos. You must be signed into YouTube "
-                "in the selected browser. Parallel download changes apply to new work."
+                "in the selected browser. The parallel-work limit applies to new YouTube "
+                "checks and downloads."
             )
         )
         self.browser_combo.setItemText(0, self.tr("None (disabled)"))

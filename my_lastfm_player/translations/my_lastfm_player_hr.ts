@@ -4,395 +4,405 @@
 <context>
     <name>ApplicationController</name>
     <message>
-        <location filename="../controller.py" line="193" />
+        <location filename="../controller.py" line="195" />
         <source>Re-checking {missing} not-found and {failed} failed tracks from the last run.</source>
         <translation>Ponovna provjera {missing} nepronađenih i {failed} neuspjelih pjesama iz prošlog pokretanja.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="228" />
+        <location filename="../controller.py" line="258" />
+        <source>Stopping background work for {username}; completed items remain saved.</source>
+        <translation>Zaustavlja se pozadinski rad za {username}; dovršene stavke ostaju spremljene.</translation>
+    </message>
+    <message>
+        <location filename="../controller.py" line="287" />
         <source>No cached tracks found for {username}; fetching from Last.fm.</source>
         <translation>Nema spremljenih pjesama za {username}; dohvaćaju se s Last.fm-a.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="239" />
+        <location filename="../controller.py" line="298" />
         <source>Found {count} cached tracks for {username}; checking Last.fm before using them.</source>
         <translation>Pronađeno je {count} spremljenih pjesama za {username}; provjerava se Last.fm prije korištenja.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="259" />
+        <location filename="../controller.py" line="318" />
         <source>Loaded {count} cached tracks for {username}; skipped Last.fm fetch.</source>
         <translation>Učitano je {count} spremljenih pjesama za {username}; preskočeno je dohvaćanje s Last.fm-a.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="273" />
+        <location filename="../controller.py" line="332" />
         <source>Could not verify Last.fm loved-track count for {username}; using {count} cached tracks: {error}</source>
         <translation>Nije moguće provjeriti broj omiljenih pjesama na Last.fm-u za {username}; koristi se {count} spremljenih pjesama: {error}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="286" />
+        <location filename="../controller.py" line="345" />
         <source>Could not read Last.fm loved-track count for {username}; fetching fresh data instead of trusting {count} cached tracks.</source>
         <translation>Nije moguće pročitati broj omiljenih pjesama na Last.fm-u za {username}; dohvaćaju se novi podaci umjesto korištenja {count} spremljenih pjesama.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="298" />
+        <location filename="../controller.py" line="357" />
         <source>Last.fm reports {online_count} loved tracks for {username}; cached track count matches.</source>
         <translation>Last.fm javlja {online_count} omiljenih pjesama za {username}; broj spremljenih pjesama se podudara.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="309" />
+        <location filename="../controller.py" line="368" />
         <source>Last.fm reports {online_count} loved tracks for {username}, but the cache has {cached_count}; fetching fresh data.</source>
         <translation>Last.fm javlja {online_count} omiljenih pjesama za {username}, ali lokalno je spremljeno {cached_count}; dohvaćaju se novi podaci.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="334" />
+        <location filename="../controller.py" line="393" />
         <source>Dependency check finished: {message}</source>
         <translation>Provjera ovisnosti završena: {message}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="351" />
+        <location filename="../controller.py" line="410" />
         <source>Could not open data folder: {error}</source>
         <translation>Nije moguće otvoriti mapu podataka: {error}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="361" />
+        <location filename="../controller.py" line="420" />
         <source>Opened data folder: {path}</source>
         <translation>Otvorena mapa podataka: {path}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="370" />
+        <location filename="../controller.py" line="429" />
         <source>Could not open data folder: {path}</source>
         <translation>Nije moguće otvoriti mapu podataka: {path}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="382" />
+        <location filename="../controller.py" line="441" />
         <source>Could not open artist page: {url}</source>
         <translation>Nije moguće otvoriti stranicu izvođača: {url}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="393" />
+        <location filename="../controller.py" line="452" />
         <source>Last.fm scrobbling is disabled because {api_key_env}/{api_secret_env} are not configured and no bundled credentials are available.</source>
         <translation>Last.fm skroblanje je onemogućeno jer {api_key_env}/{api_secret_env} nisu konfigurirani i nisu dostupne isporučene vjerodajnice.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="408" />
+        <location filename="../controller.py" line="467" />
         <source>Loaded Last.fm scrobbling settings; stored session key is {state}.</source>
         <translation>Učitane su postavke Last.fm skroblanja; pohranjeni ključ sesije je {state}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="412" />
+        <location filename="../controller.py" line="471" />
         <source>present</source>
         <translation>prisutan</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="414" />
+        <location filename="../controller.py" line="473" />
         <source>missing</source>
         <translation>nedostaje</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="428" />
+        <location filename="../controller.py" line="487" />
         <source>Connected Last.fm scrobbling as {username}.</source>
         <translation>Last.fm skroblanje povezano je za korisnika {username}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="436" />
+        <location filename="../controller.py" line="495" />
         <source>Stored Last.fm session key could not be verified; scrobbling remains disconnected.</source>
         <translation>Pohranjeni Last.fm ključ sesije nije moguće provjeriti; skroblanje ostaje nepovezano.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="446" />
+        <location filename="../controller.py" line="505" />
         <source>Opening preferences.</source>
         <translation>Otvaranje postavki.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="460" />
+        <location filename="../controller.py" line="519" />
         <source>Preferences closed; no Last.fm scrobbling service is active.</source>
         <translation>Postavke su zatvorene; nijedna usluga Last.fm skroblanja nije aktivna.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="469" />
+        <location filename="../controller.py" line="528" />
         <source>Saved Last.fm scrobbling preferences for {username}.</source>
         <translation>Spremljene su postavke Last.fm skroblanja za {username}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="473" />
+        <location filename="../controller.py" line="532" />
         <source>no user</source>
         <translation>nema korisnika</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="484" />
+        <location filename="../controller.py" line="543" />
         <source>Enter a Last.fm username before fetching tracks.</source>
         <translation>Unesite korisničko ime za Last.fm prije dohvaćanja pjesama.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="495" />
+        <location filename="../controller.py" line="552" />
+        <source>Background work is already running for {username}.</source>
+        <translation>Pozadinski rad za {username} već je pokrenut.</translation>
+    </message>
+    <message>
+        <location filename="../controller.py" line="567" />
         <source>Loaded cached tracks</source>
         <translation>Učitane predmemorirane pjesme</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="512" />
+        <location filename="../controller.py" line="584" />
         <source>Could not reach Last.fm for {username}: {error}</source>
         <translation>Last.fm za {username} nije dostupan: {error}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="526" />
+        <location filename="../controller.py" line="598" />
         <source>Starting fresh Last.fm fetch for {username}; {count} tracks expected.</source>
         <translation>Pokreće se novo dohvaćanje s Last.fm-a za {username}; očekuje se {count} pjesama.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="535" />
+        <location filename="../controller.py" line="607" />
         <source>Starting fresh Last.fm fetch for {username}.</source>
         <translation>Pokreće se novo dohvaćanje s Last.fm-a za {username}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="544" />
+        <location filename="../controller.py" line="616" />
         <source>Starting fetch</source>
         <translation>Pokreće se dohvaćanje</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="560" />
+        <location filename="../controller.py" line="632" />
         <source>Fetch resumed.</source>
         <translation>Dohvaćanje je nastavljeno.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="566" />
+        <location filename="../controller.py" line="638" />
         <source>Fetch paused.</source>
         <translation>Dohvaćanje je pauzirano.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="576" />
+        <location filename="../controller.py" line="648" />
         <source>Stopping fetch.</source>
         <translation>Zaustavljanje dohvaćanja.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="590" />
+        <location filename="../controller.py" line="662" />
         <source>Enter a Last.fm username before resolving tracks.</source>
         <translation>Unesite korisničko ime za Last.fm prije pronalaženja pjesama.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="599" />
+        <location filename="../controller.py" line="671" />
         <source>Starting YouTube lookup for {username}; priority={priority}, limit={limit}.</source>
         <translation>Pokreće se pretraga YouTube izvora za {username}; prioritet={priority}, ograničenje={limit}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="659" />
-        <location filename="../controller.py" line="605" />
+        <location filename="../controller.py" line="732" />
+        <location filename="../controller.py" line="677" />
         <source>none</source>
         <translation>nema</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="663" />
-        <location filename="../controller.py" line="609" />
+        <location filename="../controller.py" line="736" />
+        <location filename="../controller.py" line="681" />
         <source>all</source>
         <translation>sve</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="615" />
+        <location filename="../controller.py" line="687" />
         <source>Starting YouTube lookup</source>
         <translation>Pokretanje pretrage YouTube izvora</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="638" />
+        <location filename="../controller.py" line="711" />
         <source>Enter a Last.fm username before downloading tracks.</source>
         <translation>Unesite korisničko ime za Last.fm prije preuzimanja pjesama.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="652" />
+        <location filename="../controller.py" line="725" />
         <source>Starting downloads for {username}; concurrency={concurrency}, priority={priority}, limit={limit}.</source>
         <translation>Pokreće se preuzimanje za {username}; paralelno={concurrency}, prioritet={priority}, ograničenje={limit}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="668" />
+        <location filename="../controller.py" line="741" />
         <source>Starting downloads</source>
         <translation>Pokretanje preuzimanja</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="692" />
+        <location filename="../controller.py" line="765" />
         <source>Select a downloaded track before playing.</source>
         <translation>Odaberite preuzetu pjesmu prije reprodukcije.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="710" />
+        <location filename="../controller.py" line="783" />
         <source>Playback resumed.</source>
         <translation>Reprodukcija je nastavljena.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="719" />
+        <location filename="../controller.py" line="792" />
         <source>Playback paused.</source>
         <translation>Reprodukcija je pauzirana.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="763" />
-        <location filename="../controller.py" line="728" />
+        <location filename="../controller.py" line="836" />
+        <location filename="../controller.py" line="801" />
         <source>No track is currently playing.</source>
         <translation>Trenutno se ne reproducira nijedna pjesma.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="739" />
+        <location filename="../controller.py" line="812" />
         <source>Playback stopped.</source>
         <translation>Reprodukcija je zaustavljena.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="784" />
+        <location filename="../controller.py" line="857" />
         <source>Seeked playback to {seconds} seconds.</source>
         <translation>Reprodukcija je premotana na {seconds} sekundi.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="849" />
+        <location filename="../controller.py" line="933" />
         <source>Fetch for {username} returned invalid track data.</source>
         <translation>Dohvaćanje za {username} vratilo je nevažeće podatke o pjesmi.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="859" />
+        <location filename="../controller.py" line="943" />
         <source>Fetched and stored {count} tracks for {username}.</source>
         <translation>Dohvaćeno je i pohranjeno {count} pjesama za {username}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="882" />
+        <location filename="../controller.py" line="967" />
         <source>Stopped fetch for {username} returned invalid data.</source>
         <translation>Zaustavljeno dohvaćanje za {username} vratilo je nevažeće podatke.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="892" />
+        <location filename="../controller.py" line="977" />
         <source>Stopped fetch for {username} after {count} tracks.</source>
         <translation>Dohvaćanje za {username} zaustavljeno je nakon {count} pjesama.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="903" />
+        <location filename="../controller.py" line="990" />
         <source>Fetch for {username} returned invalid partial data.</source>
         <translation>Dohvaćanje za {username} vratilo je nevažeće djelomične podatke.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="914" />
+        <location filename="../controller.py" line="1001" />
         <source>Fetch progress for {username}: {count} tracks are visible now.</source>
         <translation>Napredak dohvaćanja za {username}: sada je vidljivo {count} pjesama.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="922" />
+        <location filename="../controller.py" line="1009" />
         <source>Fetched {count} tracks for {username}</source>
         <translation>Dohvaćeno {count} pjesama za {username}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="941" />
+        <location filename="../controller.py" line="1022" />
         <source>Workflow for {username} returned an invalid track update.</source>
         <translation>Tijek rada za {username} vratio je nevažeće ažuriranje pjesme.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="951" />
+        <location filename="../controller.py" line="1032" />
         <source>Track update from {username}: {artist} - {title} is now {status}.</source>
         <translation>Ažuriranje pjesme za {username}: {artist} - {title} sada ima status {status}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="966" />
+        <location filename="../controller.py" line="1049" />
         <source>Lookup for {username} returned invalid track data.</source>
         <translation>Pretraživanje za {username} vratilo je nevažeće podatke o pjesmi.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="982" />
+        <location filename="../controller.py" line="1065" />
         <source>Resolved YouTube URLs for {resolved_count}/{count} tracks; {not_found_count} were not found.</source>
         <translation>Pronađeni su YouTube URL-ovi za {resolved_count}/{count} pjesama; {not_found_count} nije pronađeno.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1006" />
+        <location filename="../controller.py" line="1089" />
         <source>No queued tracks are ready for download.</source>
         <translation>Nijedna pjesma u redu čekanja nije spremna za preuzimanje.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1017" />
+        <location filename="../controller.py" line="1102" />
         <source>Download for {username} returned invalid track data.</source>
         <translation>Preuzimanje za {username} vratilo je nevažeće podatke o pjesmi.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1037" />
+        <location filename="../controller.py" line="1122" />
         <source>Download run for {username} finished: {downloaded_count}/{count} tracks downloaded, {failed_count} failed.</source>
         <translation>Preuzimanje za {username} je završeno: preuzeto je {downloaded_count}/{count} pjesama, {failed_count} nije uspjelo.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1064" />
+        <location filename="../controller.py" line="1149" />
         <source>Failed</source>
         <translation>Neuspješno</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1103" />
+        <location filename="../controller.py" line="1196" />
         <source>Updating Last.fm now-playing for {artist} - {title}.</source>
         <translation>Ažurira se status "sada svira" na Last.fm-u za {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1112" />
+        <location filename="../controller.py" line="1205" />
         <source>Playing {artist} - {title}.</source>
         <translation>Reproducira se {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1136" />
+        <location filename="../controller.py" line="1229" />
         <source>Last.fm returned invalid artist image data.</source>
         <translation>Last.fm je vratio nevažeće podatke o slici izvođača.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1170" />
+        <location filename="../controller.py" line="1263" />
         <source>Enter a Last.fm username before preparing playback.</source>
         <translation>Unesite korisničko ime za Last.fm prije pripreme reprodukcije.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1179" />
+        <location filename="../controller.py" line="1272" />
         <source>Preparing {artist} - {title} for playback.</source>
         <translation>Priprema {artist} - {title} za reprodukciju.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1196" />
+        <location filename="../controller.py" line="1289" />
         <source>Starting automatic YouTube lookup for {count} fetched tracks.</source>
         <translation>Pokreće se automatska pretraga YouTube izvora za {count} dohvaćenih pjesama.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1212" />
+        <location filename="../controller.py" line="1309" />
         <source>Downloads stopped by user.</source>
         <translation>Korisnik je zaustavio preuzimanja.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1221" />
+        <location filename="../controller.py" line="1318" />
         <source>Enter a Last.fm username before retrying a download.</source>
         <translation>Unesite korisničko ime za Last.fm prije ponovnog pokušaja preuzimanja.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1239" />
+        <location filename="../controller.py" line="1336" />
         <source>Retrying download for {artist} - {title}.</source>
         <translation>Ponovni pokušaj preuzimanja za {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1252" />
+        <location filename="../controller.py" line="1349" />
         <source>Starting automatic download queue for resolved tracks.</source>
         <translation>Pokreće se automatski red preuzimanja za pronađene pjesme.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1260" />
+        <location filename="../controller.py" line="1357" />
         <source>Starting priority download for selected track.</source>
         <translation>Pokreće se prioritetno preuzimanje odabrane pjesme.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1341" />
+        <location filename="../controller.py" line="1446" />
         <source>Submitting Last.fm scrobble for {artist} - {title}.</source>
         <translation>Šalje se zapis skroblanja na Last.fm za {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1371" />
+        <location filename="../controller.py" line="1476" />
         <source>Finished playback for {artist} - {title}.</source>
         <translation>Završena je reprodukcija za {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1384" />
+        <location filename="../controller.py" line="1489" />
         <source>Playback finished.</source>
         <translation>Reprodukcija je završena.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1395" />
+        <location filename="../controller.py" line="1500" />
         <source>Continuing with random track: {artist} - {title}.</source>
         <translation>Nastavlja se s nasumičnom pjesmom: {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1406" />
+        <location filename="../controller.py" line="1511" />
         <source>Continuing with next track: {artist} - {title}.</source>
         <translation>Nastavlja se sa sljedećom pjesmom: {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1426" />
+        <location filename="../controller.py" line="1531" />
         <source>All background work is finished; controls are enabled again.</source>
         <translation>Sav pozadinski rad je završen; kontrole su ponovno omogućene.</translation>
     </message>
@@ -431,12 +441,12 @@
 </context><context>
     <name>DownloadManager</name>
     <message>
-        <location filename="../download.py" line="148" />
+        <location filename="../download.py" line="158" />
         <source>Queued {count} downloads</source>
         <translation>U redu čekanja je {count} preuzimanja</translation>
     </message>
     <message>
-        <location filename="../download.py" line="177" />
+        <location filename="../download.py" line="188" />
         <source>Downloaded {done}/{total} tracks</source>
         <translation>Preuzeto {done}/{total} pjesama</translation>
     </message>
@@ -477,12 +487,12 @@
 </context><context>
     <name>LookupTracksWorker</name>
     <message>
-        <location filename="../workers.py" line="183" />
+        <location filename="../workers.py" line="186" />
         <source>Resolving YouTube URLs for {username}</source>
         <translation>Pronalaženje YouTube URL-ova za {username}</translation>
     </message>
     <message>
-        <location filename="../workers.py" line="199" />
+        <location filename="../workers.py" line="204" />
         <source>Resolved {count} tracks</source>
         <translation>Pronađeno {count} pjesama</translation>
     </message>
@@ -893,7 +903,7 @@
 </context><context>
     <name>PreferencesDialog</name>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="175" />
+        <location filename="../ui/preferences_dialog.py" line="176" />
         <location filename="../ui/preferences_dialog.py" line="135" />
         <source>None (disabled)</source>
         <translation>Nijedan (onemogućeno)</translation>
@@ -950,55 +960,63 @@
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="167" />
-        <source>Parallel downloads:</source>
-        <translation>Paralelna preuzimanja:</translation>
+        <source>Parallel YouTube checks and downloads:</source>
+        <translation>Paralelne YouTube provjere i preuzimanja:</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="169" />
-        <source>Select the browser whose YouTube login cookies yt-dlp should use. Required for age-restricted videos. You must be signed into YouTube in the selected browser. Parallel download changes apply to new work.</source>
-        <translation>Odaberite preglednik čije YouTube kolačiće za prijavu yt-dlp treba koristiti. Potrebno za videozapise s dobnim ograničenjem. Morate biti prijavljeni na YouTube u odabranom pregledniku. Promjene paralelnih preuzimanja primjenjuju se na nove zadatke.</translation>
+        <source>Select the browser whose YouTube login cookies yt-dlp should use. Required for age-restricted videos. You must be signed into YouTube in the selected browser. The parallel-work limit applies to new YouTube checks and downloads.</source>
+        <translation>Odaberite preglednik čije kolačiće za prijavu na YouTube treba koristiti yt-dlp. To je potrebno za videozapise s dobnim ograničenjem. Morate biti prijavljeni na YouTube u odabranom pregledniku. Ograničenje paralelnog rada primjenjuje se na nove YouTube provjere i preuzimanja.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="176" />
+        <location filename="../ui/preferences_dialog.py" line="177" />
         <source>Privacy</source>
         <translation>Privatnost</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="177" />
+        <location filename="../ui/preferences_dialog.py" line="178" />
         <source>Keep cached data after quitting</source>
         <translation>Zadrži predmemorirane podatke nakon izlaska</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="183" />
+        <location filename="../ui/preferences_dialog.py" line="184" />
         <source>⚠ API credentials not configured.
 Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
         <translation>⚠ API vjerodajnice nisu konfigurirane.
 Postavite varijable okoline LASTFM_API_KEY i LASTFM_API_SECRET.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="202" />
+        <location filename="../ui/preferences_dialog.py" line="203" />
         <source>🟢 Connected as {username}</source>
         <translation>🟢 Povezano kao {username}</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="211" />
+        <location filename="../ui/preferences_dialog.py" line="212" />
         <source>🔵 Browser opened — authorize the app, then click «I've authorized».</source>
         <translation>🔵 Preglednik je otvoren — autorizirajte aplikaciju, zatim kliknite «Autorizirao sam».</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="217" />
+        <location filename="../ui/preferences_dialog.py" line="218" />
         <source>🔴 Not connected</source>
         <translation>🔴 Nije povezano</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="240" />
+        <location filename="../ui/preferences_dialog.py" line="241" />
         <source>⚠ Could not start authentication. Check API credentials.</source>
         <translation>⚠ Nije moguće pokrenuti provjeru autentičnosti. Provjerite API vjerodajnice.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="251" />
+        <location filename="../ui/preferences_dialog.py" line="252" />
         <source>⚠ Authorization not confirmed yet. Authorize in the browser, then try again.</source>
         <translation>⚠ Autorizacija još nije potvrđena. Autorizirajte se u pregledniku, a zatim pokušajte ponovno.</translation>
+    </message>
+    <message>
+        <source>Parallel downloads:</source>
+        <translation type="vanished">Paralelna preuzimanja:</translation>
+    </message>
+    <message>
+        <source>Select the browser whose YouTube login cookies yt-dlp should use. Required for age-restricted videos. You must be signed into YouTube in the selected browser. Parallel download changes apply to new work.</source>
+        <translation type="vanished">Odaberite preglednik čije YouTube kolačiće za prijavu yt-dlp treba koristiti. Potrebno za videozapise s dobnim ograničenjem. Morate biti prijavljeni na YouTube u odabranom pregledniku. Promjene paralelnih preuzimanja primjenjuju se na nove zadatke.</translation>
     </message>
     <message>
         <source>Submits to Last.fm after 10 % of each track has been played.</source>
@@ -1074,17 +1092,17 @@ Postavite varijable okoline LASTFM_API_KEY i LASTFM_API_SECRET.</translation>
 </context><context>
     <name>YouTubeResolver</name>
     <message>
-        <location filename="../youtube.py" line="130" />
+        <location filename="../youtube.py" line="147" />
         <source>Searching {done}/{total}: {artist} - {title}</source>
         <translation>Pretraživanje {done}/{total}: {artist} - {title}</translation>
     </message>
     <message>
-        <location filename="../youtube.py" line="295" />
+        <location filename="../youtube.py" line="347" />
         <source>Resolved {done}/{total}: {artist} - {title}</source>
         <translation>Pronađeno {done}/{total}: {artist} - {title}</translation>
     </message>
     <message>
-        <location filename="../youtube.py" line="303" />
+        <location filename="../youtube.py" line="355" />
         <source>No YouTube result {done}/{total}: {artist} - {title}</source>
         <translation>Nema YouTube rezultata {done}/{total}: {artist} - {title}</translation>
     </message>

@@ -49,6 +49,37 @@ def test_repository_returns_empty_list_for_unknown_user(tmp_path: Path) -> None:
     assert repository.load_tracks("missing") == []
 
 
+def test_repository_journals_independent_updates_and_compacts_on_save(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    original = Track(artist="Artist", title="Title")
+    resolved = Track(
+        artist="Artist",
+        title="Title",
+        youtube_url="https://youtu.be/result",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_tracks("user", [original])
+
+    repository.append_track_update("user", resolved)
+
+    assert repository.load_tracks("user") == [resolved]
+    assert repository.user_updates_path("user").is_file()
+
+    repository.merge_tracks("user", [])
+
+    assert repository.load_tracks("user") == [resolved]
+    assert not repository.user_updates_path("user").exists()
+
+
+def test_repository_ignores_a_truncated_journal_entry(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    track = Track(artist="Artist", title="Title")
+    repository.save_tracks("user", [track])
+    repository.user_updates_path("user").write_text("{truncated\n", encoding="utf-8")
+
+    assert repository.load_tracks("user") == [track]
+
+
 def test_repository_delete_tracks_removes_only_user_json(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     repository.save_tracks("first", [Track(artist="Artist", title="Title")])
@@ -124,6 +155,34 @@ def test_download_cache_saves_only_tracks_with_local_paths(tmp_path: Path) -> No
 
     cache = repository.load_download_cache()
     assert cache == {cached.cache_key: cached}
+
+
+def test_merge_download_cache_keeps_existing_entries(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    first_path = tmp_path / "first.mp3"
+    second_path = tmp_path / "second.mp3"
+    first_path.touch()
+    second_path.touch()
+    first = Track(
+        artist="First",
+        title="Track",
+        local_path=str(first_path),
+        status=TrackStatus.DOWNLOADED,
+    )
+    second = Track(
+        artist="Second",
+        title="Track",
+        local_path=str(second_path),
+        status=TrackStatus.DOWNLOADED,
+    )
+    repository.save_download_cache([first])
+
+    repository.merge_download_cache([second])
+
+    assert repository.load_download_cache() == {
+        first.cache_key: first,
+        second.cache_key: second,
+    }
     assert (tmp_path / CACHE_FILENAME).is_file()
 
 

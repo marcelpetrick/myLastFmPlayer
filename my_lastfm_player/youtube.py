@@ -5,12 +5,19 @@ import logging
 import re
 import subprocess
 from collections.abc import Callable, Sequence
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import replace
+from threading import Event
 from typing import Any
 
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
+from my_lastfm_player.youtube_work import (
+    WorkCancelled,
+    YouTubeWorkLimiter,
+    run_cancellable_command,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +26,7 @@ LOOKUP_TIMEOUT_SECONDS = 120
 # An empty search result is transient often enough (YouTube gating, an over-specific
 # artist field) that NOT_FOUND is re-checked this many times before it sticks.
 MAX_LOOKUP_ATTEMPTS = 3
+DEFAULT_LOOKUP_CONCURRENCY = 5
 # Last.fm artist fields carry store suffixes ("Name - EU Store") and decorative symbols
 # ("ETHER ensemble", "artist -*-") that YouTube search matches literally and so finds nothing.
 ARTIST_SUFFIX_SEPARATOR = " - "
@@ -42,10 +50,12 @@ class YouTubeResolver:
         command_runner: CommandRunner = subprocess.run,
         executable: str = "yt-dlp",
         cookies_browser: str = "",
+        work_limiter: YouTubeWorkLimiter | None = None,
     ) -> None:
         self.command_runner = command_runner
         self.executable = executable
         self.cookies_browser = cookies_browser
+        self.work_limiter = work_limiter or YouTubeWorkLimiter()
 
     def build_query(self, track: Track) -> str:
         """Return the primary search query used for ``track``."""
@@ -63,13 +73,17 @@ class YouTubeResolver:
         ]
         return list(dict.fromkeys(query for query in candidates if query.strip()))
 
-    def resolve_track(self, track: Track) -> Track:
+    def resolve_track(self, track: Track, stop_event: Event | None = None) -> Track:
         """Resolve one track and return a copy with its lookup status updated."""
 
         last_error: YouTubeLookupError | None = None
         for query in self.build_queries(track):
+            if stop_event is not None and stop_event.is_set():
+                return replace(track, status=TrackStatus.FETCHED, error=None)
             try:
-                search_result = self.search_first_result(query)
+                search_result = self.search_first_result(query, stop_event, track.cache_key)
+            except WorkCancelled:
+                return replace(track, status=TrackStatus.FETCHED, error=None)
             except YouTubeLookupError as error:
                 last_error = error
                 continue
@@ -89,17 +103,22 @@ class YouTubeResolver:
             retry_count=track.retry_count + 1,
         )
 
-    def resolve_tracks(  # pylint: disable=too-many-locals
+    def resolve_tracks(  # pylint: disable=too-many-arguments,too-many-locals
         self,
         tracks: list[Track],
         progress_callback: ProgressCallback | None = None,
         track_update_callback: TrackUpdateCallback | None = None,
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
+        concurrency: int = DEFAULT_LOOKUP_CONCURRENCY,
+        stop_event: Event | None = None,
     ) -> list[Track]:
-        """Resolve all eligible tracks and report progress and per-track updates."""
+        """Resolve eligible tracks concurrently with independent per-track failures."""
 
-        resolved_tracks: list[Track] = []
+        if concurrency < 1:
+            raise ValueError("concurrency must be at least 1")
+
+        resolved_tracks: list[Track] = list(tracks)
         unresolved_indexes = [
             index
             for index, track in enumerate(tracks)
@@ -112,49 +131,81 @@ class YouTubeResolver:
         )
         if max_tracks is not None:
             unresolved_indexes = unresolved_indexes[:max_tracks]
-        indexes_to_resolve = set(unresolved_indexes)
         total_to_resolve = len(unresolved_indexes)
-        resolved_count = 0
+        if not unresolved_indexes:
+            return resolved_tracks
 
-        for index, track in enumerate(tracks):
-            if track.youtube_url:
-                resolved_tracks.append(track)
-                continue
-            if index not in indexes_to_resolve:
-                resolved_tracks.append(track)
-                continue
-            resolved_count += 1
+        pending_indexes = iter(unresolved_indexes)
+        completed_count = 0
+        futures: dict[Future[Track], int] = {}
+
+        def submit_next(executor: ThreadPoolExecutor) -> bool:
+            if stop_event is not None and stop_event.is_set():
+                return False
+            try:
+                index = next(pending_indexes)
+            except StopIteration:
+                return False
+            track = tracks[index]
+            searching_track = replace(track, status=TrackStatus.SEARCHING, error=None)
+            resolved_tracks[index] = searching_track
+            _report_track_update(track_update_callback, searching_track)
             _report(
                 progress_callback,
-                _percent(resolved_count - 1, total_to_resolve),
+                _percent(completed_count, total_to_resolve),
                 translate(
                     "YouTubeResolver",
                     "Searching {done}/{total}: {artist} - {title}",
-                    done=resolved_count,
+                    done=completed_count + len(futures) + 1,
                     total=total_to_resolve,
                     artist=track.artist,
                     title=track.title,
                 ),
             )
-            searching_track = replace(track, status=TrackStatus.SEARCHING)
-            _report_track_update(track_update_callback, searching_track)
-            try:
-                resolved_track = self.resolve_track(searching_track)
-            except YouTubeLookupError as exc:
-                resolved_track = replace(
-                    searching_track,
-                    youtube_url=None,
-                    status=TrackStatus.NOT_FOUND,
-                    retry_count=searching_track.retry_count + 1,
-                    error=str(exc),
-                )
-            _report_track_update(track_update_callback, resolved_track)
-            resolved_tracks.append(resolved_track)
-            _report(
-                progress_callback,
-                _percent(resolved_count, total_to_resolve),
-                _resolved_message(resolved_count, total_to_resolve, resolved_track),
-            )
+            future = executor.submit(self.resolve_track, searching_track, stop_event)
+            futures[future] = index
+            return True
+
+        with ThreadPoolExecutor(max_workers=min(concurrency, total_to_resolve)) as executor:
+            for _unused in range(min(concurrency, total_to_resolve)):
+                submit_next(executor)
+            while futures:
+                completed, _pending = wait(futures, return_when=FIRST_COMPLETED)
+                for future in completed:
+                    index = futures.pop(future)
+                    searching_track = resolved_tracks[index]
+                    try:
+                        resolved_track = future.result()
+                    except YouTubeLookupError as exc:
+                        resolved_track = replace(
+                            searching_track,
+                            youtube_url=None,
+                            status=TrackStatus.FAILED,
+                            retry_count=searching_track.retry_count + 1,
+                            error=str(exc),
+                        )
+                    except Exception as exc:  # noqa: BLE001 - isolate one failed lookup.
+                        LOGGER.exception(
+                            "Unexpected lookup failure for %s - %s",
+                            searching_track.artist,
+                            searching_track.title,
+                        )
+                        resolved_track = replace(
+                            searching_track,
+                            youtube_url=None,
+                            status=TrackStatus.FAILED,
+                            retry_count=searching_track.retry_count + 1,
+                            error=str(exc),
+                        )
+                    resolved_tracks[index] = resolved_track
+                    _report_track_update(track_update_callback, resolved_track)
+                    completed_count += 1
+                    _report(
+                        progress_callback,
+                        _percent(completed_count, total_to_resolve),
+                        _resolved_message(completed_count, total_to_resolve, resolved_track),
+                    )
+                    submit_next(executor)
         return resolved_tracks
 
     def resolve_and_store_tracks(  # pylint: disable=too-many-arguments
@@ -165,16 +216,26 @@ class YouTubeResolver:
         track_update_callback: TrackUpdateCallback | None = None,
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
+        concurrency: int = DEFAULT_LOOKUP_CONCURRENCY,
+        stop_event: Event | None = None,
     ) -> list[Track]:
         """Resolve stored tracks for ``username`` and persist the updated list."""
 
         tracks = repository.mark_cached_lookups(repository.load_tracks(username))
+
+        def persist_track_update(track: Track) -> None:
+            if track.status is not TrackStatus.SEARCHING:
+                repository.append_track_update(username, track)
+            _report_track_update(track_update_callback, track)
+
         resolved_tracks = self.resolve_tracks(
             tracks,
             progress_callback=progress_callback,
-            track_update_callback=track_update_callback,
+            track_update_callback=persist_track_update,
             priority_cache_key=priority_cache_key,
             max_tracks=max_tracks,
+            concurrency=concurrency,
+            stop_event=stop_event,
         )
         resolved_tracks = _merge_existing_download_state(
             resolved_tracks,
@@ -184,14 +245,19 @@ class YouTubeResolver:
         repository.save_lookup_cache(merged_tracks)
         return merged_tracks
 
-    def search_first_result(self, query: str) -> str | None:
+    def search_first_result(
+        self,
+        query: str,
+        stop_event: Event | None = None,
+        work_key: str | None = None,
+    ) -> str | None:
         """Return the first YouTube URL for ``query`` or ``None`` when no result exists."""
 
         command = [self.executable, "--dump-single-json", "--no-playlist", "--flat-playlist"]
         if self.cookies_browser:
             command += ["--cookies-from-browser", self.cookies_browser]
         command.append(f"{YTDLP_SEARCH_PREFIX}{query}")
-        completed = self._run(command)
+        completed = self._run(command, stop_event, work_key)
         if completed.returncode != 0:
             if _looks_like_no_result(completed.stderr):
                 return None
@@ -200,8 +266,22 @@ class YouTubeResolver:
             return None
         return _extract_youtube_url(completed.stdout)
 
-    def _run(self, command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self,
+        command: Sequence[str],
+        stop_event: Event | None = None,
+        work_key: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         try:
+            if self.command_runner is subprocess.run:
+                with self.work_limiter.slot(stop_event, work_key) as acquired:
+                    if not acquired:
+                        raise WorkCancelled("YouTube lookup cancelled")
+                    return run_cancellable_command(
+                        command,
+                        stop_event=stop_event,
+                        timeout=LOOKUP_TIMEOUT_SECONDS,
+                    )
             return self.command_runner(
                 command,
                 check=False,
@@ -219,6 +299,8 @@ class YouTubeResolver:
 
 
 def _needs_lookup(track: Track) -> bool:
+    if track.status is TrackStatus.FAILED:
+        return False
     if track.status is not TrackStatus.NOT_FOUND:
         return True
     return track.retry_count < MAX_LOOKUP_ATTEMPTS

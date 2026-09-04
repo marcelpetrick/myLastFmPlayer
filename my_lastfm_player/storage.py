@@ -17,6 +17,7 @@ APP_DIR_NAME = "myLastFmPlayer"
 TRACKS_DIR_NAME = "tracks"
 CACHE_FILENAME = "download-cache.json"
 LOOKUP_CACHE_FILENAME = "lookup-cache.json"
+TRACK_UPDATE_SUFFIX = ".updates.jsonl"
 CREDENTIALS_FILENAME = "lastfm-credentials.json"
 DEFAULT_DOWNLOADS_DIR = "downloads"
 
@@ -40,15 +41,17 @@ class JsonTrackRepository:
     def load_tracks(self, username: str) -> list[Track]:
         """Load all stored tracks for ``username``."""
 
-        path = self.user_tracks_path(username)
-        if not path.exists():
-            return []
-
-        data = _read_json_file(path)
-        if not isinstance(data, list):
-            raise StorageError(f"{path} must contain a JSON array of tracks")
-
-        return [_normalize_download_file_state(Track.from_dict(item)) for item in data]
+        with self._lock:
+            path = self.user_tracks_path(username)
+            tracks: list[Track] = []
+            if path.exists():
+                data = _read_json_file(path)
+                if not isinstance(data, list):
+                    raise StorageError(f"{path} must contain a JSON array of tracks")
+                tracks = [
+                    _normalize_download_file_state(Track.from_dict(item)) for item in data
+                ]
+            return merge_track_updates(tracks, self._load_track_updates(username))
 
     def save_tracks(self, username: str, tracks: list[Track]) -> None:
         """Atomically save ``tracks`` for ``username``."""
@@ -56,6 +59,18 @@ class JsonTrackRepository:
         path = self.user_tracks_path(username)
         with self._lock:
             _atomic_write_json(path, [track.to_dict() for track in tracks])
+            self.user_updates_path(username).unlink(missing_ok=True)
+
+    def append_track_update(self, username: str, track: Track) -> None:
+        """Durably journal one result without rewriting the complete track list."""
+
+        path = self.user_updates_path(username)
+        with self._lock:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(track.to_dict(), ensure_ascii=False) + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
 
     def merge_tracks(self, username: str, updates: list[Track]) -> list[Track]:
         """Merge ``updates`` into the stored tracks for ``username`` and save them."""
@@ -71,11 +86,36 @@ class JsonTrackRepository:
         path = self.user_tracks_path(username)
         if path.exists():
             path.unlink()
+        self.user_updates_path(username).unlink(missing_ok=True)
 
     def user_tracks_path(self, username: str) -> Path:
         """Return the JSON path for ``username``."""
 
         return self.tracks_dir / f"{sanitize_path_component(username)}.json"
+
+    def user_updates_path(self, username: str) -> Path:
+        """Return the append-only progress journal path for ``username``."""
+
+        return self.tracks_dir / f"{sanitize_path_component(username)}{TRACK_UPDATE_SUFFIX}"
+
+    def _load_track_updates(self, username: str) -> list[Track]:
+        path = self.user_updates_path(username)
+        if not path.exists():
+            return []
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError as error:
+            raise StorageError(f"Could not read {path}: {error}") from error
+        updates: list[Track] = []
+        for line_number, line in enumerate(lines, start=1):
+            try:
+                item = json.loads(line)
+                if not isinstance(item, dict):
+                    raise ValueError("track update must be a JSON object")
+                updates.append(_normalize_download_file_state(Track.from_dict(item)))
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
+                LOGGER.warning("Ignoring invalid track update %s:%s: %s", path, line_number, error)
+        return updates
 
     def wipe(self) -> None:
         """Delete all cached data files (credentials, track lists, caches).
@@ -122,6 +162,24 @@ class JsonTrackRepository:
         deduplicated = {track.cache_key: track for track in cached_tracks}
         sorted_tracks = sorted(deduplicated.values(), key=lambda item: item.cache_key)
         with self._lock:
+            _atomic_write_json(
+                self.cache_path,
+                [track.to_dict() for track in sorted_tracks],
+            )
+
+    def merge_download_cache(self, tracks: list[Track]) -> None:
+        """Merge completed downloads into the shared cache without dropping other users."""
+
+        with self._lock:
+            merged_cache = self.load_download_cache()
+            merged_cache.update(
+                {
+                    track.cache_key: track
+                    for track in tracks
+                    if track.local_path and Path(track.local_path).is_file()
+                }
+            )
+            sorted_tracks = sorted(merged_cache.values(), key=lambda item: item.cache_key)
             _atomic_write_json(
                 self.cache_path,
                 [track.to_dict() for track in sorted_tracks],

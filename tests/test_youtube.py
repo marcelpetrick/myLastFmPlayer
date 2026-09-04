@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import subprocess
+import threading
+import time
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -191,6 +194,25 @@ def test_resolve_track_marks_missing_as_not_found() -> None:
     assert resolved.status == TrackStatus.NOT_FOUND
 
 
+def test_resolve_track_honors_preexisting_stop_request() -> None:
+    runner = FakeRunner(stdout=json.dumps({"webpage_url": "https://youtu.be/unused"}))
+    stop_event = threading.Event()
+    stop_event.set()
+
+    resolved = YouTubeResolver(command_runner=runner).resolve_track(
+        Track(artist="Artist", title="Title", status=TrackStatus.SEARCHING),
+        stop_event,
+    )
+
+    assert resolved.status is TrackStatus.FETCHED
+    assert runner.commands == []
+
+
+def test_resolve_tracks_rejects_zero_concurrency() -> None:
+    with pytest.raises(ValueError, match="at least 1"):
+        YouTubeResolver().resolve_tracks([], concurrency=0)
+
+
 def test_resolve_tracks_reports_no_result_progress() -> None:
     runner = FakeRunner(stderr="no results", returncode=1)
     resolver = YouTubeResolver(command_runner=runner)
@@ -208,7 +230,7 @@ def test_resolve_tracks_reports_no_result_progress() -> None:
     ]
 
 
-def test_resolve_tracks_marks_not_found_on_per_track_lookup_error() -> None:
+def test_resolve_tracks_keeps_lookup_error_distinct_from_no_result() -> None:
     def runner_that_fails_one_track(command, **_kwargs) -> subprocess.CompletedProcess[str]:
         if "Restricted" in command[-1]:
             return subprocess.CompletedProcess(
@@ -227,11 +249,88 @@ def test_resolve_tracks_marks_not_found_on_per_track_lookup_error() -> None:
 
     tracks = resolver.resolve_tracks([first, second])
 
-    assert tracks[0].status == TrackStatus.NOT_FOUND
+    assert tracks[0].status == TrackStatus.FAILED
     assert tracks[0].error is not None
     assert tracks[0].retry_count == 1
     assert tracks[1].status == TrackStatus.QUEUED
     assert tracks[1].youtube_url == "https://youtube.example/watch?v=ok"
+
+
+def test_resolve_tracks_limits_parallel_lookups_and_preserves_order() -> None:
+    resolver = YouTubeResolver()
+    lock = threading.Lock()
+    active = 0
+    maximum_active = 0
+
+    def resolve(track: Track, _stop_event=None) -> Track:
+        nonlocal active, maximum_active
+        with lock:
+            active += 1
+            maximum_active = max(maximum_active, active)
+        time.sleep(0.01)
+        with lock:
+            active -= 1
+        return replace(
+            track,
+            youtube_url=f"https://youtube.example/{track.title}",
+            status=TrackStatus.QUEUED,
+        )
+
+    resolver.resolve_track = resolve  # type: ignore[method-assign]
+    input_tracks = [Track(artist="Artist", title=str(index)) for index in range(12)]
+
+    resolved = resolver.resolve_tracks(input_tracks, concurrency=3)
+
+    assert maximum_active == 3
+    assert [track.title for track in resolved] == [track.title for track in input_tracks]
+
+
+def test_resolve_tracks_isolates_unexpected_failure_to_one_track() -> None:
+    resolver = YouTubeResolver()
+
+    def resolve(track: Track, _stop_event=None) -> Track:
+        if track.title == "Broken":
+            raise RuntimeError("isolated failure")
+        return replace(track, youtube_url="https://youtu.be/ok", status=TrackStatus.QUEUED)
+
+    resolver.resolve_track = resolve  # type: ignore[method-assign]
+
+    resolved = resolver.resolve_tracks(
+        [Track(artist="Artist", title="Broken"), Track(artist="Artist", title="Fine")],
+        concurrency=2,
+    )
+
+    assert resolved[0].status is TrackStatus.FAILED
+    assert resolved[0].error == "isolated failure"
+    assert resolved[1].status is TrackStatus.QUEUED
+
+
+def test_resolve_and_store_tracks_saves_completed_work_before_cancellation(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    original = [Track(artist="Artist", title="First"), Track(artist="Artist", title="Second")]
+    repository.save_tracks("example", original)
+    stop_event = threading.Event()
+    resolver = YouTubeResolver(
+        command_runner=FakeRunner(
+            stdout=json.dumps({"webpage_url": "https://youtube.example/watch?v=ok"})
+        )
+    )
+
+    def stop_after_first(track: Track) -> None:
+        if track.status is TrackStatus.QUEUED:
+            stop_event.set()
+
+    resolver.resolve_and_store_tracks(
+        "example",
+        repository,
+        track_update_callback=stop_after_first,
+        concurrency=1,
+        stop_event=stop_event,
+    )
+
+    stored = repository.load_tracks("example")
+    assert stored[0].status is TrackStatus.QUEUED
+    assert stored[1] == original[1]
 
 
 def test_resolve_tracks_skips_tracks_that_already_have_youtube_urls() -> None:

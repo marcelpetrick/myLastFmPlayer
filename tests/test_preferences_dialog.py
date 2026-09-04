@@ -247,12 +247,12 @@ def test_preferences_dialog_download_concurrency_persists(qapp, monkeypatch) -> 
     dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
 
     assert dialog.concurrency_input.minimum() == 1
-    assert dialog.concurrency_input.maximum() == 10
+    assert dialog.concurrency_input.maximum() == 5
     assert dialog.concurrency_input.value() == 4
 
-    dialog.concurrency_input.setValue(8)
+    dialog.concurrency_input.setValue(5)
 
-    assert settings.concurrency == 8
+    assert settings.concurrency == 5
 
 
 def test_preferences_dialog_keep_data_toggle_persists(qapp, monkeypatch) -> None:

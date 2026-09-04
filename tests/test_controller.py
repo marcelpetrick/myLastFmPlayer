@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtTest import QTest
 
 from my_lastfm_player import controller as controller_module
 from my_lastfm_player.app_credentials import LastFmApiCredentials
@@ -18,7 +19,11 @@ from my_lastfm_player.scrobbling import ScrobblingService
 from my_lastfm_player.settings import AppSettings
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
-from my_lastfm_player.workers import LookupTracksWorker
+from my_lastfm_player.workers import (
+    DownloadTracksWorker,
+    FetchLovedTracksWorker,
+    LookupTracksWorker,
+)
 
 
 class FakeScrobbleNetwork:
@@ -288,7 +293,7 @@ def test_start_retries_failed_downloads_without_a_lookup_pass(qapp, tmp_path) ->
     # A failed download already has its URL, so it goes straight back to the download queue.
     assert started["download"] == [(("user",), {})]
     assert started["lookup"] == []
-    assert repository.load_tracks("user")[0].status is TrackStatus.FAILED
+    assert repository.load_tracks("user")[0].status is TrackStatus.QUEUED
 
 
 def test_start_leaves_a_healthy_library_alone(qapp, tmp_path) -> None:
@@ -582,9 +587,9 @@ def test_controller_rejects_empty_username_for_download(qapp) -> None:
     )
 
 
-def test_controller_handles_resolved_tracks(qapp) -> None:
+def test_controller_handles_resolved_tracks(qapp, tmp_path) -> None:
     window = MainWindow()
-    controller = ApplicationController(window)
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
 
     controller._handle_tracks_resolved("example", [])
 
@@ -595,9 +600,9 @@ def test_controller_handles_resolved_tracks(qapp) -> None:
     assert "No queued tracks are ready for download." in window.feedback_log.toPlainText()
 
 
-def test_controller_starts_lookup_after_successful_fetch(qapp) -> None:
+def test_controller_starts_lookup_after_successful_fetch(qapp, tmp_path) -> None:
     window = MainWindow()
-    controller = ApplicationController(window)
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
     calls: list[tuple[str, int]] = []
 
     def fake_start_lookup(username: str, track_count: int) -> None:
@@ -613,9 +618,13 @@ def test_controller_starts_lookup_after_successful_fetch(qapp) -> None:
     assert not window.fetch_stop_button.isEnabled()
 
 
-def test_controller_updates_table_during_paginated_fetch(qapp) -> None:
+def test_controller_updates_table_during_paginated_fetch(qapp, tmp_path) -> None:
     window = MainWindow()
-    controller = ApplicationController(window)
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
+    lookup_calls: list[tuple[str, int]] = []
+    controller._ensure_automatic_lookup = lambda username, count: lookup_calls.append(  # type: ignore[method-assign]
+        (username, count)
+    )
 
     controller._handle_tracks_updated(
         "example",
@@ -624,6 +633,7 @@ def test_controller_updates_table_during_paginated_fetch(qapp) -> None:
 
     assert window.track_model.rowCount() == 1
     assert "Fetched 1 tracks for example" in window.statusBar().currentMessage()
+    assert lookup_calls == [("example", 1)]
 
 
 class FakeFetchWorker:
@@ -711,8 +721,6 @@ def test_controller_starts_download_from_first_resolved_track_update(qapp, tmp_p
     controller._handle_track_updated("user", resolved)
 
     assert auto_calls == ["user"]
-    assert repository.load_tracks("user")[0].youtube_url == "https://youtu.be/example"
-    assert repository.load_lookup_cache()[track.cache_key].youtube_url == "https://youtu.be/example"
 
 
 def test_controller_does_not_start_parallel_bulk_download_when_worker_active(
@@ -760,16 +768,11 @@ def test_controller_starts_download_after_successful_lookup(qapp, tmp_path) -> N
     assert calls == ["example"]
 
 
-def test_controller_stop_downloads_stops_manager_and_clears_ui(qapp) -> None:
+def test_controller_stop_downloads_stops_only_current_operation_and_clears_ui(qapp) -> None:
     window = MainWindow()
-    stopped: list[bool] = []
 
     class FakeManager:
-        def stop(self) -> None:
-            stopped.append(True)
-
-        def resume(self) -> None:
-            pass
+        pass
 
     controller = ApplicationController(window, download_manager=FakeManager())  # type: ignore[arg-type]
     window.set_download_active(True)
@@ -777,7 +780,6 @@ def test_controller_stop_downloads_stops_manager_and_clears_ui(qapp) -> None:
 
     controller.stop_downloads()
 
-    assert stopped == [True]
     assert not controller._download_worker_active
     assert controller._download_stop_requested
     assert not window._download_active
@@ -1655,12 +1657,15 @@ def test_controller_starts_fetch_lookup_and_download_workers(
     ]
     assert controller._active_fetch_worker is workers[0][1]
     assert not window.fetch_button.isEnabled()
+    lookup_worker = workers[1][1]
+    assert isinstance(lookup_worker, controller_module.LookupTracksWorker)
+    assert lookup_worker.concurrency == 4
     download_worker = workers[2][1]
     assert isinstance(download_worker, controller_module.DownloadTracksWorker)
     assert download_worker.concurrency == 4
 
 
-def test_controller_starts_lookup_from_first_partial_fetch_update(qapp, tmp_path) -> None:
+def test_controller_pipelines_lookup_during_paginated_fetch(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("user")
     repository = JsonTrackRepository(data_dir=tmp_path)
@@ -1681,8 +1686,8 @@ def test_controller_starts_lookup_from_first_partial_fetch_update(qapp, tmp_path
     controller._handle_tracks_updated("user", [track])
     controller._handle_tracks_updated("user", [track, Track(artist="Later", title="Track")])
 
-    assert lookup_calls == [("user", None, None)]
-    assert repository.load_tracks("user") == [track]
+    assert lookup_calls == [("user", None, None), ("user", None, None)]
+    assert len(repository.load_tracks("user")) == 2
 
 
 def test_controller_playback_callbacks_update_timeline_once(qapp) -> None:
@@ -2145,17 +2150,144 @@ def test_controller_pause_playback_reports_resume_failure(qapp) -> None:
     assert "resume failed" in window.feedback_log.toPlainText()
 
 
-def test_controller_handle_tracks_loaded_skips_lookup_when_already_started(qapp) -> None:
+def test_controller_handle_tracks_loaded_starts_lookup_after_complete_fetch(
+    qapp, tmp_path
+) -> None:
     window = MainWindow()
-    controller = ApplicationController(window)
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
     controller._started_incremental_lookup_for_fetch = True
     lookup_calls: list[int] = []
     controller._start_automatic_lookup = lambda _username, _count: lookup_calls.append(1)  # type: ignore[method-assign]
 
     controller._handle_tracks_loaded("user", [Track(artist="A", title="T")])
 
-    assert lookup_calls == []
+    assert lookup_calls == [1]
     assert window.track_model.rowCount() == 1
+
+
+def test_username_change_cancels_old_work_and_ignores_late_updates(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("old-user")
+    old_track = Track(artist="Old", title="Track")
+    window.set_tracks([old_track])
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    lookup = LookupTracksWorker("old-user", controller.youtube_resolver, repository)
+    download = DownloadTracksWorker("old-user", controller.download_manager, repository)
+    controller._active_workers.extend([lookup, download])
+
+    window.set_username("new-user")
+    controller._handle_username_text_edited("new-user")
+
+    assert lookup._stop_event.is_set()
+    assert download._stop_event.is_set()
+    assert repository.load_tracks("old-user") == [old_track]
+    assert window.tracks() == []
+    assert window.username_input.isEnabled()
+
+    controller._handle_track_updated(
+        "old-user", replace(old_track, status=TrackStatus.NOT_FOUND)
+    )
+    assert window.tracks() == []
+
+
+def test_username_change_cancels_fetch_and_skips_other_users(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("old-user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    old_fetch = FetchLovedTracksWorker("old-user", controller.scraper, repository)
+    other_lookup = LookupTracksWorker("other-user", controller.youtube_resolver, repository)
+    controller._active_workers.extend([other_lookup, old_fetch])
+    controller._active_fetch_worker = old_fetch
+
+    window.set_username("new-user")
+    controller._handle_username_text_edited("new-user")
+
+    assert old_fetch._stop_requested
+    assert not other_lookup._stop_event.is_set()
+    assert controller._active_fetch_worker is None
+
+
+def test_username_edit_handles_same_and_initial_username(qapp, tmp_path) -> None:
+    window = MainWindow()
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+    )
+
+    controller._handle_username_text_edited("")
+    controller._handle_username_text_edited("new-user")
+
+    assert controller._workflow_username is None
+    assert window.tracks() == []
+
+
+def test_username_can_be_replaced_through_qt_while_work_is_active(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("old-user")
+    old_track = Track(artist="Old", title="Track")
+    window.set_tracks([old_track])
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks("old-user", [old_track])
+    controller = ApplicationController(window, repository=repository)
+    lookup = LookupTracksWorker("old-user", controller.youtube_resolver, repository)
+    download = DownloadTracksWorker("old-user", controller.download_manager, repository)
+    controller._active_workers.extend([lookup, download])
+    window.username_input.textEdited.connect(controller._handle_username_text_edited)
+    window.username_input.editingFinished.connect(
+        controller.load_cached_tracks_for_entered_username
+    )
+    window.show()
+    window.username_input.setFocus()
+    window.username_input.selectAll()
+
+    QTest.keyClicks(window.username_input, "new-user")
+    qapp.processEvents()
+
+    assert window.username_input.isEnabled()
+    assert lookup._stop_event.is_set()
+    assert download._stop_event.is_set()
+    assert controller._workflow_username is None
+    assert sorted(path.name for path in repository.tracks_dir.glob("*.json")) == [
+        "old-user.json"
+    ]
+
+    QTest.keyClick(window.username_input, Qt.Key.Key_Return)
+    qapp.processEvents()
+
+    assert controller._workflow_username == "new-user"
+
+
+def test_stale_worker_signals_do_not_change_current_user_ui(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    controller._workflow_username = "new-user"
+    track = Track(artist="Old", title="Track")
+
+    controller._handle_tracks_loaded("old-user", [track])
+    controller._handle_fetch_stopped("old-user", [track])
+    controller._handle_tracks_updated("old-user", [track])
+    controller._handle_tracks_resolved("old-user", [track])
+    controller._handle_tracks_downloaded("old-user", [track])
+    controller._handle_worker_progress("old-user", 50, "old progress")
+    controller._handle_worker_error_for("old-user", "old error")
+
+    assert window.tracks() == []
+    assert "old progress" not in window.statusBar().currentMessage()
+    assert "old error" not in window.feedback_log.toPlainText()
+
+
+def test_current_worker_progress_and_error_reach_ui(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    controller._workflow_username = "user"
+
+    controller._handle_worker_progress("user", 50, "halfway")
+    controller._handle_worker_error_for("user", "failed item")
+
+    assert window.progress_bar.value() == 0
+    assert "failed item" in window.feedback_log.toPlainText()
 
 
 def test_controller_handle_tracks_resolved_starts_priority_download_for_pending_retry(
@@ -2406,7 +2538,7 @@ def test_controller_track_ready_starts_pending_retry_priority_download(
     assert calls == [("user", track.cache_key)]
 
 
-def test_controller_track_ready_defers_auto_download_while_lookup_active(
+def test_controller_track_ready_starts_download_while_lookup_active(
     qapp,
     tmp_path,
 ) -> None:
@@ -2428,7 +2560,7 @@ def test_controller_track_ready_defers_auto_download_while_lookup_active(
 
     controller._handle_track_ready_for_download("user", track)
 
-    assert auto_calls == [], "auto-download should not start while lookup is active"
+    assert auto_calls == ["user"]
 
 
 def test_controller_track_ready_starts_auto_download_when_no_lookup_active(
@@ -2450,6 +2582,93 @@ def test_controller_track_ready_starts_auto_download_when_no_lookup_active(
     controller._handle_track_ready_for_download("user", track)
 
     assert auto_calls == ["user"]
+
+
+def test_controller_queues_next_lookup_wave_until_current_worker_retires(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.set_username("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    worker = LookupTracksWorker("user", controller.youtube_resolver, repository)
+    controller._active_workers.append(worker)
+    starts: list[tuple[str, int]] = []
+    controller._start_automatic_lookup = lambda username, count: starts.append(  # type: ignore[method-assign]
+        (username, count)
+    )
+
+    controller._ensure_automatic_lookup("user", 2)
+
+    assert starts == []
+    assert controller._pending_lookup_users == {"user"}
+
+    repository.save_tracks("user", [Track(artist="New", title="Track")])
+    controller._forget_worker(worker)
+
+    assert starts == [("user", 1)]
+
+
+def test_controller_retires_download_worker_and_starts_remaining_queue(
+    qapp, tmp_path
+) -> None:
+    window = MainWindow()
+    window.set_username("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    queued = Track(
+        artist="Artist",
+        title="Track",
+        youtube_url="https://youtu.be/result",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_tracks("user", [queued])
+    controller = ApplicationController(window, repository=repository)
+    worker = DownloadTracksWorker("user", controller.download_manager, repository)
+    controller._active_workers.append(worker)
+    starts: list[str] = []
+    controller._start_automatic_download = lambda username: starts.append(username)  # type: ignore[method-assign]
+    controller._download_worker_active = False
+
+    controller._forget_worker(worker)
+
+    assert starts == ["user"]
+
+
+def test_controller_stop_downloads_sets_each_current_worker_event(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    current = DownloadTracksWorker("user", controller.download_manager, repository)
+    other = DownloadTracksWorker("other", controller.download_manager, repository)
+    controller._active_workers.extend([current, other])
+
+    controller.stop_downloads()
+
+    assert current._stop_event.is_set()
+    assert not other._stop_event.is_set()
+
+
+def test_controller_does_not_auto_download_after_explicit_stop(qapp, tmp_path) -> None:
+    window = MainWindow()
+    controller = ApplicationController(
+        window, repository=JsonTrackRepository(data_dir=tmp_path)
+    )
+    controller._download_stop_requested = True
+    starts: list[str] = []
+    controller._start_automatic_download = lambda username: starts.append(username)  # type: ignore[method-assign]
+
+    controller._handle_track_ready_for_download(
+        "user",
+        Track(
+            artist="Artist",
+            title="Track",
+            youtube_url="https://youtu.be/result",
+            status=TrackStatus.QUEUED,
+        ),
+    )
+
+    assert starts == []
 
 
 def test_controller_maybe_scrobble_does_nothing_when_no_current_track(qapp) -> None:

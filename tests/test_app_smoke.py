@@ -52,8 +52,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.155"
-    assert __display_version__ == "0.0.155"
+    assert __version__ == "0.0.156"
+    assert __display_version__ == "0.0.156"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -839,7 +839,7 @@ def test_main_window_workflow_enabled_toggles_fetch_controls(qapp) -> None:
     window.set_workflow_enabled(False)
 
     assert not window.fetch_button.isEnabled()
-    assert not window.username_input.isEnabled()
+    assert window.username_input.isEnabled()
     assert not window.refresh_action.isEnabled()
 
     window.set_workflow_enabled(True)

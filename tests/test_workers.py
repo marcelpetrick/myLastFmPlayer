@@ -56,6 +56,8 @@ class FakeResolver:
         track_update_callback=None,
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
+        concurrency: int = 5,
+        stop_event=None,
     ) -> list[Track]:
         self.called_with = (username, repository)
         if self.error is not None:
@@ -261,6 +263,7 @@ class FakeDownloadManager:
         track_update_callback=None,
         priority_cache_key: str | None = None,
         max_downloads: int | None = None,
+        stop_event=None,
     ) -> list[Track]:
         self.called_with = (username, repository, concurrency)
         if self.error is not None:
@@ -331,7 +334,7 @@ def test_download_worker_accepts_real_manager(tmp_path: Path) -> None:
         JsonTrackRepository(data_dir=tmp_path),
     )
 
-    assert worker.concurrency == 2
+    assert worker.concurrency == 5
 
 
 def test_fetch_worker_reports_zero_percent_when_total_count_is_unknown(tmp_path: Path) -> None:

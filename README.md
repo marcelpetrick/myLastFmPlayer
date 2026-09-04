@@ -11,7 +11,7 @@
 
 **Note: project is generated with AI.**
 
-Current version: `0.0.155` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.156` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 
@@ -128,6 +128,14 @@ The normal workflow is:
 4. The app automatically starts YouTube lookup for the fetched tracks.
 5. The app automatically starts the download queue for resolved tracks.
 6. Select a downloaded track and press Play.
+
+Last.fm pages flow into YouTube lookup as they arrive, and resolved tracks can begin
+downloading before the lookup batch is finished. One shared limit in Preferences caps
+all YouTube checks and downloads together; it defaults to five and can be set from one
+to five. Individual failures do not stop the remaining queue. You can also enter
+another Last.fm username while work is active: the previous user's processes are
+cancelled promptly, completed results remain saved, and late updates cannot replace
+the new user's table.
 
 ```mermaid
 flowchart TD

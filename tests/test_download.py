@@ -257,17 +257,6 @@ def test_player_client_for_attempt_wraps_around_the_ladder() -> None:
     assert _player_client_for_attempt(len(PLAYER_CLIENT_LADDER) + 1) == PLAYER_CLIENT_LADDER[0]
 
 
-def test_download_manager_pause_and_resume_toggle_queue_state() -> None:
-    manager = DownloadManager()
-
-    manager.pause()
-    assert not manager._resume_event.is_set()
-
-    manager.resume()
-    assert manager._resume_event.is_set()
-    assert not manager._stop_requested
-
-
 def test_download_manager_stop_wakes_blocked_threads_and_marks_failed(tmp_path: Path) -> None:
     blocked = threading.Event()
     released = threading.Event()
@@ -296,20 +285,54 @@ def test_download_manager_stop_wakes_blocked_threads_and_marks_failed(tmp_path: 
     assert tracks[0].status == TrackStatus.FAILED
 
 
-def test_download_manager_stop_aborts_pending_retries(tmp_path: Path) -> None:
+def test_operation_stop_aborts_pending_retries_without_affecting_other_runs(
+    tmp_path: Path,
+) -> None:
     manager = DownloadManager(
         command_runner=FakeRunner(return_codes=[1]),
         max_retries=3,
         backoff_factory=lambda: 0,
         sleeper=lambda _: None,
     )
-    manager.stop()
+    stop_event = threading.Event()
+    stop_event.set()
     track = queued_track()
 
-    tracks = manager.download_tracks([track], tmp_path)
+    tracks = manager.download_tracks([track], tmp_path, stop_event=stop_event)
 
-    assert tracks[0].status == TrackStatus.FAILED
-    assert "stopped" in tracks[0].error.lower()
+    assert tracks[0].status == TrackStatus.QUEUED
+    assert tracks[0].error is None
+
+
+def test_operation_stop_keeps_pending_download_queued(tmp_path: Path) -> None:
+    runner = FakeRunner()
+    manager = DownloadManager(command_runner=runner)
+    stop_event = threading.Event()
+    stop_event.set()
+
+    tracks = manager.download_tracks([queued_track()], tmp_path, stop_event=stop_event)
+
+    assert tracks[0].status is TrackStatus.QUEUED
+    assert runner.commands == []
+
+
+def test_unexpected_download_failure_is_isolated_to_one_track(tmp_path: Path) -> None:
+    manager = DownloadManager()
+    broken = queued_track(artist="Broken")
+    fine = queued_track(artist="Fine")
+
+    def download(track: Track, _downloads_dir: Path, _stop_event=None) -> Track:
+        if track.artist == "Broken":
+            raise RuntimeError("isolated failure")
+        return track.with_status(TrackStatus.DOWNLOADED)
+
+    manager._download_track_with_retries = download  # type: ignore[method-assign]
+
+    tracks = manager.download_tracks([broken, fine], tmp_path, concurrency=2)
+
+    assert tracks[0].status is TrackStatus.FAILED
+    assert tracks[0].error == "isolated failure"
+    assert tracks[1].status is TrackStatus.DOWNLOADED
 
 
 def test_download_manager_reports_zero_candidates(tmp_path: Path) -> None:

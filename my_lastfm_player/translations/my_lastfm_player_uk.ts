@@ -4,395 +4,405 @@
 <context>
     <name>ApplicationController</name>
     <message>
-        <location filename="../controller.py" line="193" />
+        <location filename="../controller.py" line="195" />
         <source>Re-checking {missing} not-found and {failed} failed tracks from the last run.</source>
         <translation>Повторна перевірка {missing} незнайдених і {failed} невдалих треків з минулого запуску.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="228" />
+        <location filename="../controller.py" line="258" />
+        <source>Stopping background work for {username}; completed items remain saved.</source>
+        <translation>Фонову роботу для {username} зупинено; завершені елементи залишаються збереженими.</translation>
+    </message>
+    <message>
+        <location filename="../controller.py" line="287" />
         <source>No cached tracks found for {username}; fetching from Last.fm.</source>
         <translation>Збережених треків для {username} не знайдено; отримуємо дані з Last.fm.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="239" />
+        <location filename="../controller.py" line="298" />
         <source>Found {count} cached tracks for {username}; checking Last.fm before using them.</source>
         <translation>Знайдено {count} збережених треків для {username}; перед використанням перевіряємо Last.fm.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="259" />
+        <location filename="../controller.py" line="318" />
         <source>Loaded {count} cached tracks for {username}; skipped Last.fm fetch.</source>
         <translation>Завантажено {count} збережених треків для {username}; отримання з Last.fm пропущено.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="273" />
+        <location filename="../controller.py" line="332" />
         <source>Could not verify Last.fm loved-track count for {username}; using {count} cached tracks: {error}</source>
         <translation>Не вдалося перевірити кількість улюблених треків Last.fm для {username}; використовуємо {count} збережених треків: {error}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="286" />
+        <location filename="../controller.py" line="345" />
         <source>Could not read Last.fm loved-track count for {username}; fetching fresh data instead of trusting {count} cached tracks.</source>
         <translation>Не вдалося прочитати кількість улюблених треків Last.fm для {username}; отримуємо свіжі дані замість використання {count} збережених треків.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="298" />
+        <location filename="../controller.py" line="357" />
         <source>Last.fm reports {online_count} loved tracks for {username}; cached track count matches.</source>
         <translation>Last.fm повідомляє про {online_count} улюблених треків для {username}; кількість збережених треків збігається.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="309" />
+        <location filename="../controller.py" line="368" />
         <source>Last.fm reports {online_count} loved tracks for {username}, but the cache has {cached_count}; fetching fresh data.</source>
         <translation>Last.fm повідомляє про {online_count} улюблених треків для {username}, але локально збережено {cached_count}; отримуємо свіжі дані.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="334" />
+        <location filename="../controller.py" line="393" />
         <source>Dependency check finished: {message}</source>
         <translation>Перевірку залежностей завершено: {message}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="351" />
+        <location filename="../controller.py" line="410" />
         <source>Could not open data folder: {error}</source>
         <translation>Не вдалося відкрити теку даних: {error}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="361" />
+        <location filename="../controller.py" line="420" />
         <source>Opened data folder: {path}</source>
         <translation>Відкрито теку даних: {path}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="370" />
+        <location filename="../controller.py" line="429" />
         <source>Could not open data folder: {path}</source>
         <translation>Не вдалося відкрити теку даних: {path}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="382" />
+        <location filename="../controller.py" line="441" />
         <source>Could not open artist page: {url}</source>
         <translation>Не вдалося відкрити сторінку виконавця: {url}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="393" />
+        <location filename="../controller.py" line="452" />
         <source>Last.fm scrobbling is disabled because {api_key_env}/{api_secret_env} are not configured and no bundled credentials are available.</source>
         <translation>Скроблінг Last.fm вимкнено, оскільки {api_key_env}/{api_secret_env} не налаштовано, а надані облікові дані недоступні.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="408" />
+        <location filename="../controller.py" line="467" />
         <source>Loaded Last.fm scrobbling settings; stored session key is {state}.</source>
         <translation>Завантажено налаштування скроблінгу Last.fm; збережений ключ сеансу: {state}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="412" />
+        <location filename="../controller.py" line="471" />
         <source>present</source>
         <translation>наявний</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="414" />
+        <location filename="../controller.py" line="473" />
         <source>missing</source>
         <translation>відсутній</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="428" />
+        <location filename="../controller.py" line="487" />
         <source>Connected Last.fm scrobbling as {username}.</source>
         <translation>Скроблінг Last.fm підключено як {username}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="436" />
+        <location filename="../controller.py" line="495" />
         <source>Stored Last.fm session key could not be verified; scrobbling remains disconnected.</source>
         <translation>Не вдалося перевірити збережений ключ сеансу Last.fm; скроблінг залишається від'єднаним.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="446" />
+        <location filename="../controller.py" line="505" />
         <source>Opening preferences.</source>
         <translation>Відкриваємо налаштування.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="460" />
+        <location filename="../controller.py" line="519" />
         <source>Preferences closed; no Last.fm scrobbling service is active.</source>
         <translation>Налаштування закрито; жодна служба скроблінгу Last.fm не активна.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="469" />
+        <location filename="../controller.py" line="528" />
         <source>Saved Last.fm scrobbling preferences for {username}.</source>
         <translation>Збережено параметри скроблінгу Last.fm для {username}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="473" />
+        <location filename="../controller.py" line="532" />
         <source>no user</source>
         <translation>немає користувача</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="484" />
+        <location filename="../controller.py" line="543" />
         <source>Enter a Last.fm username before fetching tracks.</source>
         <translation>Введіть ім’я користувача Last.fm, перш ніж завантажувати треки.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="495" />
+        <location filename="../controller.py" line="552" />
+        <source>Background work is already running for {username}.</source>
+        <translation>Фонова робота для {username} уже виконується.</translation>
+    </message>
+    <message>
+        <location filename="../controller.py" line="567" />
         <source>Loaded cached tracks</source>
         <translation>Завантажено кешовані треки</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="512" />
+        <location filename="../controller.py" line="584" />
         <source>Could not reach Last.fm for {username}: {error}</source>
         <translation>Last.fm для {username} недоступний: {error}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="526" />
+        <location filename="../controller.py" line="598" />
         <source>Starting fresh Last.fm fetch for {username}; {count} tracks expected.</source>
         <translation>Починаємо нове отримання з Last.fm для {username}; очікується {count} треків.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="535" />
+        <location filename="../controller.py" line="607" />
         <source>Starting fresh Last.fm fetch for {username}.</source>
         <translation>Починаємо нове отримання з Last.fm для {username}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="544" />
+        <location filename="../controller.py" line="616" />
         <source>Starting fetch</source>
         <translation>Починаємо отримання</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="560" />
+        <location filename="../controller.py" line="632" />
         <source>Fetch resumed.</source>
         <translation>Отримання відновлено.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="566" />
+        <location filename="../controller.py" line="638" />
         <source>Fetch paused.</source>
         <translation>Отримання призупинено.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="576" />
+        <location filename="../controller.py" line="648" />
         <source>Stopping fetch.</source>
         <translation>Зупинка отримання.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="590" />
+        <location filename="../controller.py" line="662" />
         <source>Enter a Last.fm username before resolving tracks.</source>
         <translation>Введіть ім’я користувача Last.fm, перш ніж шукати треки.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="599" />
+        <location filename="../controller.py" line="671" />
         <source>Starting YouTube lookup for {username}; priority={priority}, limit={limit}.</source>
         <translation>Починаємо пошук джерел на YouTube для {username}; пріоритет={priority}, обмеження={limit}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="659" />
-        <location filename="../controller.py" line="605" />
+        <location filename="../controller.py" line="732" />
+        <location filename="../controller.py" line="677" />
         <source>none</source>
         <translation>немає</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="663" />
-        <location filename="../controller.py" line="609" />
+        <location filename="../controller.py" line="736" />
+        <location filename="../controller.py" line="681" />
         <source>all</source>
         <translation>усі</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="615" />
+        <location filename="../controller.py" line="687" />
         <source>Starting YouTube lookup</source>
         <translation>Починаємо пошук джерел на YouTube</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="638" />
+        <location filename="../controller.py" line="711" />
         <source>Enter a Last.fm username before downloading tracks.</source>
         <translation>Перед завантаженням треків введіть ім’я користувача Last.fm.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="652" />
+        <location filename="../controller.py" line="725" />
         <source>Starting downloads for {username}; concurrency={concurrency}, priority={priority}, limit={limit}.</source>
         <translation>Починаємо завантаження для {username}; паралельних={concurrency}, пріоритет={priority}, обмеження={limit}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="668" />
+        <location filename="../controller.py" line="741" />
         <source>Starting downloads</source>
         <translation>Починаємо завантаження</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="692" />
+        <location filename="../controller.py" line="765" />
         <source>Select a downloaded track before playing.</source>
         <translation>Виберіть завантажений трек перед відтворенням.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="710" />
+        <location filename="../controller.py" line="783" />
         <source>Playback resumed.</source>
         <translation>Відтворення відновлено.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="719" />
+        <location filename="../controller.py" line="792" />
         <source>Playback paused.</source>
         <translation>Відтворення призупинено.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="763" />
-        <location filename="../controller.py" line="728" />
+        <location filename="../controller.py" line="836" />
+        <location filename="../controller.py" line="801" />
         <source>No track is currently playing.</source>
         <translation>Жоден трек зараз не відтворюється.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="739" />
+        <location filename="../controller.py" line="812" />
         <source>Playback stopped.</source>
         <translation>Відтворення зупинено.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="784" />
+        <location filename="../controller.py" line="857" />
         <source>Seeked playback to {seconds} seconds.</source>
         <translation>Перемотано відтворення до {seconds} с.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="849" />
+        <location filename="../controller.py" line="933" />
         <source>Fetch for {username} returned invalid track data.</source>
         <translation>Отримання для {username} повернуло некоректні дані треку.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="859" />
+        <location filename="../controller.py" line="943" />
         <source>Fetched and stored {count} tracks for {username}.</source>
         <translation>Отримано та збережено {count} треків для {username}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="882" />
+        <location filename="../controller.py" line="967" />
         <source>Stopped fetch for {username} returned invalid data.</source>
         <translation>Зупинене отримання для {username} повернуло некоректні дані.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="892" />
+        <location filename="../controller.py" line="977" />
         <source>Stopped fetch for {username} after {count} tracks.</source>
         <translation>Отримання для {username} зупинено після {count} треків.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="903" />
+        <location filename="../controller.py" line="990" />
         <source>Fetch for {username} returned invalid partial data.</source>
         <translation>Отримання для {username} повернуло некоректні часткові дані.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="914" />
+        <location filename="../controller.py" line="1001" />
         <source>Fetch progress for {username}: {count} tracks are visible now.</source>
         <translation>Перебіг отримання для {username}: зараз видно {count} треків.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="922" />
+        <location filename="../controller.py" line="1009" />
         <source>Fetched {count} tracks for {username}</source>
         <translation>Отримано {count} треків для {username}</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="941" />
+        <location filename="../controller.py" line="1022" />
         <source>Workflow for {username} returned an invalid track update.</source>
         <translation>Робочий процес для {username} повернув некоректне оновлення треку.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="951" />
+        <location filename="../controller.py" line="1032" />
         <source>Track update from {username}: {artist} - {title} is now {status}.</source>
         <translation>Оновлення треку для {username}: {artist} - {title} тепер має статус {status}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="966" />
+        <location filename="../controller.py" line="1049" />
         <source>Lookup for {username} returned invalid track data.</source>
         <translation>Пошук для {username} повернув некоректні дані треку.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="982" />
+        <location filename="../controller.py" line="1065" />
         <source>Resolved YouTube URLs for {resolved_count}/{count} tracks; {not_found_count} were not found.</source>
         <translation>Знайдено URL-адреси YouTube для {resolved_count}/{count} треків; {not_found_count} не знайдено.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1006" />
+        <location filename="../controller.py" line="1089" />
         <source>No queued tracks are ready for download.</source>
         <translation>У черзі немає треків, готових до завантаження.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1017" />
+        <location filename="../controller.py" line="1102" />
         <source>Download for {username} returned invalid track data.</source>
         <translation>Завантаження для {username} повернуло некоректні дані треку.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1037" />
+        <location filename="../controller.py" line="1122" />
         <source>Download run for {username} finished: {downloaded_count}/{count} tracks downloaded, {failed_count} failed.</source>
         <translation>Завантаження для {username} завершено: {downloaded_count}/{count} треків завантажено, {failed_count} не вдалося.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1064" />
+        <location filename="../controller.py" line="1149" />
         <source>Failed</source>
         <translation>Не вдалося</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1103" />
+        <location filename="../controller.py" line="1196" />
         <source>Updating Last.fm now-playing for {artist} - {title}.</source>
         <translation>Оновлюємо «зараз відтворюється» Last.fm для {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1112" />
+        <location filename="../controller.py" line="1205" />
         <source>Playing {artist} - {title}.</source>
         <translation>Відтворюється {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1136" />
+        <location filename="../controller.py" line="1229" />
         <source>Last.fm returned invalid artist image data.</source>
         <translation>Last.fm повернув некоректні дані зображення виконавця.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1170" />
+        <location filename="../controller.py" line="1263" />
         <source>Enter a Last.fm username before preparing playback.</source>
         <translation>Перед підготовкою відтворення введіть ім’я користувача Last.fm.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1179" />
+        <location filename="../controller.py" line="1272" />
         <source>Preparing {artist} - {title} for playback.</source>
         <translation>Готуємо {artist} - {title} до відтворення.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1196" />
+        <location filename="../controller.py" line="1289" />
         <source>Starting automatic YouTube lookup for {count} fetched tracks.</source>
         <translation>Починаємо автоматичний пошук джерел на YouTube для {count} отриманих треків.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1212" />
+        <location filename="../controller.py" line="1309" />
         <source>Downloads stopped by user.</source>
         <translation>Завантаження зупинено користувачем.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1221" />
+        <location filename="../controller.py" line="1318" />
         <source>Enter a Last.fm username before retrying a download.</source>
         <translation>Введіть ім’я користувача Last.fm перед повторною спробою завантаження.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1239" />
+        <location filename="../controller.py" line="1336" />
         <source>Retrying download for {artist} - {title}.</source>
         <translation>Повторна спроба завантаження для {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1252" />
+        <location filename="../controller.py" line="1349" />
         <source>Starting automatic download queue for resolved tracks.</source>
         <translation>Запускаємо чергу автоматичного завантаження для знайдених треків.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1260" />
+        <location filename="../controller.py" line="1357" />
         <source>Starting priority download for selected track.</source>
         <translation>Починаємо пріоритетне завантаження вибраного треку.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1341" />
+        <location filename="../controller.py" line="1446" />
         <source>Submitting Last.fm scrobble for {artist} - {title}.</source>
         <translation>Надсилаємо скробл Last.fm для {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1371" />
+        <location filename="../controller.py" line="1476" />
         <source>Finished playback for {artist} - {title}.</source>
         <translation>Завершено відтворення {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1384" />
+        <location filename="../controller.py" line="1489" />
         <source>Playback finished.</source>
         <translation>Відтворення завершено.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1395" />
+        <location filename="../controller.py" line="1500" />
         <source>Continuing with random track: {artist} - {title}.</source>
         <translation>Продовжуємо випадковим треком: {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1406" />
+        <location filename="../controller.py" line="1511" />
         <source>Continuing with next track: {artist} - {title}.</source>
         <translation>Продовжуємо наступним треком: {artist} - {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1426" />
+        <location filename="../controller.py" line="1531" />
         <source>All background work is finished; controls are enabled again.</source>
         <translation>Вся фонова робота завершена; елементи керування знову ввімкнено.</translation>
     </message>
@@ -431,12 +441,12 @@
 </context><context>
     <name>DownloadManager</name>
     <message>
-        <location filename="../download.py" line="148" />
+        <location filename="../download.py" line="158" />
         <source>Queued {count} downloads</source>
         <translation>У черзі {count} завантажень</translation>
     </message>
     <message>
-        <location filename="../download.py" line="177" />
+        <location filename="../download.py" line="188" />
         <source>Downloaded {done}/{total} tracks</source>
         <translation>Завантажено треків: {done}/{total}</translation>
     </message>
@@ -477,12 +487,12 @@
 </context><context>
     <name>LookupTracksWorker</name>
     <message>
-        <location filename="../workers.py" line="183" />
+        <location filename="../workers.py" line="186" />
         <source>Resolving YouTube URLs for {username}</source>
         <translation>Пошук URL-адрес YouTube для {username}</translation>
     </message>
     <message>
-        <location filename="../workers.py" line="199" />
+        <location filename="../workers.py" line="204" />
         <source>Resolved {count} tracks</source>
         <translation>Знайдено {count} треків</translation>
     </message>
@@ -893,7 +903,7 @@
 </context><context>
     <name>PreferencesDialog</name>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="175" />
+        <location filename="../ui/preferences_dialog.py" line="176" />
         <location filename="../ui/preferences_dialog.py" line="135" />
         <source>None (disabled)</source>
         <translation>Немає (вимкнено)</translation>
@@ -950,55 +960,63 @@
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="167" />
-        <source>Parallel downloads:</source>
-        <translation>Паралельні завантаження:</translation>
+        <source>Parallel YouTube checks and downloads:</source>
+        <translation>Паралельні перевірки YouTube і завантаження:</translation>
     </message>
     <message>
         <location filename="../ui/preferences_dialog.py" line="169" />
-        <source>Select the browser whose YouTube login cookies yt-dlp should use. Required for age-restricted videos. You must be signed into YouTube in the selected browser. Parallel download changes apply to new work.</source>
-        <translation>Виберіть браузер, cookie входу YouTube з якого має використовувати yt-dlp. Це потрібно для відео з віковими обмеженнями. У вибраному браузері потрібно ввійти в YouTube. Зміни паралельних завантажень застосовуються до нових завдань.</translation>
+        <source>Select the browser whose YouTube login cookies yt-dlp should use. Required for age-restricted videos. You must be signed into YouTube in the selected browser. The parallel-work limit applies to new YouTube checks and downloads.</source>
+        <translation>Виберіть браузер, чиї cookie входу в YouTube має використовувати yt-dlp. Це необхідно для відео з віковими обмеженнями. У вибраному браузері потрібно ввійти в YouTube. Обмеження паралельної роботи застосовується до нових перевірок YouTube і завантажень.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="176" />
+        <location filename="../ui/preferences_dialog.py" line="177" />
         <source>Privacy</source>
         <translation>Конфіденційність</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="177" />
+        <location filename="../ui/preferences_dialog.py" line="178" />
         <source>Keep cached data after quitting</source>
         <translation>Зберігати кешовані дані після закриття</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="183" />
+        <location filename="../ui/preferences_dialog.py" line="184" />
         <source>⚠ API credentials not configured.
 Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
         <translation>⚠ Облікові дані API не налаштовано.
 Задайте змінні середовища LASTFM_API_KEY і LASTFM_API_SECRET.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="202" />
+        <location filename="../ui/preferences_dialog.py" line="203" />
         <source>🟢 Connected as {username}</source>
         <translation>🟢 Підключено як {username}</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="211" />
+        <location filename="../ui/preferences_dialog.py" line="212" />
         <source>🔵 Browser opened — authorize the app, then click «I've authorized».</source>
         <translation>🔵 Браузер відкрито — авторизуйте застосунок, а потім натисніть «Я авторизувався».</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="217" />
+        <location filename="../ui/preferences_dialog.py" line="218" />
         <source>🔴 Not connected</source>
         <translation>🔴 Не підключено</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="240" />
+        <location filename="../ui/preferences_dialog.py" line="241" />
         <source>⚠ Could not start authentication. Check API credentials.</source>
         <translation>⚠ Не вдалося почати автентифікацію. Перевірте облікові дані API.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="251" />
+        <location filename="../ui/preferences_dialog.py" line="252" />
         <source>⚠ Authorization not confirmed yet. Authorize in the browser, then try again.</source>
         <translation>⚠ Авторизацію ще не підтверджено. Авторизуйтеся в браузері, а потім спробуйте ще раз.</translation>
+    </message>
+    <message>
+        <source>Parallel downloads:</source>
+        <translation type="vanished">Паралельні завантаження:</translation>
+    </message>
+    <message>
+        <source>Select the browser whose YouTube login cookies yt-dlp should use. Required for age-restricted videos. You must be signed into YouTube in the selected browser. Parallel download changes apply to new work.</source>
+        <translation type="vanished">Виберіть браузер, cookie входу YouTube з якого має використовувати yt-dlp. Це потрібно для відео з віковими обмеженнями. У вибраному браузері потрібно ввійти в YouTube. Зміни паралельних завантажень застосовуються до нових завдань.</translation>
     </message>
     <message>
         <source>Submits to Last.fm after 10 % of each track has been played.</source>
@@ -1074,17 +1092,17 @@ Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
 </context><context>
     <name>YouTubeResolver</name>
     <message>
-        <location filename="../youtube.py" line="130" />
+        <location filename="../youtube.py" line="147" />
         <source>Searching {done}/{total}: {artist} - {title}</source>
         <translation>Пошук {done}/{total}: {artist} - {title}</translation>
     </message>
     <message>
-        <location filename="../youtube.py" line="295" />
+        <location filename="../youtube.py" line="347" />
         <source>Resolved {done}/{total}: {artist} - {title}</source>
         <translation>Знайдено {done}/{total}: {artist} - {title}</translation>
     </message>
     <message>
-        <location filename="../youtube.py" line="303" />
+        <location filename="../youtube.py" line="355" />
         <source>No YouTube result {done}/{total}: {artist} - {title}</source>
         <translation>Немає результату YouTube {done}/{total}: {artist} - {title}</translation>
     </message>

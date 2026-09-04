@@ -14,10 +14,15 @@ from threading import Event
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
+from my_lastfm_player.youtube_work import (
+    WorkCancelled,
+    YouTubeWorkLimiter,
+    run_cancellable_command,
+)
 
 LOGGER = logging.getLogger(__name__)
 
-DEFAULT_CONCURRENCY = 2
+DEFAULT_CONCURRENCY = 5
 # YouTube gates some innertube clients behind a PO token. A gated client reports no media
 # formats at all ("Requested format is not available", whatever -f asks for) or serves a
 # 403 on the media fetch, and both stick for as long as that client answers - so retrying
@@ -58,6 +63,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         backoff_factory: BackoffFactory | None = None,
         sleeper: Sleeper = time.sleep,
         cookies_browser: str = "",
+        work_limiter: YouTubeWorkLimiter | None = None,
     ) -> None:
         self.command_runner = command_runner
         self.executable = executable
@@ -67,29 +73,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
             lambda: random.uniform(*BACKOFF_RANGE_SECONDS)
         )
         self.sleeper = sleeper
-        self._resume_event = Event()
-        self._resume_event.set()
-        self._stop_requested = False
-
-    def pause(self) -> None:
-        """Pause the queue before the next retry or download starts."""
-
-        LOGGER.info("Download queue paused")
-        self._resume_event.clear()
-
-    def resume(self) -> None:
-        """Resume a paused queue and clear any pending stop request."""
-
-        LOGGER.info("Download queue resumed")
-        self._stop_requested = False
-        self._resume_event.set()
-
-    def stop(self) -> None:
-        """Cancel pending downloads and wake any threads blocked on pause."""
-
-        LOGGER.info("Download queue stopped")
-        self._stop_requested = True
-        self._resume_event.set()
+        self.work_limiter = work_limiter or YouTubeWorkLimiter()
 
     def download_and_store_tracks(  # pylint: disable=too-many-arguments
         self,
@@ -100,21 +84,29 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         track_update_callback: TrackUpdateCallback | None = None,
         priority_cache_key: str | None = None,
         max_downloads: int | None = None,
+        stop_event: Event | None = None,
     ) -> list[Track]:
         """Load tracks, download eligible items, and persist results."""
 
         tracks = repository.mark_cached_downloads(repository.load_tracks(username))
+
+        def persist_track_update(track: Track) -> None:
+            if track.status is not TrackStatus.DOWNLOADING:
+                repository.append_track_update(username, track)
+            _report_track_update(track_update_callback, track)
+
         downloaded_tracks = self.download_tracks(
             tracks,
             repository.downloads_dir,
             concurrency=concurrency,
             progress_callback=progress_callback,
-            track_update_callback=track_update_callback,
+            track_update_callback=persist_track_update,
             priority_cache_key=priority_cache_key,
             max_downloads=max_downloads,
+            stop_event=stop_event,
         )
         merged_tracks = repository.merge_tracks(username, downloaded_tracks)
-        repository.save_download_cache(merged_tracks)
+        repository.merge_download_cache(merged_tracks)
         return merged_tracks
 
     def download_tracks(  # pylint: disable=too-many-arguments,too-many-locals
@@ -126,6 +118,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         track_update_callback: TrackUpdateCallback | None = None,
         priority_cache_key: str | None = None,
         max_downloads: int | None = None,
+        stop_event: Event | None = None,
     ) -> list[Track]:
         """Download eligible tracks into ``downloads_dir`` and return updated tracks."""
 
@@ -162,12 +155,27 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
                     self._download_track_with_retries,
                     results[index],
                     downloads_dir,
+                    stop_event,
                 ): index
                 for index, _track in candidates
             }
             for future in as_completed(future_to_index):
                 index = future_to_index[future]
-                results[index] = future.result()
+                try:
+                    results[index] = future.result()
+                except Exception as error:  # noqa: BLE001 - isolate one failed download.
+                    failed_track = results[index]
+                    LOGGER.exception(
+                        "Unexpected download failure for %s - %s",
+                        failed_track.artist,
+                        failed_track.title,
+                    )
+                    results[index] = replace(
+                        failed_track,
+                        status=TrackStatus.FAILED,
+                        retry_count=failed_track.retry_count + 1,
+                        error=str(error),
+                    )
                 _report_track_update(track_update_callback, results[index])
                 completed_count += 1
                 percent = int(completed_count / len(candidates) * 100)
@@ -184,17 +192,23 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
 
         return results
 
-    def _download_track_with_retries(self, track: Track, downloads_dir: Path) -> Track:
+    def _download_track_with_retries(
+        self,
+        track: Track,
+        downloads_dir: Path,
+        stop_event: Event | None = None,
+    ) -> Track:
         current_track = replace(track, status=TrackStatus.DOWNLOADING, error=None)
         last_error: str | None = None
 
         for attempt in range(1, self.max_retries + 1):
-            self._resume_event.wait()
-            if self._stop_requested:
-                return replace(current_track, status=TrackStatus.FAILED, error="Download stopped.")
+            if stop_event is not None and stop_event.is_set():
+                return replace(track, status=TrackStatus.QUEUED, error=None)
             try:
-                local_path = self._download_track(current_track, downloads_dir, attempt)
-                file_type, bitrate_kbps = _probe_audio_file(local_path)
+                local_path = self._download_track(
+                    current_track, downloads_dir, attempt, stop_event
+                )
+                file_type, bitrate_kbps = _probe_audio_file(local_path, stop_event)
                 return replace(
                     current_track,
                     local_path=str(local_path),
@@ -216,10 +230,18 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
                 )
                 if attempt < self.max_retries:
                     self.sleeper(self.backoff_factory())
+            except WorkCancelled:
+                return replace(track, status=TrackStatus.QUEUED, error=None)
 
         return replace(current_track, status=TrackStatus.FAILED, error=last_error)
 
-    def _download_track(self, track: Track, downloads_dir: Path, attempt: int = 1) -> Path:
+    def _download_track(
+        self,
+        track: Track,
+        downloads_dir: Path,
+        attempt: int = 1,
+        stop_event: Event | None = None,
+    ) -> Path:
         if not track.youtube_url:
             raise DownloadError("Track has no YouTube URL")
 
@@ -231,7 +253,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         if self.cookies_browser:
             command += ["--cookies-from-browser", self.cookies_browser]
         command += ["--output", output_template, track.youtube_url]
-        completed = self._run(command)
+        completed = self._run(command, stop_event, track.cache_key)
         if completed.returncode != 0:
             raise DownloadError(completed.stderr.strip() or "yt-dlp download failed")
 
@@ -244,8 +266,22 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
             raise DownloadError("Downloaded file not found after yt-dlp succeeded")
         return candidates[0]
 
-    def _run(self, command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self,
+        command: Sequence[str],
+        stop_event: Event | None = None,
+        work_key: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         try:
+            if self.command_runner is subprocess.run:
+                with self.work_limiter.slot(stop_event, work_key) as acquired:
+                    if not acquired:
+                        raise WorkCancelled("YouTube download cancelled")
+                    return run_cancellable_command(
+                        command,
+                        stop_event=stop_event,
+                        timeout=DOWNLOAD_TIMEOUT_SECONDS,
+                    )
             return self.command_runner(
                 command,
                 check=False,
@@ -298,11 +334,12 @@ def _report_track_update(
         track_update_callback(track)
 
 
-def _probe_audio_file(path: Path) -> tuple[str | None, int | None]:
+def _probe_audio_file(
+    path: Path, stop_event: Event | None = None
+) -> tuple[str | None, int | None]:
     file_type = _file_type_from_path(path)
     try:
-        completed = subprocess.run(
-            [
+        command = [
                 "ffprobe",
                 "-v",
                 "error",
@@ -311,14 +348,21 @@ def _probe_audio_file(path: Path) -> tuple[str | None, int | None]:
                 "-of",
                 "json",
                 str(path),
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=PROBE_TIMEOUT_SECONDS,
-        )
-    except (OSError, subprocess.TimeoutExpired):
+            ]
+        if stop_event is None:
+            completed = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
+        else:
+            completed = run_cancellable_command(
+                command, stop_event=stop_event, timeout=PROBE_TIMEOUT_SECONDS
+            )
+    except (OSError, subprocess.TimeoutExpired, WorkCancelled):
         return file_type, None
 
     if completed.returncode != 0:

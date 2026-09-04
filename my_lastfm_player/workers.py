@@ -10,7 +10,7 @@ from my_lastfm_player.download import DEFAULT_CONCURRENCY, DownloadManager
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.lastfm import FetchProgress, LastFmArtistInfoClient, LastFmLovedTracksScraper
 from my_lastfm_player.storage import JsonTrackRepository
-from my_lastfm_player.youtube import YouTubeResolver
+from my_lastfm_player.youtube import DEFAULT_LOOKUP_CONCURRENCY, YouTubeResolver
 
 LOGGER = logging.getLogger(__name__)
 
@@ -157,13 +157,14 @@ class LookupTracksWorker(QObject):
     error = pyqtSignal(str)
     finished = pyqtSignal()
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         username: str,
         resolver: YouTubeResolver,
         repository: JsonTrackRepository,
         priority_cache_key: str | None = None,
         max_tracks: int | None = None,
+        concurrency: int = DEFAULT_LOOKUP_CONCURRENCY,
     ) -> None:
         super().__init__()
         self.username = username
@@ -171,6 +172,8 @@ class LookupTracksWorker(QObject):
         self.repository = repository
         self.priority_cache_key = priority_cache_key
         self.max_tracks = max_tracks
+        self.concurrency = concurrency
+        self._stop_event = Event()
 
     @pyqtSlot()
     def run(self) -> None:
@@ -193,6 +196,8 @@ class LookupTracksWorker(QObject):
                 track_update_callback=self._report_track_update,
                 priority_cache_key=self.priority_cache_key,
                 max_tracks=self.max_tracks,
+                concurrency=self.concurrency,
+                stop_event=self._stop_event,
             )
             self.progress.emit(
                 100,
@@ -212,6 +217,11 @@ class LookupTracksWorker(QObject):
 
     def _report_track_update(self, track: object) -> None:
         self.track_updated.emit(self.username, track)
+
+    def stop_lookup(self) -> None:
+        """Request cancellation before another YouTube lookup is started."""
+
+        self._stop_event.set()
 
 
 class DownloadTracksWorker(QObject):
@@ -239,6 +249,7 @@ class DownloadTracksWorker(QObject):
         self.concurrency = concurrency
         self.priority_cache_key = priority_cache_key
         self.max_downloads = max_downloads
+        self._stop_event = Event()
 
     @pyqtSlot()
     def run(self) -> None:
@@ -254,6 +265,7 @@ class DownloadTracksWorker(QObject):
                 track_update_callback=self._report_track_update,
                 priority_cache_key=self.priority_cache_key,
                 max_downloads=self.max_downloads,
+                stop_event=self._stop_event,
             )
             self.tracks_downloaded.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
@@ -265,3 +277,8 @@ class DownloadTracksWorker(QObject):
 
     def _report_track_update(self, track: object) -> None:
         self.track_updated.emit(self.username, track)
+
+    def stop_download(self) -> None:
+        """Request cancellation before another download attempt is started."""
+
+        self._stop_event.set()

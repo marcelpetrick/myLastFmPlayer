@@ -38,6 +38,7 @@ from my_lastfm_player.workers import (
     LookupTracksWorker,
 )
 from my_lastfm_player.youtube import YouTubeResolver
+from my_lastfm_player.youtube_work import YouTubeWorkLimiter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ FetchWorkerFactory = Callable[
     FetchLovedTracksWorker,
 ]
 LookupWorkerFactory = Callable[
-    [str, YouTubeResolver, JsonTrackRepository, str | None, int | None],
+    [str, YouTubeResolver, JsonTrackRepository, str | None, int | None, int],
     LookupTracksWorker,
 ]
 DownloadWorkerFactory = Callable[
@@ -80,8 +81,15 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.window = window
         self.repository = repository or JsonTrackRepository()
         self.scraper = scraper or LastFmLovedTracksScraper()
-        self.youtube_resolver = youtube_resolver or YouTubeResolver()
-        self.download_manager = download_manager or DownloadManager()
+        self._youtube_work_limiter = YouTubeWorkLimiter(AppSettings().download_concurrency())
+        self.youtube_resolver = youtube_resolver or YouTubeResolver(
+            work_limiter=self._youtube_work_limiter
+        )
+        self.download_manager = download_manager or DownloadManager(
+            work_limiter=self._youtube_work_limiter
+        )
+        self.youtube_resolver.work_limiter = self._youtube_work_limiter
+        self.download_manager.work_limiter = self._youtube_work_limiter
         self._playback_service = playback_service
         self.artist_info_client = artist_info_client or LastFmArtistInfoClient()
         self._artist_images_enabled = (
@@ -100,6 +108,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._running_worker_count = 0
         self._pending_play_cache_key: str | None = None
         self._pending_retry_cache_key: str | None = None
+        self._workflow_username: str | None = self.window.username() or None
+        self._pending_lookup_users: set[str] = set()
         self._active_fetch_worker: FetchLovedTracksWorker | None = None
         self._fetch_paused = False
         self._started_incremental_lookup_for_fetch = False
@@ -127,6 +137,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
 
         LOGGER.info("Starting application controller")
         self.window.fetch_requested.connect(self.fetch_loved_tracks)
+        self.window.username_input.textEdited.connect(self._handle_username_text_edited)
         self.window.username_input.editingFinished.connect(
             self.load_cached_tracks_for_entered_username
         )
@@ -167,9 +178,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
 
         tracks = self.repository.load_tracks(username)
         missing_count = sum(1 for track in tracks if track.status is TrackStatus.NOT_FOUND)
-        failed_count = sum(
-            1 for track in tracks if track.status is TrackStatus.FAILED and track.youtube_url
-        )
+        failed_count = sum(1 for track in tracks if track.status is TrackStatus.FAILED)
         if not missing_count and not failed_count:
             return
 
@@ -187,7 +196,17 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 else track
                 for track in tracks
             ]
-            self.repository.save_tracks(username, tracks)
+        tracks = [
+            replace(
+                track,
+                status=TrackStatus.QUEUED if track.youtube_url else TrackStatus.FETCHED,
+                error=None,
+            )
+            if track.status is TrackStatus.FAILED
+            else track
+            for track in tracks
+        ]
+        self.repository.save_tracks(username, tracks)
         self.window.set_tracks(tracks)
         self._report_user_action(
             translate(
@@ -197,7 +216,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 failed=failed_count,
             )
         )
-        if missing_count:
+        if missing_count or any(
+            track.status is TrackStatus.FETCHED and not track.youtube_url for track in tracks
+        ):
             self.resolve_youtube_urls(username)
         else:
             self.download_tracks(username)
@@ -210,6 +231,67 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         LOGGER.info("User action: %s", message)
         self.window.append_feedback(message)
 
+    def _handle_username_text_edited(self, text: str) -> None:
+        """Retire work for the previous user as soon as a different name is entered."""
+
+        username = text.strip()
+        previous_username = self._workflow_username
+        if username == previous_username:
+            return
+        if previous_username:
+            self.repository.merge_tracks(previous_username, self.window.tracks())
+            self._cancel_work_for_username(previous_username)
+        # Typed text is not a committed identity. Ignore all stale worker signals until
+        # editing finishes or Fetch explicitly commits the complete value.
+        self._workflow_username = None
+        self._pending_play_cache_key = None
+        self._pending_retry_cache_key = None
+        self.window.set_tracks([])
+        self.window.set_fetch_control_state(active=False, paused=False)
+        self.window.set_workflow_enabled(True)
+
+    def _cancel_work_for_username(self, username: str) -> None:
+        """Cooperatively cancel queued work belonging to ``username``."""
+
+        cancelled = False
+        for worker in tuple(self._active_workers):
+            if getattr(worker, "username", None) != username:
+                continue
+            if isinstance(worker, FetchLovedTracksWorker):
+                worker.stop_fetch()
+            elif isinstance(worker, LookupTracksWorker):
+                worker.stop_lookup()
+            elif isinstance(worker, DownloadTracksWorker):
+                worker.stop_download()
+            cancelled = True
+        if self._active_fetch_worker is not None and (
+            getattr(self._active_fetch_worker, "username", username) == username
+        ):
+            self._active_fetch_worker.stop_fetch()
+            self._active_fetch_worker = None
+        self._fetch_paused = False
+        self._started_incremental_lookup_for_fetch = False
+        self._pending_lookup_users.discard(username)
+        self._download_worker_active = False
+        self._download_stop_requested = False
+        self.window.set_download_active(False)
+        if cancelled:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Stopping background work for {username}; completed items remain saved.",
+                    username=username,
+                )
+            )
+
+    def _has_active_worker_for_username(self, username: str) -> bool:
+        return any(getattr(worker, "username", None) == username for worker in self._active_workers)
+
+    def _is_current_workflow_username(self, username: str) -> bool:
+        return username == self._workflow_username or (
+            self._workflow_username is None and not self.window.username()
+        )
+
     def load_cached_tracks_for_entered_username(self, *, verify_online_count: bool = False) -> bool:
         """Load locally stored tracks for the entered username when available."""
 
@@ -220,6 +302,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         username = self.window.username()
         if not username:
             return False
+        self._workflow_username = username
 
         tracks = self.repository.load_tracks(username)
         if not tracks:
@@ -488,6 +571,19 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
             return
 
+        if self._has_active_worker_for_username(username):
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Background work is already running for {username}.",
+                    username=username,
+                )
+            )
+            return
+        if self._workflow_username and self._workflow_username != username:
+            self._cancel_work_for_username(self._workflow_username)
+        self._workflow_username = username
+
         if self.load_cached_tracks_for_entered_username(verify_online_count=True):
             self.window.set_fetch_control_state(active=False, paused=False)
             self.window.set_progress(
@@ -620,7 +716,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self.repository,
             priority_cache_key,
             max_tracks,
+            AppSettings().download_concurrency(),
         )
+        self._youtube_work_limiter.configure(AppSettings().download_concurrency())
         self._run_worker(worker)
 
     def download_tracks(
@@ -664,7 +762,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 ),
             )
         )
-        self.download_manager.resume()
+        self._youtube_work_limiter.configure(concurrency)
         self.window.set_progress(0, translate("ApplicationController", "Starting downloads"))
         worker = self.download_worker_factory(
             username,
@@ -674,10 +772,10 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             priority_cache_key,
             max_downloads,
         )
+        self._download_stop_requested = False
         self._run_worker(worker)
         if priority_cache_key is None:
             self._download_worker_active = True
-            self._download_stop_requested = False
             self.window.set_download_active(True)
 
     def play_selected_track(self) -> None:
@@ -795,10 +893,19 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         worker.moveToThread(thread)
         self._running_worker_count += 1
         self.window.set_workflow_enabled(False)
+        worker_username = getattr(worker, "username", self._workflow_username)
 
         thread.started.connect(worker.run)
-        worker.progress.connect(self.window.set_progress)
-        worker.error.connect(self._handle_worker_error)
+        worker.progress.connect(
+            lambda value, label, username=worker_username: self._handle_worker_progress(
+                username, value, label
+            )
+        )
+        worker.error.connect(
+            lambda message, username=worker_username: self._handle_worker_error_for(
+                username, message
+            )
+        )
         if isinstance(worker, FetchLovedTracksWorker):
             worker.tracks_updated.connect(self._handle_tracks_updated)
             worker.tracks_loaded.connect(self._handle_tracks_loaded)
@@ -844,6 +951,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         thread.start()
 
     def _handle_tracks_loaded(self, username: str, tracks: object) -> None:
+        if not self._is_current_workflow_username(username):
+            return
         if not isinstance(tracks, list):
             self.window.append_feedback(
                 translate(
@@ -854,7 +963,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
             return
 
-        self.window.set_tracks(tracks)
+        merged_tracks = self.repository.merge_tracks(username, tracks)
+        self.window.set_tracks(merged_tracks)
         self._report_user_action(
             translate(
                 "ApplicationController",
@@ -863,16 +973,17 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 username=username,
             )
         )
-        already_started_lookup = self._started_incremental_lookup_for_fetch
         self._active_fetch_worker = None
         self._fetch_paused = False
         self._started_incremental_lookup_for_fetch = False
         self.window.set_fetch_control_state(active=False, paused=False)
         LOGGER.info("Loaded %s fetched tracks into UI for %s", len(tracks), username)
-        if tracks and not already_started_lookup:
-            self._start_automatic_lookup(username, len(tracks))
+        if self._has_lookup_candidates(merged_tracks):
+            self._ensure_automatic_lookup(username, len(tracks))
 
     def _handle_fetch_stopped(self, username: str, tracks: object) -> None:
+        if not self._is_current_workflow_username(username):
+            return
         self._active_fetch_worker = None
         self._fetch_paused = False
         self._started_incremental_lookup_for_fetch = False
@@ -898,6 +1009,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         )
 
     def _handle_tracks_updated(self, username: str, tracks: object) -> None:
+        if not self._is_current_workflow_username(username):
+            return
         if not isinstance(tracks, list):
             self.window.append_feedback(
                 translate(
@@ -908,7 +1021,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
             return
 
-        self.window.set_tracks(tracks)
+        merged_tracks = self.repository.merge_tracks(username, tracks)
+        self.window.set_tracks(merged_tracks)
         LOGGER.info("Loaded %s partial fetched tracks into UI for %s", len(tracks), username)
         self._report_user_action(
             translate(
@@ -926,16 +1040,12 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 username=username,
             )
         )
-        if (
-            tracks
-            and self._active_fetch_worker is not None
-            and not self._started_incremental_lookup_for_fetch
-        ):
-            self._started_incremental_lookup_for_fetch = True
-            self.repository.merge_tracks(username, tracks)
-            self._start_automatic_lookup(username, len(tracks))
+        if self._has_lookup_candidates(merged_tracks):
+            self._ensure_automatic_lookup(username, len(merged_tracks))
 
     def _handle_track_updated(self, username: str, track: object) -> None:
+        if not self._is_current_workflow_username(username):
+            return
         if not isinstance(track, Track):
             self.window.append_feedback(
                 translate(
@@ -961,6 +1071,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._handle_track_ready_for_download(username, track)
 
     def _handle_tracks_resolved(self, username: str, tracks: object) -> None:
+        if not self._is_current_workflow_username(username):
+            return
         if not isinstance(tracks, list):
             self.window.append_feedback(
                 translate(
@@ -999,18 +1111,20 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._pending_retry_cache_key,
         ):
             self._start_priority_download(username, self._pending_retry_cache_key)
-        elif self._has_download_candidates(current_tracks) and not self._download_worker_active:
-            self._start_automatic_download(username)
+        elif self._has_download_candidates(current_tracks):
+            self._ensure_automatic_download(username)
         elif not self._has_download_candidates(current_tracks):
             self._report_user_action(
                 translate("ApplicationController", "No queued tracks are ready for download.")
             )
 
     def _handle_tracks_downloaded(self, username: str, tracks: object) -> None:
+        if not self._is_current_workflow_username(username):
+            return
         was_bulk = self._download_worker_active
         stop_was_requested = self._download_stop_requested
         self._download_worker_active = False
-        self._download_stop_requested = False
+        self._download_stop_requested = stop_was_requested
         self.window.set_download_active(False)
         if not isinstance(tracks, list):
             self.window.append_feedback(
@@ -1056,12 +1170,20 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             and not stop_was_requested
             and self._has_download_candidates(current_tracks)
         ):
-            self._start_automatic_download(username)
+            self._ensure_automatic_download(username)
 
     def _handle_worker_error(self, message: str) -> None:
         LOGGER.error("Worker error: %s", message)
         self.window.append_error(message)
         self.window.set_progress(0, translate("ApplicationController", "Failed"))
+
+    def _handle_worker_error_for(self, username: str, message: str) -> None:
+        if self._is_current_workflow_username(username):
+            self._handle_worker_error(message)
+
+    def _handle_worker_progress(self, username: str, value: int, label: str) -> None:
+        if self._is_current_workflow_username(username):
+            self.window.set_progress(value, label)
 
     def _update_track_by_cache_key(self, track: Track) -> None:
         for row, visible_track in enumerate(self.window.tracks()):
@@ -1201,12 +1323,22 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._report_user_action(message)
         self.resolve_youtube_urls(username)
 
+    def _ensure_automatic_lookup(self, username: str, track_count: int) -> None:
+        if self._has_active_lookup_worker(username):
+            self._pending_lookup_users.add(username)
+            return
+        self._pending_lookup_users.discard(username)
+        self._start_automatic_lookup(username, track_count)
+
     def stop_downloads(self) -> None:
-        """Pause the download manager and clear the active-download UI state."""
+        """Cancel the current user's download operations and clear their UI state."""
 
         self._download_worker_active = False
         self._download_stop_requested = True
-        self.download_manager.stop()
+        username = self.window.username()
+        for worker in tuple(self._active_workers):
+            if isinstance(worker, DownloadTracksWorker) and worker.username == username:
+                worker.stop_download()
         self.window.set_download_active(False)
         self._report_user_action(
             translate("ApplicationController", "Downloads stopped by user.")
@@ -1256,6 +1388,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._report_user_action(message)
         self.download_tracks(username)
 
+    def _ensure_automatic_download(self, username: str) -> None:
+        if self._download_worker_active or self._has_active_download_worker(username):
+            return
+        self._start_automatic_download(username)
+
     def _start_priority_download(self, username: str, cache_key: str) -> None:
         message = translate(
             "ApplicationController",
@@ -1269,33 +1406,38 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         )
 
     def _handle_track_ready_for_download(self, username: str, track: Track) -> None:
-        merged_tracks = self.repository.merge_tracks(username, [track])
-        self.repository.save_lookup_cache(merged_tracks)
         if self._pending_play_cache_key == track.cache_key:
             self._start_priority_download(username, track.cache_key)
             return
         if self._pending_retry_cache_key == track.cache_key:
             self._start_priority_download(username, track.cache_key)
             return
-        if (
-            not self._download_worker_active
-            and not self._has_active_download_worker()
-            and not self._has_active_lookup_worker()
-        ):
-            self._start_automatic_download(username)
+        if not self._download_stop_requested:
+            self._ensure_automatic_download(username)
 
     def _has_download_candidates(self, tracks: list[Track]) -> bool:
         return any(
             bool(track.youtube_url)
-            and track.status not in {TrackStatus.DOWNLOADED, TrackStatus.NOT_FOUND}
+            and track.status
+            not in {TrackStatus.DOWNLOADED, TrackStatus.NOT_FOUND, TrackStatus.FAILED}
             for track in tracks
         )
 
-    def _has_active_download_worker(self) -> bool:
-        return any(isinstance(worker, DownloadTracksWorker) for worker in self._active_workers)
+    def _has_active_download_worker(self, username: str | None = None) -> bool:
+        username = username or self._workflow_username
+        return any(
+            isinstance(worker, DownloadTracksWorker)
+            and getattr(worker, "username", None) == username
+            for worker in self._active_workers
+        )
 
-    def _has_active_lookup_worker(self) -> bool:
-        return any(isinstance(worker, LookupTracksWorker) for worker in self._active_workers)
+    def _has_active_lookup_worker(self, username: str | None = None) -> bool:
+        username = username or self._workflow_username
+        return any(
+            isinstance(worker, LookupTracksWorker)
+            and getattr(worker, "username", None) == username
+            for worker in self._active_workers
+        )
 
     def _track_has_youtube_url(self, tracks: list[Track], cache_key: str) -> bool:
         return any(track.cache_key == cache_key and bool(track.youtube_url) for track in tracks)
@@ -1440,7 +1582,26 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._fetch_paused = False
         if worker in self._active_workers:
             self._active_workers.remove(worker)
+        username = getattr(worker, "username", None)
+        if username == self._workflow_username and isinstance(worker, LookupTracksWorker):
+            tracks = self.repository.load_tracks(username)
+            if username in self._pending_lookup_users:
+                self._pending_lookup_users.discard(username)
+                if self._has_lookup_candidates(tracks):
+                    self._ensure_automatic_lookup(username, len(tracks))
+            if self._has_download_candidates(tracks):
+                self._ensure_automatic_download(username)
+        if username == self._workflow_username and isinstance(worker, DownloadTracksWorker):
+            tracks = self.repository.load_tracks(username)
+            if self._has_download_candidates(tracks) and not self._download_stop_requested:
+                self._ensure_automatic_download(username)
         LOGGER.info("Worker released; active_workers=%d", len(self._active_workers))
+
+    @staticmethod
+    def _has_lookup_candidates(tracks: list[Track]) -> bool:
+        return any(
+            not track.youtube_url and track.status is TrackStatus.FETCHED for track in tracks
+        )
 
     def _forget_artist_image_worker(self, worker: ArtistImageWorker) -> None:
         if worker in self._active_artist_image_workers:
