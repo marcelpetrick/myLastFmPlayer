@@ -1512,6 +1512,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         return any(
             isinstance(worker, DownloadTracksWorker)
             and getattr(worker, "username", None) == username
+            and self._worker_generations.get(worker, self._workflow_generation)
+            == self._workflow_generation
             for worker in self._active_workers
         )
 
@@ -1520,6 +1522,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         return any(
             isinstance(worker, LookupTracksWorker)
             and getattr(worker, "username", None) == username
+            and self._worker_generations.get(worker, self._workflow_generation)
+            == self._workflow_generation
             for worker in self._active_workers
         )
 

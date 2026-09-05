@@ -2334,6 +2334,23 @@ def test_returning_to_same_username_does_not_accept_previous_generation(qapp) ->
     assert not controller._is_current_worker_context("user", previous_generation)
 
 
+def test_previous_generation_workers_do_not_block_same_username_work(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    lookup = LookupTracksWorker("user", controller.youtube_resolver, repository)
+    download = DownloadTracksWorker("user", controller.download_manager, repository)
+    controller._active_workers.extend([lookup, download])
+    controller._worker_generations[lookup] = controller._workflow_generation
+    controller._worker_generations[download] = controller._workflow_generation
+
+    controller._workflow_generation += 1
+
+    assert not controller._has_active_lookup_worker("user")
+    assert not controller._has_active_download_worker("user")
+
+
 def test_current_worker_progress_and_error_reach_ui(qapp) -> None:
     window = MainWindow()
     controller = ApplicationController(window)
