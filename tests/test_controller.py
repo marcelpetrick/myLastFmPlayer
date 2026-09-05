@@ -2334,6 +2334,24 @@ def test_returning_to_same_username_does_not_accept_previous_generation(qapp) ->
     assert not controller._is_current_worker_context("user", previous_generation)
 
 
+def test_programmatic_username_switch_retires_previous_generation(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("old-user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    lookup = LookupTracksWorker("old-user", controller.youtube_resolver, repository)
+    controller._active_workers.append(lookup)
+    controller._worker_generations[lookup] = controller._workflow_generation
+    previous_generation = controller._workflow_generation
+
+    window.set_username("new-user")
+    controller.load_cached_tracks_for_entered_username()
+
+    assert lookup._stop_event.is_set()
+    assert controller._workflow_username == "new-user"
+    assert controller._workflow_generation == previous_generation + 1
+
+
 def test_previous_generation_workers_do_not_block_same_username_work(qapp, tmp_path) -> None:
     window = MainWindow()
     window.set_username("user")

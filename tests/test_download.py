@@ -4,9 +4,11 @@ import re
 import subprocess
 import threading
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
+from my_lastfm_player import download as download_module
 from my_lastfm_player.download import (
     MAX_RETRIES,
     PLAYER_CLIENT_LADDER,
@@ -18,6 +20,7 @@ from my_lastfm_player.download import (
 )
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
+from my_lastfm_player.youtube_work import WorkCancelled
 
 
 class FakeRunner:
@@ -351,6 +354,16 @@ def test_operation_stop_aborts_pending_retries_without_affecting_other_runs(
     assert tracks[0].error is None
 
 
+def test_work_cancelled_during_download_returns_track_to_queue(tmp_path: Path) -> None:
+    manager = DownloadManager(max_retries=1)
+    manager._download_track = MagicMock(side_effect=WorkCancelled("stopped"))
+
+    result = manager._download_track_with_retries(queued_track(), tmp_path)
+
+    assert result.status is TrackStatus.QUEUED
+    assert result.error is None
+
+
 def test_operation_stop_keeps_pending_download_queued(tmp_path: Path) -> None:
     runner = FakeRunner()
     manager = DownloadManager(command_runner=runner)
@@ -622,6 +635,21 @@ def test_probe_audio_file_returns_path_type_when_ffprobe_returns_invalid_json(
 
     assert file_type == "MP3"
     assert bitrate is None
+
+
+def test_probe_audio_file_uses_cancellable_runner_and_handles_probe_failure(
+    monkeypatch, tmp_path: Path
+) -> None:
+    audio_path = tmp_path / "track.mp3"
+    audio_path.touch()
+    stop_event = threading.Event()
+    monkeypatch.setattr(
+        download_module,
+        "run_cancellable_command",
+        lambda command, **_kwargs: subprocess.CompletedProcess(command, 1, "", "failed"),
+    )
+
+    assert _probe_audio_file(audio_path, stop_event) == ("MP3", None)
 
 
 def test_probe_audio_file_returns_path_type_when_format_is_not_dict(

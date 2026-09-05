@@ -83,6 +83,14 @@ def test_repository_journals_batch_with_one_fsync(tmp_path: Path, monkeypatch) -
     assert len(fsync_calls) == 1
 
 
+def test_repository_ignores_empty_journal_batch(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+
+    repository.append_track_updates("user", [])
+
+    assert not repository.user_updates_path("user").exists()
+
+
 def test_repository_ignores_a_truncated_journal_entry(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     track = Track(artist="Artist", title="Title")
