@@ -64,11 +64,20 @@ class JsonTrackRepository:
     def append_track_update(self, username: str, track: Track) -> None:
         """Durably journal one result without rewriting the complete track list."""
 
+        self.append_track_updates(username, [track])
+
+    def append_track_updates(self, username: str, tracks: list[Track]) -> None:
+        """Durably journal a batch of results with one flush to stable storage."""
+
+        if not tracks:
+            return
+
         path = self.user_updates_path(username)
         with self._lock:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(track.to_dict(), ensure_ascii=False) + "\n")
+                for track in tracks:
+                    handle.write(json.dumps(track.to_dict(), ensure_ascii=False) + "\n")
                 handle.flush()
                 os.fsync(handle.fileno())
 

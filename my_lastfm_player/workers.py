@@ -9,6 +9,7 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from my_lastfm_player.download import DEFAULT_CONCURRENCY, DownloadManager
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.lastfm import FetchProgress, LastFmArtistInfoClient, LastFmLovedTracksScraper
+from my_lastfm_player.models import Track
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.youtube import DEFAULT_LOOKUP_CONCURRENCY, YouTubeResolver
 
@@ -67,6 +68,7 @@ class FetchLovedTracksWorker(QObject):
         self._resume_event = Event()
         self._resume_event.set()
         self._stop_requested = False
+        self._reported_cache_keys: set[str] = set()
 
     @pyqtSlot()
     def run(self) -> None:
@@ -122,8 +124,13 @@ class FetchLovedTracksWorker(QObject):
         LOGGER.info("Worker progress for %s: %s%% %s", self.username, percent, progress.message)
         self.progress.emit(percent, progress.message)
 
-    def _report_partial_tracks(self, tracks: list[object]) -> None:
+    def _report_partial_tracks(self, tracks: list[Track]) -> None:
         LOGGER.info("Worker partial fetch for %s: %d tracks", self.username, len(tracks))
+        new_tracks = [
+            track for track in tracks if track.cache_key not in self._reported_cache_keys
+        ]
+        self.repository.append_track_updates(self.username, new_tracks)
+        self._reported_cache_keys.update(track.cache_key for track in new_tracks)
         self.tracks_updated.emit(self.username, tracks)
 
     def pause_fetch(self) -> None:

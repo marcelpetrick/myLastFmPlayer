@@ -71,6 +71,18 @@ def test_repository_journals_independent_updates_and_compacts_on_save(tmp_path: 
     assert not repository.user_updates_path("user").exists()
 
 
+def test_repository_journals_batch_with_one_fsync(tmp_path: Path, monkeypatch) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    tracks = [Track(artist="Artist", title=f"Title {index}") for index in range(3)]
+    fsync_calls: list[int] = []
+    monkeypatch.setattr("my_lastfm_player.storage.os.fsync", fsync_calls.append)
+
+    repository.append_track_updates("user", tracks)
+
+    assert repository.load_tracks("user") == tracks
+    assert len(fsync_calls) == 1
+
+
 def test_repository_ignores_a_truncated_journal_entry(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     track = Track(artist="Artist", title="Title")

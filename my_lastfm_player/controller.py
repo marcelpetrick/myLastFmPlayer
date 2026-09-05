@@ -29,7 +29,7 @@ from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.playback import PlaybackError, PlaybackService
 from my_lastfm_player.scrobbling import SCROBBLE_THRESHOLD, ScrobblingService
 from my_lastfm_player.settings import AppSettings
-from my_lastfm_player.storage import JsonTrackRepository
+from my_lastfm_player.storage import JsonTrackRepository, merge_track_updates
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import (
     ArtistImageWorker,
@@ -109,6 +109,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._pending_play_cache_key: str | None = None
         self._pending_retry_cache_key: str | None = None
         self._workflow_username: str | None = self.window.username() or None
+        self._workflow_generation = 0
+        self._username_edit_active = False
+        self._worker_generations: dict[WorkflowWorker, int] = {}
         self._pending_lookup_users: set[str] = set()
         self._active_fetch_worker: FetchLovedTracksWorker | None = None
         self._fetch_paused = False
@@ -236,10 +239,12 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
 
         username = text.strip()
         previous_username = self._workflow_username
-        if username == previous_username:
+        if not self._username_edit_active and username == previous_username:
             return
+        if not self._username_edit_active:
+            self._workflow_generation += 1
+            self._username_edit_active = True
         if previous_username:
-            self.repository.merge_tracks(previous_username, self.window.tracks())
             self._cancel_work_for_username(previous_username)
         # Typed text is not a committed identity. Ignore all stale worker signals until
         # editing finishes or Fetch explicitly commits the complete value.
@@ -285,24 +290,40 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
 
     def _has_active_worker_for_username(self, username: str) -> bool:
-        return any(getattr(worker, "username", None) == username for worker in self._active_workers)
+        return any(
+            getattr(worker, "username", None) == username
+            and self._worker_generations.get(worker, self._workflow_generation)
+            == self._workflow_generation
+            for worker in self._active_workers
+        )
 
     def _is_current_workflow_username(self, username: str) -> bool:
-        return username == self._workflow_username or (
-            self._workflow_username is None and not self.window.username()
+        return username == self._workflow_username
+
+    def _is_current_worker_context(self, username: str, generation: int) -> bool:
+        return generation == self._workflow_generation and self._is_current_workflow_username(
+            username
         )
+
+    def _commit_workflow_username(self, username: str) -> None:
+        previous_username = self._workflow_username
+        if not self._username_edit_active and previous_username != username:
+            self._workflow_generation += 1
+            if previous_username:
+                self._cancel_work_for_username(previous_username)
+        self._workflow_username = username
+        self._username_edit_active = False
 
     def load_cached_tracks_for_entered_username(self, *, verify_online_count: bool = False) -> bool:
         """Load locally stored tracks for the entered username when available."""
 
-        if self._active_fetch_worker is not None:
-            LOGGER.info("Skipped cached-track load because a fresh fetch is active")
-            return False
-
         username = self.window.username()
         if not username:
             return False
-        self._workflow_username = username
+        self._commit_workflow_username(username)
+        if self._active_fetch_worker is not None:
+            LOGGER.info("Skipped cached-track load because a fresh fetch is active")
+            return False
 
         tracks = self.repository.load_tracks(username)
         if not tracks:
@@ -571,6 +592,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
             return
 
+        self._commit_workflow_username(username)
         if self._has_active_worker_for_username(username):
             self._report_user_action(
                 translate(
@@ -580,10 +602,6 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 )
             )
             return
-        if self._workflow_username and self._workflow_username != username:
-            self._cancel_work_for_username(self._workflow_username)
-        self._workflow_username = username
-
         if self.load_cached_tracks_for_entered_username(verify_online_count=True):
             self.window.set_fetch_control_state(active=False, paused=False)
             self.window.set_progress(
@@ -893,29 +911,77 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         worker.moveToThread(thread)
         self._running_worker_count += 1
         self.window.set_workflow_enabled(False)
-        worker_username = getattr(worker, "username", self._workflow_username)
+        worker_username = getattr(worker, "username", self._workflow_username) or ""
+        worker_generation = self._workflow_generation
+        self._worker_generations[worker] = worker_generation
 
         thread.started.connect(worker.run)
         worker.progress.connect(
-            lambda value, label, username=worker_username: self._handle_worker_progress(
-                username, value, label
+            lambda value, label, username=worker_username, generation=worker_generation: (
+                self._handle_worker_progress(username, value, label)
+                if self._is_current_worker_context(username, generation)
+                else None
             )
         )
         worker.error.connect(
-            lambda message, username=worker_username: self._handle_worker_error_for(
-                username, message
+            lambda message, username=worker_username, generation=worker_generation: (
+                self._handle_worker_error_for(username, message)
+                if self._is_current_worker_context(username, generation)
+                else None
             )
         )
         if isinstance(worker, FetchLovedTracksWorker):
-            worker.tracks_updated.connect(self._handle_tracks_updated)
-            worker.tracks_loaded.connect(self._handle_tracks_loaded)
-            worker.fetch_stopped.connect(self._handle_fetch_stopped)
+            worker.tracks_updated.connect(
+                lambda username, tracks, generation=worker_generation: (
+                    self._handle_tracks_updated(username, tracks)
+                    if self._is_current_worker_context(username, generation)
+                    else None
+                )
+            )
+            worker.tracks_loaded.connect(
+                lambda username, tracks, generation=worker_generation: (
+                    self._handle_tracks_loaded(username, tracks)
+                    if self._is_current_worker_context(username, generation)
+                    else None
+                )
+            )
+            worker.fetch_stopped.connect(
+                lambda username, tracks, generation=worker_generation: (
+                    self._handle_fetch_stopped(username, tracks)
+                    if self._is_current_worker_context(username, generation)
+                    else None
+                )
+            )
         if isinstance(worker, LookupTracksWorker):
-            worker.track_updated.connect(self._handle_track_updated)
-            worker.tracks_resolved.connect(self._handle_tracks_resolved)
+            worker.track_updated.connect(
+                lambda username, track, generation=worker_generation: (
+                    self._handle_track_updated(username, track)
+                    if self._is_current_worker_context(username, generation)
+                    else None
+                )
+            )
+            worker.tracks_resolved.connect(
+                lambda username, tracks, generation=worker_generation: (
+                    self._handle_tracks_resolved(username, tracks)
+                    if self._is_current_worker_context(username, generation)
+                    else None
+                )
+            )
         if isinstance(worker, DownloadTracksWorker):
-            worker.track_updated.connect(self._handle_track_updated)
-            worker.tracks_downloaded.connect(self._handle_tracks_downloaded)
+            worker.track_updated.connect(
+                lambda username, track, generation=worker_generation: (
+                    self._handle_track_updated(username, track)
+                    if self._is_current_worker_context(username, generation)
+                    else None
+                )
+            )
+            worker.tracks_downloaded.connect(
+                lambda username, tracks, generation=worker_generation: (
+                    self._handle_tracks_downloaded(username, tracks)
+                    if self._is_current_worker_context(username, generation)
+                    else None
+                )
+            )
         worker.finished.connect(self._complete_worker_run)
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)
@@ -963,8 +1029,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
             return
 
-        merged_tracks = self.repository.merge_tracks(username, tracks)
-        self.window.set_tracks(merged_tracks)
+        self.window.set_tracks(tracks)
         self._report_user_action(
             translate(
                 "ApplicationController",
@@ -978,7 +1043,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._started_incremental_lookup_for_fetch = False
         self.window.set_fetch_control_state(active=False, paused=False)
         LOGGER.info("Loaded %s fetched tracks into UI for %s", len(tracks), username)
-        if self._has_lookup_candidates(merged_tracks):
+        if self._has_lookup_candidates(tracks):
             self._ensure_automatic_lookup(username, len(tracks))
 
     def _handle_fetch_stopped(self, username: str, tracks: object) -> None:
@@ -1021,7 +1086,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
             return
 
-        merged_tracks = self.repository.merge_tracks(username, tracks)
+        merged_tracks = merge_track_updates(self.window.tracks(), tracks)
         self.window.set_tracks(merged_tracks)
         LOGGER.info("Loaded %s partial fetched tracks into UI for %s", len(tracks), username)
         self._report_user_action(
@@ -1577,13 +1642,20 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         LOGGER.info("Thread finished; active_threads=%d", len(self._active_threads))
 
     def _forget_worker(self, worker: WorkflowWorker) -> None:
+        worker_generation = self._worker_generations.pop(
+            worker, self._workflow_generation
+        )
         if worker is self._active_fetch_worker:
             self._active_fetch_worker = None
             self._fetch_paused = False
         if worker in self._active_workers:
             self._active_workers.remove(worker)
         username = getattr(worker, "username", None)
-        if username == self._workflow_username and isinstance(worker, LookupTracksWorker):
+        if (
+            username == self._workflow_username
+            and worker_generation == self._workflow_generation
+            and isinstance(worker, LookupTracksWorker)
+        ):
             tracks = self.repository.load_tracks(username)
             if username in self._pending_lookup_users:
                 self._pending_lookup_users.discard(username)
@@ -1591,7 +1663,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                     self._ensure_automatic_lookup(username, len(tracks))
             if self._has_download_candidates(tracks):
                 self._ensure_automatic_download(username)
-        if username == self._workflow_username and isinstance(worker, DownloadTracksWorker):
+        if (
+            username == self._workflow_username
+            and worker_generation == self._workflow_generation
+            and isinstance(worker, DownloadTracksWorker)
+        ):
             tracks = self.repository.load_tracks(username)
             if self._has_download_candidates(tracks) and not self._download_stop_requested:
                 self._ensure_automatic_download(username)

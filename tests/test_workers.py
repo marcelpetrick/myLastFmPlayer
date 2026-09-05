@@ -176,6 +176,22 @@ def test_fetch_worker_emits_error_and_finished(tmp_path: Path) -> None:
     assert finished_events == [True]
 
 
+def test_fetch_worker_journals_only_new_partial_tracks(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    worker = FetchLovedTracksWorker("example", FakeScraper(), repository)  # type: ignore[arg-type]
+    first = Track(artist="First", title="Track")
+    second = Track(artist="Second", title="Track")
+
+    worker._report_partial_tracks([first])
+    worker._report_partial_tracks([first, second])
+
+    assert repository.load_tracks("example") == [first, second]
+    journal_lines = repository.user_updates_path("example").read_text(
+        encoding="utf-8"
+    ).splitlines()
+    assert len(journal_lines) == 2
+
+
 def test_fetch_worker_can_stop_before_loading_tracks(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     worker = FetchLovedTracksWorker(
