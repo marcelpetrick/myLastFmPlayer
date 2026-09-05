@@ -296,6 +296,24 @@ def test_start_retries_failed_downloads_without_a_lookup_pass(qapp, tmp_path) ->
     assert repository.load_tracks("user")[0].status is TrackStatus.QUEUED
 
 
+def test_start_retries_lookup_failures_through_lookup(qapp, tmp_path) -> None:
+    tracks = [
+        Track(
+            artist="Failed lookup",
+            title="Track",
+            status=TrackStatus.LOOKUP_FAILED,
+            error="network unavailable",
+        )
+    ]
+    controller, _window, repository, started = _stuck_track_controller(tmp_path, tracks)
+
+    controller.start()
+
+    assert started["lookup"] == [(("user",), {})]
+    assert started["download"] == []
+    assert repository.load_tracks("user")[0].status is TrackStatus.FETCHED
+
+
 def test_start_leaves_a_healthy_library_alone(qapp, tmp_path) -> None:
     tracks = [
         Track(
@@ -2450,13 +2468,17 @@ def test_controller_retry_track_download_does_nothing_for_unknown_track(
     assert window.feedback_log.toPlainText() == ""
 
 
-def test_controller_retry_track_download_resets_not_found_and_starts_lookup(
-    qapp, tmp_path
+@pytest.mark.parametrize(
+    "failed_status",
+    [TrackStatus.NOT_FOUND, TrackStatus.LOOKUP_FAILED],
+)
+def test_controller_retry_track_download_resets_lookup_state_and_starts_lookup(
+    qapp, tmp_path, failed_status
 ) -> None:
     window = MainWindow()
     window.username_input.setText("user")
     repository = JsonTrackRepository(data_dir=tmp_path)
-    track = Track(artist="A", title="T", status=TrackStatus.NOT_FOUND, error="not found")
+    track = Track(artist="A", title="T", status=failed_status, error="lookup failed")
     repository.save_tracks("user", [track])
     window.set_tracks([track])
     controller = ApplicationController(window, repository=repository)
@@ -2481,12 +2503,12 @@ def test_controller_retry_track_download_starts_priority_download_when_url_known
     window = MainWindow()
     window.username_input.setText("user")
     repository = JsonTrackRepository(data_dir=tmp_path)
-    # QUEUED status keeps youtube_url intact (not in {NOT_FOUND, FAILED})
     track = Track(
         artist="A",
         title="T",
         youtube_url="https://youtu.be/x",
-        status=TrackStatus.QUEUED,
+        status=TrackStatus.FAILED,
+        error="download failed",
     )
     repository.save_tracks("user", [track])
     window.set_tracks([track])
@@ -2501,6 +2523,9 @@ def test_controller_retry_track_download_starts_priority_download_when_url_known
 
     assert controller._pending_retry_cache_key == track.cache_key
     assert download_calls == [("user", track.cache_key)]
+    reloaded = repository.load_tracks("user")[0]
+    assert reloaded.status is TrackStatus.QUEUED
+    assert reloaded.youtube_url == "https://youtu.be/x"
 
 
 def test_controller_play_prepared_track_key_not_in_visible_tracks(qapp) -> None:

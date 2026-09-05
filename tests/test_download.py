@@ -158,6 +158,53 @@ def test_download_manager_uses_configured_parallel_worker_count(tmp_path: Path) 
     assert [track.status for track in result] == [TrackStatus.DOWNLOADED] * 4
 
 
+def test_download_manager_only_marks_active_window_and_leaves_unscheduled_on_stop(
+    tmp_path: Path,
+) -> None:
+    manager = DownloadManager()
+    started = threading.Event()
+    release = threading.Event()
+    stop_event = threading.Event()
+    active = 0
+    lock = threading.Lock()
+    updates: list[Track] = []
+
+    def download(track: Track, _downloads_dir: Path, _stop_event=None) -> Track:
+        nonlocal active
+        with lock:
+            active += 1
+            if active == 2:
+                started.set()
+        assert release.wait(timeout=2)
+        return track.with_status(TrackStatus.DOWNLOADED)
+
+    manager._download_track_with_retries = download  # type: ignore[method-assign]
+    tracks = [queued_track(title=str(index)) for index in range(8)]
+
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(
+            manager.download_tracks,
+            tracks,
+            tmp_path,
+            concurrency=2,
+            track_update_callback=updates.append,
+            stop_event=stop_event,
+        )
+        assert started.wait(timeout=2)
+        assert [track.status for track in updates] == [
+            TrackStatus.DOWNLOADING,
+            TrackStatus.DOWNLOADING,
+        ]
+        stop_event.set()
+        release.set()
+        result = future.result(timeout=5)
+
+    assert [track.status for track in result[:2]] == [TrackStatus.DOWNLOADED] * 2
+    assert [track.status for track in result[2:]] == [TrackStatus.QUEUED] * 6
+
+
 def test_probe_audio_file_reads_ffprobe_metadata(monkeypatch, tmp_path: Path) -> None:
     audio_path = tmp_path / "Artist - Title.m4a"
     audio_path.touch()

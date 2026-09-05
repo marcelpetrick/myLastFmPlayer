@@ -249,7 +249,7 @@ def test_resolve_tracks_keeps_lookup_error_distinct_from_no_result() -> None:
 
     tracks = resolver.resolve_tracks([first, second])
 
-    assert tracks[0].status == TrackStatus.FAILED
+    assert tracks[0].status == TrackStatus.LOOKUP_FAILED
     assert tracks[0].error is not None
     assert tracks[0].retry_count == 1
     assert tracks[1].status == TrackStatus.QUEUED
@@ -300,7 +300,7 @@ def test_resolve_tracks_isolates_unexpected_failure_to_one_track() -> None:
         concurrency=2,
     )
 
-    assert resolved[0].status is TrackStatus.FAILED
+    assert resolved[0].status is TrackStatus.LOOKUP_FAILED
     assert resolved[0].error == "isolated failure"
     assert resolved[1].status is TrackStatus.QUEUED
 

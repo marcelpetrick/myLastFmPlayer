@@ -180,7 +180,7 @@ class YouTubeResolver:
                         resolved_track = replace(
                             searching_track,
                             youtube_url=None,
-                            status=TrackStatus.FAILED,
+                            status=TrackStatus.LOOKUP_FAILED,
                             retry_count=searching_track.retry_count + 1,
                             error=str(exc),
                         )
@@ -193,7 +193,7 @@ class YouTubeResolver:
                         resolved_track = replace(
                             searching_track,
                             youtube_url=None,
-                            status=TrackStatus.FAILED,
+                            status=TrackStatus.LOOKUP_FAILED,
                             retry_count=searching_track.retry_count + 1,
                             error=str(exc),
                         )
@@ -299,7 +299,7 @@ class YouTubeResolver:
 
 
 def _needs_lookup(track: Track) -> bool:
-    if track.status is TrackStatus.FAILED:
+    if track.status in {TrackStatus.FAILED, TrackStatus.LOOKUP_FAILED}:
         return False
     if track.status is not TrackStatus.NOT_FOUND:
         return True

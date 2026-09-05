@@ -181,7 +181,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
 
         tracks = self.repository.load_tracks(username)
         missing_count = sum(1 for track in tracks if track.status is TrackStatus.NOT_FOUND)
-        failed_count = sum(1 for track in tracks if track.status is TrackStatus.FAILED)
+        failed_count = sum(
+            1
+            for track in tracks
+            if track.status in {TrackStatus.FAILED, TrackStatus.LOOKUP_FAILED}
+        )
         if not missing_count and not failed_count:
             return
 
@@ -205,7 +209,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 status=TrackStatus.QUEUED if track.youtube_url else TrackStatus.FETCHED,
                 error=None,
             )
-            if track.status is TrackStatus.FAILED
+            if track.status in {TrackStatus.FAILED, TrackStatus.LOOKUP_FAILED}
             else track
             for track in tracks
         ]
@@ -1425,8 +1429,18 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         track = next((t for t in tracks if t.cache_key == cache_key), None)
         if track is None:
             return
-        if track.status in {TrackStatus.NOT_FOUND, TrackStatus.FAILED}:
-            reset_track = replace(track, status=TrackStatus.FETCHED, youtube_url=None, error=None)
+        if track.status in {
+            TrackStatus.NOT_FOUND,
+            TrackStatus.LOOKUP_FAILED,
+            TrackStatus.FAILED,
+        }:
+            needs_lookup = track.status is not TrackStatus.FAILED or not track.youtube_url
+            reset_track = replace(
+                track,
+                status=TrackStatus.FETCHED if needs_lookup else TrackStatus.QUEUED,
+                youtube_url=None if needs_lookup else track.youtube_url,
+                error=None,
+            )
             updated = [reset_track if t.cache_key == cache_key else t for t in tracks]
             self.repository.save_tracks(username, updated)
             self.window.set_tracks(updated)
@@ -1484,7 +1498,12 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         return any(
             bool(track.youtube_url)
             and track.status
-            not in {TrackStatus.DOWNLOADED, TrackStatus.NOT_FOUND, TrackStatus.FAILED}
+            not in {
+                TrackStatus.DOWNLOADED,
+                TrackStatus.NOT_FOUND,
+                TrackStatus.LOOKUP_FAILED,
+                TrackStatus.FAILED,
+            }
             for track in tracks
         )
 

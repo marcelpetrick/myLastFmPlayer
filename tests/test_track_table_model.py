@@ -61,6 +61,7 @@ def test_track_table_model_displays_all_known_statuses() -> None:
         TrackStatus.FETCHED: "Fetched",
         TrackStatus.QUEUED: "Queued",
         TrackStatus.SEARCHING: "Searching",
+        TrackStatus.LOOKUP_FAILED: "Lookup failed",
         TrackStatus.DOWNLOADING: "Downloading",
         TrackStatus.DOWNLOADED: "Downloaded",
         TrackStatus.FAILED: "Failed",

@@ -6,7 +6,7 @@ import random
 import subprocess
 import time
 from collections.abc import Callable, Sequence
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import replace
 from pathlib import Path
 from threading import Event
@@ -143,52 +143,66 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         if not candidates:
             return results
 
+        pending_candidates = iter(candidates)
         completed_count = 0
+        futures: dict[Future[Track], int] = {}
+
+        def submit_next(executor: ThreadPoolExecutor) -> bool:
+            if stop_event is not None and stop_event.is_set():
+                return False
+            try:
+                index, track = next(pending_candidates)
+            except StopIteration:
+                return False
+            downloading_track = replace(track, status=TrackStatus.DOWNLOADING, error=None)
+            results[index] = downloading_track
+            _report_track_update(track_update_callback, downloading_track)
+            future = executor.submit(
+                self._download_track_with_retries,
+                downloading_track,
+                downloads_dir,
+                stop_event,
+            )
+            futures[future] = index
+            return True
+
         max_workers = min(concurrency, len(candidates))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            for index, track in candidates:
-                downloading_track = replace(track, status=TrackStatus.DOWNLOADING, error=None)
-                results[index] = downloading_track
-                _report_track_update(track_update_callback, downloading_track)
-            future_to_index = {
-                executor.submit(
-                    self._download_track_with_retries,
-                    results[index],
-                    downloads_dir,
-                    stop_event,
-                ): index
-                for index, _track in candidates
-            }
-            for future in as_completed(future_to_index):
-                index = future_to_index[future]
-                try:
-                    results[index] = future.result()
-                except Exception as error:  # noqa: BLE001 - isolate one failed download.
-                    failed_track = results[index]
-                    LOGGER.exception(
-                        "Unexpected download failure for %s - %s",
-                        failed_track.artist,
-                        failed_track.title,
+            for _unused in range(max_workers):
+                submit_next(executor)
+            while futures:
+                completed, _pending = wait(futures, return_when=FIRST_COMPLETED)
+                for future in completed:
+                    index = futures.pop(future)
+                    try:
+                        results[index] = future.result()
+                    except Exception as error:  # noqa: BLE001 - isolate one failed download.
+                        failed_track = results[index]
+                        LOGGER.exception(
+                            "Unexpected download failure for %s - %s",
+                            failed_track.artist,
+                            failed_track.title,
+                        )
+                        results[index] = replace(
+                            failed_track,
+                            status=TrackStatus.FAILED,
+                            retry_count=failed_track.retry_count + 1,
+                            error=str(error),
+                        )
+                    _report_track_update(track_update_callback, results[index])
+                    completed_count += 1
+                    percent = int(completed_count / len(candidates) * 100)
+                    _report(
+                        progress_callback,
+                        percent,
+                        translate(
+                            "DownloadManager",
+                            "Downloaded {done}/{total} tracks",
+                            done=completed_count,
+                            total=len(candidates),
+                        ),
                     )
-                    results[index] = replace(
-                        failed_track,
-                        status=TrackStatus.FAILED,
-                        retry_count=failed_track.retry_count + 1,
-                        error=str(error),
-                    )
-                _report_track_update(track_update_callback, results[index])
-                completed_count += 1
-                percent = int(completed_count / len(candidates) * 100)
-                _report(
-                    progress_callback,
-                    percent,
-                    translate(
-                        "DownloadManager",
-                        "Downloaded {done}/{total} tracks",
-                        done=completed_count,
-                        total=len(candidates),
-                    ),
-                )
+                    submit_next(executor)
 
         return results
 

@@ -16,6 +16,7 @@ def test_track_status_values_match_srs() -> None:
         "Fetched",
         "Queued",
         "Searching",
+        "Lookup failed",
         "Downloading",
         "Downloaded",
         "Failed",
@@ -345,3 +346,16 @@ def test_merge_preserving_full_pipeline_progression() -> None:
 
     assert after_stale.status == TrackStatus.DOWNLOADED
     assert after_stale.local_path == "/music/Artist - Title.mp3"
+
+
+def test_merge_preserving_lookup_failure_can_recover_with_resolved_url() -> None:
+    failed = _track(status=TrackStatus.LOOKUP_FAILED, error="temporary failure")
+    resolved = _track(
+        status=TrackStatus.QUEUED,
+        youtube_url="https://yt/recovered",
+    )
+
+    result = Track.merge_preserving(failed, resolved)
+
+    assert result.status is TrackStatus.QUEUED
+    assert result.youtube_url == "https://yt/recovered"

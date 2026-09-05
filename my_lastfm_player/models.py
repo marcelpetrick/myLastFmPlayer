@@ -12,6 +12,7 @@ class TrackStatus(StrEnum):
     FETCHED = "Fetched"
     QUEUED = "Queued"
     SEARCHING = "Searching"
+    LOOKUP_FAILED = "Lookup failed"
     DOWNLOADING = "Downloading"
     DOWNLOADED = "Downloaded"
     FAILED = "Failed"
@@ -26,11 +27,12 @@ CACHE_KEY_SEPARATOR = "\x1f"
 _STATUS_RANK: dict[TrackStatus, int] = {
     TrackStatus.FETCHED: 0,
     TrackStatus.SEARCHING: 1,
-    TrackStatus.QUEUED: 2,
-    TrackStatus.DOWNLOADING: 3,
-    TrackStatus.FAILED: 4,
-    TrackStatus.NOT_FOUND: 5,
-    TrackStatus.DOWNLOADED: 6,
+    TrackStatus.LOOKUP_FAILED: 2,
+    TrackStatus.QUEUED: 3,
+    TrackStatus.DOWNLOADING: 4,
+    TrackStatus.FAILED: 5,
+    TrackStatus.NOT_FOUND: 6,
+    TrackStatus.DOWNLOADED: 7,
 }
 
 

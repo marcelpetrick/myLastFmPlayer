@@ -195,6 +195,8 @@ def translated_track_status(status: TrackStatus) -> str:
             return QCoreApplication.translate("TrackTableModel", "Queued")
         case TrackStatus.SEARCHING:
             return QCoreApplication.translate("TrackTableModel", "Searching")
+        case TrackStatus.LOOKUP_FAILED:
+            return QCoreApplication.translate("TrackTableModel", "Lookup failed")
         case TrackStatus.DOWNLOADING:
             return QCoreApplication.translate("TrackTableModel", "Downloading")
         case TrackStatus.DOWNLOADED:
