@@ -1,6 +1,12 @@
 # MVP Development Plan
 
-This is a short execution plan for building the MVP described in `documents/REQUIREMENTS.md`. The steps are numbered `0` through `10` so the setup and quality pipeline are established before feature work begins.
+> **Historical record:** This was the short execution plan for the original product
+> milestone. The work is complete; it is not the current backlog. See
+> [`00_REQUIREMENTS.md`](00_REQUIREMENTS.md) and
+> [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md) for the maintained product description.
+
+The steps are numbered `0` through `10` so the setup and quality pipeline were
+established before feature work began.
 
 ## Step 0: Basic PyQt App Setup
 

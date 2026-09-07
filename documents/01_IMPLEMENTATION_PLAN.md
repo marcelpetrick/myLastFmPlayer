@@ -1,6 +1,9 @@
 # Implementation Plan
 
-This historical plan turned `documents/REQUIREMENTS.md` into a ten-step implementation sequence for the Linux PyQt MVP. The implementation now exists; keep this document as planning context, and use `docs/architecture.rst` plus `documents/03_ARCHITECTURE.md` for current runtime architecture.
+This historical plan turned [`00_REQUIREMENTS.md`](00_REQUIREMENTS.md) into a ten-step
+implementation sequence for the original Linux PyQt milestone. The implementation now
+exists; keep this document as planning context, and use
+[`03_ARCHITECTURE.md`](03_ARCHITECTURE.md) for current runtime architecture.
 
 ## 1. Create the Python Project Skeleton
 

@@ -1,430 +1,219 @@
-Below is a **complete, consistent, and implementation-ready Software Requirements Specification (SRS)** incorporating all decisions made.
-
----
-
-# Software Requirements Specification (SRS)
-
-## 1. Overview
-
-### 1.1 Purpose
-
-This document specifies the requirements for a Linux desktop application that retrieves a user’s loved tracks from Last.fm, resolves corresponding audio tracks from YouTube, downloads them locally, and provides playback functionality.
-
-### 1.2 Scope
-
-The system is a standalone desktop application built with:
-
-* **Language:** Python
-* **GUI Framework:** PyQt
-* **Target Platform:** Linux (x86_64)
-
-The application will:
-
-1. Fetch loved tracks from Last.fm
-2. Store metadata locally in JSON
-3. Resolve corresponding YouTube tracks
-4. Download audio (MP3)
-5. Provide playback and UI interaction
-
----
-
-## 2. System Context
-
-### 2.1 External Systems
-
-* Last.fm (loved-track Web API plus authenticated scrobbling API calls)
-* YouTube (search + download via tools such as yt-dlp)
-
-### 2.2 External Tools
-
-* **yt-dlp** (YouTube extraction)
-* **ffmpeg** (audio conversion)
-* **ffprobe** (downloaded audio metadata probing)
-
-### 2.3 Constraints
-
-* Public loved-track fetching must not require a user-supplied API key.
-* Scrobbling may use bundled Last.fm desktop application credentials and a user-authorized session key.
-* Dependence on Last.fm Web API availability and response shape
-* Linux-only target for MVP
-
----
-
-## 3. Functional Requirements
-
-### 3.1 User Input
-
-* The system shall allow entry of a Last.fm username via the UI
-* Upon input, the system shall immediately start fetching loved tracks
-
----
-
-### 3.2 Last.fm Loved-Track Fetching
-
-* The system shall retrieve loved tracks through Last.fm's public Web API using the bundled or environment-provided application API key
-
-* The system shall:
-
-  * Handle API pagination
-  * Extract:
-
-    * Artist name
-    * Track title
-    * Last.fm track URL (if available)
-    * Loved-at timestamp (if Last.fm returns one)
-
-* The system shall store retrieved tracks locally in JSON
-
----
-
-### 3.3 Data Storage (MVP)
-
-* Storage format: **JSON file**
-
-* The system shall persist:
-
-  * Artist
-  * Title
-  * Last.fm URL
-  * YouTube URL (if found)
-  * Local file path
-  * Status
-  * Retry count (optional)
-  * Error information (optional)
-
-* The system shall:
-
-  * Allow deletion of JSON data by the user (manual)
-  * Not manage deletion of downloaded audio files
-
----
-
-### 3.4 Track Lifecycle & Status
-
-Each track shall move through the following states:
-
-* `Fetched`
-* `Queued`
-* `Searching`
-* `Downloading`
-* `Downloaded`
-* `Playing`
-* `Failed`
-* `Not found`
-
----
-
-### 3.5 YouTube Lookup
-
-* The system shall construct search queries using:
-
-  ```
-  <artist> + <title>
-  ```
-
-* The system shall:
-
-  * Use exact strings from Last.fm (no normalization or fuzzy matching)
-  * Select the **first search result only**
-  * Not implement ranking or scoring in MVP
-
-* If no result is found:
-
-  * The track shall be marked as `Not found`
-  * The user shall be informed via UI
-
----
-
-### 3.6 Downloading
-
-* The system shall:
-
-  * Use yt-dlp for downloading
-  * Use ffmpeg for audio extraction/conversion
-
-* Output:
-
-  * Format: **MP3**
-  * Quality: best available (no artificial upscaling)
-
-* File naming:
-
-  ```
-  <Artist> - <Title>.mp3
-  ```
-
----
-
-### 3.7 Download Behavior
-
-* Downloads shall:
-
-  * Start automatically after fetching tracks
-  * Proceed in list order (FIFO)
-
-* Concurrency:
-
-  * Default: **2 parallel downloads**
-  * User-configurable in Preferences, minimum **1**, maximum **10**
-
-* Backoff:
-
-  * Random delay between downloads: **1–5 seconds**
-
-* Retry:
-
-  * Up to **3 attempts per track**
-  * After max retries → mark as `Failed`
-
----
-
-### 3.8 Preloading & Priority
-
-* The system shall preload tracks sequentially
-* When a user selects a track:
-
-  * It shall be prioritized for lookup/download
-
----
-
-### 3.9 Duplicate Detection & Caching
-
-* The system shall:
-
-  * Avoid re-downloading tracks that already exist locally
-
-* Matching rule (MVP):
-
-  * Exact match of:
-
-    ```
-    Artist + Title
-    ```
-  * No normalization, no fuzzy matching
-
-* Cache shall be shared across users
-
----
-
-### 3.10 Multi-User Support
-
-* The system shall:
-
-  * Allow entering different Last.fm usernames
-  * Load tracks per username dynamically
-
-* The system shall:
-
-  * Not implement profile management (MVP)
-  * Reuse cached/downloaded tracks across users
-
----
-
-### 3.11 Playback
-
-* The system shall provide:
-
-  * Play
-  * Pause
-  * Stop
-
-* Behavior:
-
-  * Only one track may play at a time
-  * Playing a new track stops the current one
-  * Switching tracks stops previous playback
-
----
-
-### 3.12 UI Requirements
-
-#### Main Table
-
-* Columns:
-
-  * Artist
-  * Title
-  * Status
-
-* Features:
-
-  * Sortable columns
-  * Selection support
-
----
-
-#### Controls
-
-* Input field for Last.fm username
-* Play / Pause / Stop buttons
-* Global **Pause/Resume Downloads** button
-
----
-
-#### Feedback
-
-* Display:
-
-  * Current status per track
-  * Download progress
-  * Errors
-
----
-
-### 3.13 Dependency Check
-
-* On startup, the system shall verify:
-
-  * `yt-dlp` is installed
-  * `ffmpeg` is installed
-
-* If missing:
-
-  * The system shall notify the user
-
-#### Manjaro Installation
-
-```bash
-sudo pacman -S yt-dlp ffmpeg
-```
-
----
-
-## 4. Non-Functional Requirements
-
-### 4.1 Performance
-
-* UI must remain responsive at all times
-* Background operations shall not block UI
-* Must handle large track lists (≥ 1000 entries)
-
----
-
-### 4.2 Reliability
-
-* Handle:
-
-  * Network failures
-  * Parsing failures
-* Apply retry logic with backoff
-
----
-
-### 4.3 Maintainability
-
-* Modular architecture:
-
-  * Scraper
-  * Storage
-  * YouTube resolver
-  * Downloader
-  * UI
-
-* Storage abstraction must allow future DB migration
-
----
-
-### 4.4 Portability
-
-* Target platform: Linux x86_64
-* Avoid OS-specific dependencies beyond Linux baseline
-
----
-
-### 4.5 Usability
-
-* No user-provided API keys required for the default app build
-* Minimal setup
-* Clear UI feedback
-
----
-
-## 5. Architecture Overview
-
-### 5.1 Components
-
-* UI Layer (PyQt)
-* Controller Layer
-* Service Layer:
-
-  * Last.fm Scraper
-  * YouTube Resolver
-  * Download Manager
-* Storage Layer (JSON)
-
----
-
-### 5.2 Concurrency Model
-
-* Use:
-
-  * QThread or async workers
-* Ensure:
-
-  * UI thread is never blocked
-
----
-
-## 6. Data Model
-
-### Track Entity
+# Software Requirements Specification
+
+This is the current product requirements baseline for `myLastFmPlayer` 0.0.165.
+It describes the implemented and vetted application rather than an unfinished MVP.
+Runtime design details are in [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md).
+
+## 1. Purpose and Scope
+
+The product shall provide a Linux desktop workflow that turns a Last.fm user's
+public loved-track history into a persistent, playable local library:
+
+1. discover loved tracks through Last.fm;
+2. resolve playable sources through YouTube;
+3. download audio locally;
+4. browse, filter, sort, and play the library;
+5. optionally report now-playing and scrobble playback to Last.fm.
+
+The supported runtime is Linux x86_64 with Python 3.14 or newer and PyQt6.
+`yt-dlp`, `ffmpeg`, and `ffprobe` are required external commands.
+
+## 2. Functional Requirements
+
+### 2.1 User and Last.fm Discovery
+
+- The user shall be able to enter and fetch any public Last.fm username without
+  authenticating a personal Last.fm account.
+- The application shall fetch every available `user.getLovedTracks` page and retain
+  artist, title, track URL, and loved-at time when supplied by Last.fm.
+- Partial pages shall appear in the table as they arrive instead of waiting for the
+  complete library.
+- The UI shall expose fetch progress, Pause/Resume Fetch, and Stop Fetch.
+- Network and parsing failures shall produce visible, actionable feedback.
+- Per-user cached libraries shall be loadable and refreshable.
+
+### 2.2 Independent Pipeline Processing
+
+- YouTube lookup shall begin automatically for eligible tracks and may overlap later
+  Last.fm pages.
+- Download shall begin automatically as soon as a resolved track is eligible and may
+  overlap lookup.
+- Every track shall be processed independently; a miss or failure shall not abort the
+  remaining queue.
+- One shared parallel-work limit shall cover lookup and download together.
+- The limit shall default to five and be configurable in Preferences from one to five.
+- A selected unavailable track shall be prioritized for lookup and download when the
+  user requests playback.
+
+### 2.3 YouTube Lookup
+
+- The application shall use `yt-dlp` search and consult a shared lookup cache first.
+- Lookup shall use a bounded query ladder that includes exact artist/title, a cleaned
+  artist/title variation, and title alone.
+- A resolved entry shall store its YouTube URL and become `Queued`.
+- Transient lookup errors shall become `Lookup failed`; exhausted empty-result attempts
+  shall become `Not found`.
+- Failed and not-found entries shall remain eligible for bounded recovery rather than
+  becoming permanently stuck.
+
+### 2.4 Downloading
+
+- The application shall request the best available audio through `yt-dlp` without
+  artificially increasing its quality.
+- Output names shall be safe file-system forms of `<Artist> - <Title>`.
+- Successful downloads shall record the local path, detected media type, and bitrate
+  when `ffprobe` supplies it.
+- Existing files in the shared download cache shall not be downloaded again.
+- A bounded retry ladder shall handle changing YouTube client behavior, with jittered
+  backoff between attempts.
+- Exhausted downloads shall become `Failed` without stopping peer downloads.
+
+### 2.5 Cancellation, Resume, and User Switching
+
+- The main window shall expose one Stop YouTube action for active lookup and download.
+- Cancellation shall stop queued work, wake capacity waiters, and terminate owned
+  external processes promptly.
+- Completed results shall remain saved after cancellation.
+- The UI shall show a stopping state until owned workers finish, then offer Resume
+  YouTube when unresolved or queued entries remain.
+- Resume shall process only eligible remaining work.
+- The username field shall remain editable during fetch, lookup, and download.
+- Changing the username shall cancel the previous user's active workflow and isolate
+  the new table from late callbacks belonging to the old username or generation.
+
+### 2.6 Library and Playback
+
+- The main table shall show artist, title, status, file information, and loved-at time.
+- The table shall support selection, sorting, filtering, tooltips for truncated text,
+  and status-aware display.
+- Local playback shall support Play, Pause, Stop, seek, volume, mute, and next-track.
+- The application shall optionally continue with a random downloaded track.
+- Only one local track shall play at a time.
+- An artist preview shall load in the background for the selected or playing track.
+- The artwork and playback controls shall remain compact and shall not reduce the
+  track table's height when an image is loaded.
+- Clicking available artwork shall open the artist's Last.fm page in a private Firefox
+  window.
+
+### 2.7 Scrobbling
+
+- Scrobbling shall be optional and disabled until the user chooses it.
+- Desktop authentication shall open Last.fm in a browser and persist the resulting
+  user session.
+- Playback shall send now-playing information and scrobble only after the configured
+  listening threshold is reached.
+- Public library discovery shall continue to work without scrobbling authentication.
+
+### 2.8 Preferences and Localization
+
+- Preferences shall include theme, language, YouTube cookie browser, parallel-work
+  limit, scrobbling, playback behavior, and data-retention controls.
+- The UI shall provide Light, Dark, Lilac, and Mint themes.
+- English shall be the source language, with complete Croatian, German, Mandarin, and
+  Ukrainian translations.
+- Username, window geometry, volume, mute, and other user preferences shall survive
+  restart.
+
+## 3. Data and State Requirements
+
+### 3.1 Track Model
+
+Each persistent track shall support:
 
 ```json
 {
   "artist": "string",
   "title": "string",
-  "lastfm_url": "string",
+  "lastfm_url": "string|null",
+  "loved_at": "string|null",
   "youtube_url": "string|null",
   "local_path": "string|null",
   "status": "enum",
   "retry_count": "integer",
-  "error": "string|null"
+  "error": "string|null",
+  "file_type": "string|null",
+  "bitrate_kbps": "integer|null"
 }
 ```
 
----
+Durable statuses shall be `Fetched`, `Searching`, `Lookup failed`, `Queued`,
+`Downloading`, `Downloaded`, `Failed`, and `Not found`. Playback state is runtime
+state and shall not destroy the durable downloaded state.
 
-## 7. Risks & Assumptions
+### 3.2 Persistence
 
-### Risks
+- Track snapshots shall be stored per sanitized username.
+- Lookup and download caches shall be shared across users by exact artist/title key.
+- Per-track results shall be appended durably while work is active and compacted into
+  the full snapshot after a completed run.
+- Reads and writes shall have a consistent lock boundary.
+- Snapshot and cache replacement shall be atomic.
+- Metadata and credentials shall be retained on quit by default.
+- If the user opts out of retention, track metadata, caches, and credentials shall be
+  removed on quit; downloaded audio shall remain untouched.
+- Application preferences shall use the platform `QSettings` store.
 
-* Last.fm Web API availability and response-shape changes
-* YouTube search variability
-* External tool availability
-* Legal considerations for downloading content
+## 4. Non-Functional Requirements
 
-### Assumptions
+### 4.1 Responsiveness and Performance
 
-* Public pages remain accessible
-* Users install required dependencies
-* Exact matching is sufficient for MVP
+- Paginated HTTP fetches, lookup, download, image, and media-probe operations shall
+  execute outside the Qt UI thread; bounded cache-count and first-user preflight calls
+  may run before the fetch worker starts.
+- The UI shall stay responsive with libraries of at least 1,000 entries.
+- Incremental results shall be visible without requiring the full pipeline to finish.
+- The configured shared limit shall prevent unbounded external process creation.
 
----
+### 4.2 Reliability
 
-## 8. Future Enhancements
+- Active external commands shall have timeouts and cancellation boundaries.
+- One track's exception shall not terminate unrelated track processing.
+- Late worker results shall not cross username or workflow-generation boundaries.
+- Completed results shall survive a stop, username change, application restart, or
+  crash after the journal flush.
+- Missing dependencies and service errors shall be reported to the user.
 
-* SQLite migration
-* Fuzzy matching for duplicates
-* Improved YouTube selection heuristics
-* Metadata tagging (ID3)
-* Playlist export
-* Cross-platform support
+### 4.3 Maintainability and Verification
 
----
+- UI, controller, services, workers, immutable domain model, storage, and settings
+  shall remain separately testable.
+- Every commit shall pass Ruff, Pylint at 10.00/10, complete translation checks,
+  warning-free Sphinx documentation, pytest at the configured 99% coverage threshold,
+  package construction, installed-package import, and application launch verification.
+- Live Last.fm and `yt-dlp` integration checks shall remain available as opt-in tests.
+- Releases shall be reproducible through the manual GitHub Actions release workflow
+  and include packages plus test, coverage, documentation, architecture, static
+  analysis, and pipeline provenance artifacts.
 
-## 9. Acceptance Criteria
+### 4.4 Security and Privacy
 
-* User enters Last.fm username → tracks appear
-* Tracks automatically begin lookup/download
-* Already downloaded tracks are skipped
-* Tracks can be played locally
-* Only one track plays at a time
-* Download queue respects concurrency and backoff
-* UI remains responsive under load
+- Shell interpolation shall not be used to execute usernames, track metadata, URLs,
+  or file paths.
+- User credentials shall not be logged.
+- Last.fm desktop credentials may be bundled because they identify the public desktop
+  application; a user's authorized session remains local application data.
+- The data-retention preference shall state exactly which metadata is removed and that
+  downloaded audio is retained.
 
----
+## 5. Acceptance Criteria
 
-If you want the next step, I can convert this into:
+The product is acceptable when all of the following are true:
 
-* a **clean Python project skeleton**, or
-* a **task breakdown with implementation order (very useful before coding)**
+- entering a valid username shows partial and then complete loved-track results;
+- lookup and download overlap while respecting the shared one-to-five limit;
+- individual misses and failures leave other entries progressing;
+- Stop YouTube ends owned work cleanly and Resume continues eligible entries;
+- entering another username during active work leaves the field usable, cancels the
+  old workflow, and prevents stale UI updates;
+- downloaded tracks play with the documented controls and optional scrobbling;
+- saved libraries and completed work survive restart by default;
+- all deterministic local and CI quality gates pass; and
+- the installable wheel starts successfully in an isolated environment.
+
+## 6. Product Evolution
+
+The core product workflow is complete and vetted. Future changes are maintenance,
+compatibility work, usability improvements, or scoped extensions such as playlist
+management, richer ranking, metadata tagging, export, alternative persistence, and
+additional platforms. These are opportunities, not missing acceptance criteria for
+the current product.

@@ -1,7 +1,8 @@
 # Agent Guidelines
 
 Rules and repository notes for every automated coding assistant working on this
-project.
+project. [`../docs/agents.md`](../docs/agents.md) is the authoritative contribution
+policy; this file provides the expanded command and architecture reference.
 
 ## Common commands
 
@@ -45,15 +46,14 @@ applicable.
 `my_lastfm_player/version.py` is the single source of truth for `__version__`.
 `pyproject.toml` reads it through `attr =`.
 
-Bump `my_lastfm_player/version.py` with every commit that changes user-facing
-behaviour:
+Bump `my_lastfm_player/version.py` with every commit:
 
 - `PATCH` for bug fixes and small improvements
 - `MINOR` for new features
 - `MAJOR` for breaking changes
 
-Update `README.md` (`Current version: `x.y.z``) in the same commit. Update the
-version assertion in `tests/test_app_smoke.py` in the same commit.
+Update `README.md` (`Current version: `x.y.z``) and the exact package/display
+version assertions in `tests/test_app_smoke.py` in the same commit.
 
 Built packages can include a generated `_build_info.py` commit suffix. Source
 tree runs intentionally show only the base version when that generated file is
@@ -70,9 +70,9 @@ The configured coverage gate is the source of truth for the required minimum.
 ## Architecture notes
 
 This is a PyQt6 desktop app that fetches a user's Last.fm loved tracks, resolves
-them to YouTube via `yt-dlp`, downloads MP3s, and plays them locally. The
-codebase is organized around a controller-mediated, worker-thread pipeline:
-Fetch -> Lookup -> Download -> Playback.
+them to YouTube via `yt-dlp`, downloads audio, and plays it locally. The codebase
+uses a controller-mediated worker pipeline whose fetch, lookup, and download phases
+can overlap while each track remains independent.
 
 - `main.py`: wires `QApplication`, `TranslationManager`, `MainWindow`, and
   `ApplicationController`.
@@ -85,11 +85,13 @@ Fetch -> Lookup -> Download -> Playback.
 - `lastfm.py`: `LastFmLovedTracksScraper` orchestrates Last.fm Web API
   pagination. `LastFmLovedTracksApiClient` fetches `user.getLovedTracks` JSON,
   and `LastFmArtistInfoClient` fetches artist preview metadata and images.
-- `youtube.py`: shells out to
-  `yt-dlp --dump-single-json --no-playlist ytsearch1:<artist title>`.
-- `download.py`: runs `yt-dlp --extract-audio --audio-format mp3` with a FIFO
-  queue, configurable concurrency, retry/backoff, priority download support, and
-  optional per-run limits.
+- `youtube.py`: checks the lookup cache and runs concurrent, cancellable `yt-dlp`
+  searches over a bounded query ladder.
+- `youtube_work.py`: applies one shared one-to-five process limit across lookup and
+  download, serializes work for the same track, and terminates cancelled processes.
+- `download.py`: selects the best available audio with concurrent retry/backoff,
+  priority support, cancellation, and optional per-run limits; `ffprobe` records media
+  type and bitrate.
 - `playback.py`: wraps `QMediaPlayer`. The Qt backend is lazy-instantiated
   through `ApplicationController.playback_service` so headless tests do not need
   multimedia objects until playback is requested.
@@ -99,7 +101,7 @@ Fetch -> Lookup -> Download -> Playback.
   UI rows, persistence, and caches.
 - `ui/main_window.py` and `ui/track_table_model.py`: UI shell and table model.
   The window emits semantic signals; the controller performs the work.
-- `dependencies.py`: checks external `yt-dlp` and `ffmpeg` availability.
+- `dependencies.py`: checks external `yt-dlp`, `ffmpeg`, and `ffprobe` availability.
 - `i18n.py`: `TranslationManager` and `translate(...)` helpers for live language
   switching.
 
@@ -118,8 +120,8 @@ Fetch -> Lookup -> Download -> Playback.
 - Qt tests: use the `qapp` fixture for Qt-touching tests so the suite remains
   headless.
 - New modules: add public modules to `docs/api.rst`.
-- Improvement tracking: when completing an item from `documents/05_IMPROVEMENTS.md`,
-  mark it as `fixed:`.
+- Historical improvement records in `documents/05_IMPROVEMENTS.md` are not the active
+  backlog; use the issue tracker and current review documents for new work.
 
 ## Documentation
 

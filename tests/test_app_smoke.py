@@ -52,8 +52,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.164"
-    assert __display_version__ == "0.0.164"
+    assert __version__ == "0.0.165"
+    assert __display_version__ == "0.0.165"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:

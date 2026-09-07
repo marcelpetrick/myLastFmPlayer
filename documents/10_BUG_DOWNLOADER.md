@@ -1,6 +1,8 @@
 # Bug: Background download does not start for cached tracks
 
-fixed
+> **Historical fixed-bug record:** This investigation describes an earlier downloader
+> implementation. The current overlapping, bounded workflow is documented in
+> [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md).
 
 Plan: Fix background auto-download for cached and freshly-fetched tracks
 

@@ -2,9 +2,9 @@ Architecture
 ============
 
 myLastFmPlayer is a single-process Linux desktop application written in Python
-with a PyQt6 GUI. The controller is the only component that crosses layer
-boundaries, keeping the UI, domain services, background workers, and storage
-decoupled from each other.
+with a PyQt6 GUI. The controller coordinates the UI and operation lifecycle;
+short-lived workers bridge domain services and storage without giving those
+services knowledge of the Qt interface.
 
 The diagrams below follow the **C4 model** (Simon Brown): each level zooms one
 step further in, from the system boundary down to individual components.
@@ -26,7 +26,7 @@ Who uses the system, and which external systems does it depend on?
              shape=box, style="rounded,filled",
              fillcolor="#08427b", fontcolor=white, color="#052e56"];
 
-       app [label="myLastFmPlayer\n[Software System]\n\nFetches a user's loved tracks, resolves\nthem to YouTube audio, downloads mp3\nfiles, and plays them locally with\nLast.fm scrobbling.",
+       app [label="myLastFmPlayer\n[Software System]\n\nFetches a user's loved tracks, resolves\nthem to YouTube audio, downloads audio\nfiles, and plays them locally with\nLast.fm scrobbling.",
             shape=box, style="rounded,filled",
             fillcolor="#1168bd", fontcolor=white, color="#0b4884"];
 
@@ -77,7 +77,7 @@ What are the major deployable or runnable parts, and what technology do they use
                        shape=cylinder, style="filled",
                        fillcolor="#1168bd", fontcolor=white, color="#0b4884"];
 
-           audio_files [label="Downloaded Audio\n[Container: File System]\n\n~/.local/share/myLastFmPlayer/downloads/\nmp3 files named after resolved tracks.",
+           audio_files [label="Downloaded Audio\n[Container: File System]\n\n~/.local/share/myLastFmPlayer/downloads/\naudio files named after resolved tracks.",
                         shape=cylinder, style="filled",
                         fillcolor="#1168bd", fontcolor=white, color="#0b4884"];
 
@@ -109,7 +109,7 @@ What are the major deployable or runnable parts, and what technology do they use
        desktop  -> ytdlp      [label="subprocess\n(search + download)"];
        desktop  -> ffmpeg      [label="metadata probe\n(ffprobe)"];
        ytdlp    -> ffmpeg      [label="post-process\naudio"];
-       ytdlp    -> audio_files [label="writes mp3"];
+       ytdlp    -> audio_files [label="writes audio"];
        desktop  -> lastfm_api  [label="requests API calls\n(loved tracks + artist info)\npylast API calls\n(scrobble)"];
        desktop  -> lastfm_web  [label="Firefox --private-window\nartist page links"];
    }
@@ -151,8 +151,9 @@ What are the principal building blocks inside the desktop process?
 
            scraper     [label="LastFmLovedTracksScraper\n[HTTP Client]\n\nFetches Last.fm Web API pages;\nretries with back-off;\nrate-limits between pages."];
            artist_info [label="LastFmArtistInfoClient\n[HTTP Client]\n\nFetches artist.getInfo metadata;\nloads artist page preview images\nwith a stdlib HTML parser."];
-           resolver    [label="YouTubeResolver\n[yt-dlp wrapper]\n\nChecks lookup-cache first;\nruns yt-dlp search subprocess over a\nquery ladder; updates cache on hit."];
+           resolver    [label="YouTubeResolver\n[yt-dlp wrapper]\n\nChecks lookup-cache first;\nruns concurrent yt-dlp searches over a\nquery ladder; updates cache on hit."];
            download_mgr[label="DownloadManager\n[yt-dlp wrapper]\n\nConcurrent audio download pool with\nretry + jitter backoff; each retry forces\nanother YouTube player client."];
+           work_limiter[label="YouTubeWorkLimiter\n[Concurrency coordinator]\n\nShares 1–5 process slots across lookup\nand download; serializes the same track;\nsupports cooperative cancellation."];
            playback    [label="PlaybackService\n[Qt Multimedia]\n\nWraps QMediaPlayer;\nseek, pause, stop;\ntracks scrobble threshold."];
            scrobbling  [label="ScrobblingService\n[pylast]\n\nLast.fm web-auth flow;\nnow-playing + scrobble\nAPI calls via pylast."];
            deps        [label="DependencyChecker\n[shutil.which]\n\nVerifies yt-dlp, ffmpeg,\nand ffprobe are present on PATH\nat application startup."];
@@ -183,7 +184,7 @@ What are the principal building blocks inside the desktop process?
            style=filled; fillcolor="#fdf6ff"; color="#ccaadd";
            fontname="Helvetica"; fontsize=10;
 
-           i18n    [label="TranslationManager\n[QTranslator wrapper]\n\nLoads .qm files at runtime;\nfour UI languages supported."];
+           i18n    [label="TranslationManager\n[QTranslator wrapper]\n\nLoads .qm files at runtime;\nEnglish plus four translations."];
            themes  [label="ThemeManager\n[QPalette builder]\n\nBuilds palettes for\nLight / Dark / Lilac / Mint."];
            log_cfg [label="LoggingConfig\n[stdlib logging]\n\nConfigures process-wide\nlogging to stdout at INFO."];
        }
@@ -203,6 +204,7 @@ What are the principal building blocks inside the desktop process?
        controller -> artist_info;
        controller -> resolver;
        controller -> download_mgr;
+       controller -> work_limiter;
        controller -> playback;
        controller -> scrobbling;
        controller -> deps;
@@ -215,8 +217,10 @@ What are the principal building blocks inside the desktop process?
        fetch_w    -> scraper;
        fetch_w    -> repo;
        lookup_w   -> resolver;
+       resolver   -> work_limiter;
        lookup_w   -> repo;
        download_w -> download_mgr;
+       download_mgr -> work_limiter;
        download_w -> repo;
    }
 
@@ -238,9 +242,11 @@ progress survives a restart.
 
        FETCHED     [label="FETCHED\n(loved by user on Last.fm)"];
        SEARCHING   [label="SEARCHING\n(yt-dlp lookup in progress)"];
+       LOOKUP_FAILED [label="LOOKUP FAILED\n(transient lookup error)",
+                      fillcolor="#fde8e8", color="#b05050"];
        QUEUED      [label="QUEUED\n(YouTube URL resolved)"];
        DOWNLOADING [label="DOWNLOADING\n(audio download in progress)"];
-       DOWNLOADED  [label="DOWNLOADED\n(mp3 on disk — ready to play)",
+       DOWNLOADED  [label="DOWNLOADED\n(audio on disk — ready to play)",
                     fillcolor="#d5f0d5", color="#5a9a5a"];
        NOT_FOUND   [label="NOT FOUND\n(no YouTube result)",
                     fillcolor="#fdf0d5", color="#b89050"];
@@ -250,7 +256,9 @@ progress survives a restart.
        FETCHED     -> SEARCHING   [label="lookup starts\n(no cache hit)"];
        FETCHED     -> QUEUED      [label="lookup-cache hit\n(URL already known)"];
        SEARCHING   -> QUEUED      [label="URL resolved\n(any query in the ladder)"];
+       SEARCHING   -> LOOKUP_FAILED [label="lookup command failed"];
        SEARCHING   -> NOT_FOUND   [label="every query missed"];
+       LOOKUP_FAILED -> SEARCHING [label="later retry", style=dashed];
        QUEUED      -> DOWNLOADING [label="download starts"];
        DOWNLOADING -> DOWNLOADED  [label="audio written\n(any client in the ladder)"];
        DOWNLOADING -> FAILED      [label="every client failed"];
@@ -297,6 +305,11 @@ the worker is moved to the thread before the thread starts (Qt's
 ``moveToThread`` pattern). Progress and completion signals cross back to the
 main thread through Qt's queued connections.
 
+Cache-count verification and the first-user existence preflight are short,
+timeout-bounded Last.fm requests made by the controller before it launches the bulk
+fetch worker. The paginated fetch, artwork retrieval, lookup, download, and probing
+paths use workers.
+
 Last.fm pages feed YouTube lookup as they arrive, and resolved tracks feed downloading
 without waiting for the lookup batch to finish. One shared coordinator, restricted to
 one through five operations and defaulting to five, caps all lookup and download
@@ -309,6 +322,12 @@ items return to retryable states, and completed journal entries remain available
 Username-scoped signal filtering prevents late updates from replacing the new user's
 UI state, while a per-track coordinator key prevents two overlapping users from
 writing the same audio target concurrently.
+
+The visible **Stop YouTube** action cancels lookup and download work as one workflow.
+The button remains in a stopping state until every owned worker has completed cleanup,
+then becomes **Resume YouTube** when retryable work remains. Resume starts only the
+unresolved or queued entries; completed tracks are never discarded. Fetch has separate
+pause and stop controls because Last.fm discovery is an independent operation.
 
 .. graphviz::
    :caption: Background worker lifecycle
@@ -361,25 +380,30 @@ platform-native ``QSettings`` store (``~/.config/`` on Linux).
      - JSON array
      - Full track list including status, YouTube URL, local path, and error
        for each user; one file per username.
+   * - ``tracks/<username>.updates.jsonl``
+     - JSON Lines
+     - Append-only per-track updates written during active work; replayed on load and
+       compacted into the full track list after a completed run.
    * - ``lookup-cache.json``
      - JSON object
-     - Maps ``artist\x1ftrack`` → YouTube URL; consulted before invoking
-       ``yt-dlp`` search to avoid redundant network calls.
+     - Maps ``artist\x1ftrack`` to a lookup snapshot containing the YouTube URL or
+       bounded miss state; consulted before invoking ``yt-dlp`` search.
    * - ``download-cache.json``
      - JSON object
-     - Maps a download cache key → local file path; avoids re-downloading
-       when the audio file still exists on disk.
+     - Maps a download cache key to downloaded-track metadata including the local
+       path; avoids re-downloading when the audio file still exists on disk.
    * - ``lastfm-credentials.json``
      - JSON object
      - Per-user Last.fm session key obtained through the web-auth flow;
        required for now-playing and scrobbling.
    * - ``downloads/``
      - Directory
-     - Default output folder for downloaded mp3 files (overridable).
+     - Default output folder for downloaded audio files (overridable).
    * - QSettings (OS store)
      - Platform-native
      - Theme, UI language, scrobbling enabled, YouTube-work concurrency,
-       yt-dlp cookie browser, and keep-data-on-quit flag.
+       yt-dlp cookie browser, and keep-data-on-quit flag. Retention is enabled by
+       default; opting out removes metadata and credentials but not downloaded audio.
 
 Key Design Decisions
 --------------------

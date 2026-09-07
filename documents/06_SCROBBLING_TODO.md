@@ -1,4 +1,7 @@
-# Scrobbling Setup Checklist
+# Scrobbling Setup Guide
+
+Scrobbling is implemented and optional. This checklist describes the current desktop
+authentication flow rather than unfinished work.
 
 ## Developer side (one-time)
 
@@ -21,6 +24,6 @@
    reconnects automatically on the next launch.
 6. Enable the **Enable scrobbling** checkbox if it is not already checked.
 
-After that: play tracks normally. Scrobbles are submitted silently after
-10 % of each track has been played, and a now-playing notification is sent
+After that, play tracks normally. Scrobbles are submitted after
+33 % of each track has been played, and a now-playing notification is sent
 when playback starts.

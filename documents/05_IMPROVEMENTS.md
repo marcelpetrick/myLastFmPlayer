@@ -1,8 +1,9 @@
 # Improvements
 
-This document collects unresolved follow-up improvements noticed during
-implementation. These are not blockers for the current development-plan step,
-but they should be revisited before the MVP is considered finished.
+> **Historical record:** This is the original running improvement log. It mixes fixed
+> items with ideas captured during development and is not the current backlog. The core
+> product is complete. Use [`../UI_UX_review.md`](../UI_UX_review.md) for the current
+> prioritized UI/UX findings and the issue tracker for active work.
 
 ## General
 

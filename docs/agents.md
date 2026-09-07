@@ -7,7 +7,7 @@ Practices that apply whenever an AI agent contributes to this repository.
 - Follow Conventional Commits: `<type>(<scope>): <subject> (vX.X.XXX)`
 - Every commit on a branch carries its own version bump:
   - `my_lastfm_player/version.py` — `__version__`
-  - `tests/test_app_smoke.py` — four version string assertions
+  - `tests/test_app_smoke.py` — exact package/display version assertions
   - `README.md` — current version reference
 - Sequential commits on the same branch get sequential version numbers.
 - No AI attribution. No `Co-Authored-By` lines. No mention of AI tools in commit messages or source files.

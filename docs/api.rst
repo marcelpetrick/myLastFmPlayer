@@ -122,3 +122,9 @@ YouTube
 
 .. automodule:: my_lastfm_player.youtube
    :members:
+
+YouTube Work Coordination
+-------------------------
+
+.. automodule:: my_lastfm_player.youtube_work
+   :members:

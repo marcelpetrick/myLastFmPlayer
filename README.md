@@ -3,7 +3,10 @@
 [![Local Pipeline](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/local-pipeline.yml/badge.svg?branch=master)](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/local-pipeline.yml)
 [![Manual Release](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/manual-release.yml/badge.svg)](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/manual-release.yml)
 
-`myLastFmPlayer` is a (Linux) desktop application for collecting a user's loved tracks from Last.fm, resolving them via YouTube, downloading audio, and playing tracks locally. Written in Python with PyQt6. The full workflow is implemented and in active daily use — this is a working product, not a proof of concept.
+`myLastFmPlayer` is a maintained Linux desktop application that turns a Last.fm
+loved-track history into a local, playable music library. It discovers tracks from
+Last.fm, finds playable sources through YouTube, downloads audio files, and plays them
+locally from one PyQt6 interface.
 
 **Author: Marcel Petrick <mail@marcelpetrick.it>**
 
@@ -11,15 +14,42 @@
 
 **Note: project is generated with AI.**
 
-Current version: `0.0.164` — work in progress (WIP), but past MVP and actively used
+## Product Status
 
-## Current state
+Current version: `0.0.165` — fully usable and actively maintained
+
+The complete intended workflow is implemented and used in practice. Its major features
+are covered by the automated test suite, packaging and installed-application checks,
+with opt-in live integration tests for Last.fm and `yt-dlp`. Development continues
+through fixes, compatibility updates, usability improvements, and carefully scoped
+extensions rather than completion of missing core features.
+
+## Major Features
+
+- Fetches any user's public loved tracks through the Last.fm Web API.
+- Shows partial results immediately while later Last.fm pages are still loading.
+- Searches YouTube and downloads resolved tracks automatically through `yt-dlp`.
+- Runs up to five YouTube checks and downloads concurrently, configurable from one to five.
+- Keeps each track independent, so one failed lookup or download does not stop the queue.
+- Lets the user stop active YouTube work, keep completed items, and resume the remaining queue.
+- Lets the user switch Last.fm usernames while work is active, with clean cancellation and
+  isolation from late background updates.
+- Prioritizes a selected track for lookup and download when Play is pressed before it is local.
+- Plays local tracks with seek, volume, mute, next-track, and randomized continuation controls.
+- Shows artist artwork with a link to the artist's Last.fm page.
+- Retries transient lookup and download failures and rechecks unfinished work after startup.
+- Stores per-user libraries and caches locally and retains them across restarts by default.
+- Supports optional authenticated Last.fm scrobbling.
+- Includes light, dark, lilac, and mint themes plus English, Croatian, German, Mandarin,
+  and Ukrainian interfaces.
+
+## Interface
 
 [![myLastFmPlayer video preview](media/myLastFmPlayer_v0.0.127_recording_preview.gif)](media/myLastFmPlayer_v0.0.127_recording.webm)
 
 Click the preview to open the full recording.
 
-![](media/currentState.png)
+![myLastFmPlayer main window](media/currentState.png)
 
 ## Versioning
 
@@ -44,21 +74,35 @@ line and window title. The suffix is the first six digits of the git commit hash
 generated at package build time into `my_lastfm_player/_build_info.py`. Source-tree
 development runs show only the base version when that generated metadata is absent.
 
-## Requirements
+## Installation and Requirements
+
+Download a wheel or source archive from the
+[GitHub Releases page](https://github.com/marcelpetrick/myLastFmPlayer/releases), or install
+from a source checkout. The application requires:
 
 - Linux x86_64
-- Python 3.14 or newer
-- `venv` support for Python
+- Python 3.14 or newer with `venv` support
 - `yt-dlp`
-- `ffmpeg`
+- `ffmpeg` and `ffprobe`
 
-On Manjaro:
+On Manjaro, install the external tools with:
 
 ```sh
 sudo pacman -S yt-dlp ffmpeg
 ```
 
-## Build and Run with a Virtual Environment
+### Install a Release Wheel
+
+Create an isolated environment and install the downloaded wheel:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install /path/to/my_lastfm_player-0.0.165-py3-none-any.whl
+my-lastfm-player
+```
+
+### Run from a Source Checkout
 
 Create the virtual environment:
 
@@ -118,7 +162,10 @@ LASTFM_API_KEY=your_key LASTFM_API_SECRET=your_secret my-lastfm-player
 
 ## How to Use the Player
 
-Start the application, enter a Last.fm username, and press Fetch. The app loads that user's public loved-track list from the Last.fm Web API, stores it locally, resolves the tracks through `yt-dlp`, and starts downloading playable MP3 files into the local downloads directory.
+Start the application, enter a Last.fm username, and press Fetch. The app loads that
+user's public loved-track list, stores it locally, resolves tracks through `yt-dlp`,
+and downloads playable audio files into the local downloads directory. No Last.fm login
+is required to fetch a public library.
 
 The normal workflow is:
 
@@ -128,6 +175,11 @@ The normal workflow is:
 4. The app automatically starts YouTube lookup for the fetched tracks.
 5. The app automatically starts the download queue for resolved tracks.
 6. Select a downloaded track and press Play.
+
+Use **Stop YouTube** at any time to stop active checks and downloads. Operations already
+completed remain saved, active operations end cooperatively, and the button changes to
+**Resume YouTube** when unresolved or queued tracks remain. Fetch pause and stop controls
+apply specifically to Last.fm discovery.
 
 Last.fm pages flow into YouTube lookup as they arrive, and resolved tracks can begin
 downloading before the lookup batch is finished. One shared limit in Preferences caps
@@ -144,10 +196,10 @@ flowchart TD
     C --> D["Show tracks in the table"]
     D --> E["Resolve tracks through yt-dlp search"]
     E --> F["Queue resolved tracks for download"]
-    F --> G["Download MP3 files"]
+    F --> G["Download audio files"]
     G --> H["Select downloaded track"]
     H --> I["Press Play"]
-    I --> J["Play local MP3"]
+    I --> J["Play local audio"]
 ```
 
 If you press Play on a track that is not downloaded yet, the app prepares that selection first. It prioritizes the selected track, resolves its YouTube URL if needed, downloads only that track first, and then starts playback when the local file is ready.
@@ -156,37 +208,17 @@ If you press Play on a track that is not downloaded yet, the app prepares that s
 flowchart TD
     A["Select track"] --> B["Press Play"]
     B --> C{"Already downloaded?"}
-    C -->|yes| D["Play local MP3"]
+    C -->|yes| D["Play local audio"]
     C -->|no| E{"YouTube URL known?"}
     E -->|no| F["Priority lookup for selected track"]
     E -->|yes| G["Priority download for selected track"]
     F --> G
-    G --> H["Store downloaded MP3 path"]
+    G --> H["Store downloaded audio path"]
     H --> D
 ```
 
-Progress and errors are shown in the status bar at the bottom of the window and in the feedback area. The terminal also prints detailed logging when the app is started from `localPipeline.sh` or from a shell.
-
-```text
-========== Local Pipeline Summary ==========
-Virtualenv       : PASS .venv is available
-Dependencies     : PASS Editable install with dev dependencies completed
-Ruff             : PASS 0 violations
-Pylint           : PASS 10.00/10 (100%)
-Translations     : PASS de: 214 strings, 0 untranslated; hr: 214 strings, 0 untranslated; ...
-Docs             : PASS required docs present
-Sphinx           : PASS HTML built with 0 warnings
-Tests+Coverage   : PASS 99.06%; 450 passed, 1 skipped in 3.44s
-Open Docs        : PASS Sphinx index.html was handed to firefox
-Open Coverage    : PASS htmlcov/index.html was handed to firefox
-Clean Build      : PASS Stale package artifacts removed
-Package Build    : PASS Successfully built source and wheel distributions
-Wheel            : PASS my_lastfm_player-<version>-py3-none-any.whl
-Wheel Install    : PASS Built wheel installed into .venv
-Import Check     : PASS <version>[+commit]
-Launch App       : PASS my-lastfm-player was started once
-============================================
-```
+Progress and errors appear in the progress area, status bar, and feedback log. Starting
+the application from a shell also provides detailed operational logging.
 
 ### Recovering Tracks That Failed Earlier
 
@@ -205,7 +237,11 @@ YouTube changes its mind, so the player keeps re-checking them:
 
 ## Stored Files
 
-By default, downloaded MP3 files are stored here:
+Saved libraries, lookup results, download metadata, and the optional Last.fm session are
+retained when the application closes. This is the safe default. Preferences can opt into
+deleting that metadata on quit; the downloaded audio files are always retained.
+
+By default, downloaded audio files are stored here:
 
 ```text
 ~/.local/share/myLastFmPlayer/downloads/
@@ -216,6 +252,9 @@ Per-user track lists are stored as JSON files here:
 ```text
 ~/.local/share/myLastFmPlayer/tracks/
 ```
+
+Active workflows also use a per-user `.updates.jsonl` journal in that directory so
+completed entries survive a stop or interruption before the full snapshot is compacted.
 
 The shared download cache is stored here:
 
@@ -229,6 +268,10 @@ The shared YouTube lookup cache is stored here:
 ~/.local/share/myLastFmPlayer/lookup-cache.json
 ```
 
+The optional Last.fm session is stored in `lastfm-credentials.json`. Appearance and
+behavior preferences use the platform-native Qt settings store rather than this data
+directory.
+
 If `XDG_DATA_HOME` is set, the base directory changes to:
 
 ```text
@@ -240,6 +283,20 @@ For example, with `XDG_DATA_HOME=/tmp/app-data`, downloads are stored in:
 ```text
 /tmp/app-data/myLastFmPlayer/downloads/
 ```
+
+## Quality and Verification
+
+Every change must pass the repository's complete local pipeline before it is committed.
+The gate requires zero Ruff violations, a 10.00/10 Pylint score, complete translations,
+warning-free documentation, the configured 99% coverage threshold, successful source and
+wheel builds, installation of the newly built wheel, an import/version check, and a launch
+of the installed application. Tests cover the UI state, controller workflows, storage,
+parallel lookup/download behavior, cancellation, playback, scrobbling, localization, and
+release artifacts.
+
+Network-dependent tests are kept opt-in so the normal gate remains deterministic. They can
+validate a full Last.fm library fetch and real `yt-dlp` client/format/download behavior
+against the live services.
 
 ## Local Pipeline
 

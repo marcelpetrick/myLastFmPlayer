@@ -1,7 +1,10 @@
 # Workload Estimate
 
-This document estimates the implementation workload represented by the current
-git history. The estimates are in person-hours and are based on commit message,
+> **Historical estimate:** The figures below cover the repository history at the time
+> this report was produced; they are not a live project metric.
+
+This document estimates the implementation workload represented by that
+git-history snapshot. The estimates are in person-hours and are based on commit message,
 diff size, affected surface area, and likely verification effort.
 
 Assumptions:

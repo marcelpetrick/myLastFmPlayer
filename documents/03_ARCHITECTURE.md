@@ -1,362 +1,254 @@
-# Architecture
+# Runtime Architecture
 
-This document describes the workflow implemented in the application as of version `0.0.136`. It focuses on how a Last.fm username such as `first` is fetched, stored, shown in the UI, resolved, downloaded, and played.
+This document is the concise, implementation-facing architecture description for
+`myLastFmPlayer` 0.0.165. The rendered C4 diagrams and class reference are in
+[`docs/architecture.rst`](../docs/architecture.rst) and
+[`docs/api.rst`](../docs/api.rst).
 
-## Current Scope
+## System Purpose
 
-Implemented:
+`myLastFmPlayer` is a single-process Linux desktop application. A user enters a
+Last.fm username; the application discovers that account's public loved tracks,
+resolves playable YouTube sources, downloads audio, and plays the resulting
+local library. Authenticated now-playing and scrobble updates are optional.
 
-- PyQt desktop shell.
-- Last.fm loved-track fetching through the Last.fm Web API.
-- Background worker boundary for fetching.
-- Per-user JSON storage.
-- Track table model and UI data binding.
-- YouTube lookup service and worker entry point.
-- Download queue service and worker entry point.
-- Local playback service for selected downloaded tracks.
-- Automatic fetch-to-lookup-to-download workflow.
-- Priority lookup/download when Play is pressed on a track that is not downloaded yet.
-- Artist preview loading and private-window Last.fm artist page opening.
-- Startup checks for `yt-dlp`, `ffmpeg`, and `ffprobe`.
-- Status-bar progress and stdout logging.
+The application is designed around four properties:
 
-Not yet implemented:
+- the Qt event loop remains responsive while network and subprocess work runs;
+- each track progresses independently, so one failure does not stop the queue;
+- completed work is persisted incrementally and survives cancellation or restart;
+- work for one username cannot overwrite the visible state of another username.
 
-- Pause/resume UI for active downloads. Downloads can be stopped, and Fetch can be paused/resumed.
-
-## Data Sources
-
-The app currently uses these data sources:
-
-| Source | Used For | Code |
-| --- | --- | --- |
-| Last.fm Web API | Fetching loved tracks by username | `LastFmLovedTracksApiClient`, `LastFmLovedTracksScraper` |
-| Last.fm Web API and artist pages | Artist preview metadata and image discovery | `LastFmArtistInfoClient` |
-| Local JSON files | Persisting per-user track metadata | `JsonTrackRepository` |
-| Shared local JSON cache | Remembering downloaded tracks by exact artist/title | `JsonTrackRepository` |
-| `yt-dlp` command | YouTube first-result lookup and MP3 download | `YouTubeResolver`, `DownloadManager` |
-| `ffmpeg` / `ffprobe` commands | Audio post-processing and local metadata probing | `DownloadManager` |
-| `shutil.which` | Startup dependency checks for `yt-dlp`, `ffmpeg`, and `ffprobe` | `check_external_dependencies` |
-
-For a username such as `first`, the Last.fm API request uses:
-
-```text
-https://ws.audioscrobbler.com/2.0/?method=user.getLovedTracks&user=first&format=json
-```
-
-Pagination follows the API `page` and `totalPages` metadata.
-
-## High-Level Components
+## System Context
 
 ```mermaid
 flowchart LR
-    User[User] --> UI[MainWindow]
-    UI --> Controller[ApplicationController]
+    User[Linux desktop user] --> App[myLastFmPlayer]
+    App --> LastFmApi[Last.fm Web API]
+    App --> LastFmWeb[Last.fm website]
+    App --> YouTube[YouTube via yt-dlp]
+    App --> Media[ffmpeg and ffprobe]
+    App --> Files[(JSON metadata and audio files)]
+    App --> Settings[(QSettings)]
+```
+
+External responsibilities are:
+
+| Dependency | Responsibility |
+| --- | --- |
+| Last.fm Web API | Loved-track pages and artist metadata |
+| Last.fm website | Desktop authorization and artist-page links |
+| `pylast` | Authenticated now-playing and scrobble API calls |
+| `yt-dlp` | YouTube search and audio extraction |
+| `ffmpeg` / `ffprobe` | Audio conversion and metadata probing |
+| Qt Multimedia | Local playback |
+
+The startup dependency check verifies that `yt-dlp`, `ffmpeg`, and `ffprobe` are
+available. Loved-track discovery does not require user authentication; scrobbling
+uses the bundled desktop application credentials plus a user-authorized session.
+
+## Application Components
+
+```mermaid
+flowchart TB
+    Main[main.py bootstrap] --> Window[MainWindow]
+    Main --> Controller[ApplicationController]
+    Main --> Settings[AppSettings]
+    Window --> Table[TrackTableModel]
+    Window --> Preferences[PreferencesDialog]
+    Window -- Qt signals --> Controller
+
     Controller --> FetchWorker[FetchLovedTracksWorker]
     Controller --> LookupWorker[LookupTracksWorker]
     Controller --> DownloadWorker[DownloadTracksWorker]
+    Controller --> ImageWorker[ArtistImageWorker]
     Controller --> Playback[PlaybackService]
-    Controller --> ArtistInfo[LastFmArtistInfoClient]
-    FetchWorker --> Scraper[LastFmLovedTracksScraper]
-    Scraper --> ApiClient[LastFmLovedTracksApiClient]
-    ApiClient --> LastFm[Last.fm Web API]
-    ArtistInfo --> LastFm
-    UI --> Firefox[Firefox private window]
-    FetchWorker --> Storage[JsonTrackRepository]
+    Controller --> Scrobbling[ScrobblingService]
+
+    FetchWorker --> LastFm[Last.fm clients]
     LookupWorker --> Resolver[YouTubeResolver]
-    Resolver --> Ytdlp[yt-dlp]
-    LookupWorker --> Storage
-    DownloadWorker --> DownloadManager[DownloadManager]
-    DownloadManager --> Ytdlp[yt-dlp]
-    DownloadManager --> Storage
-    Storage --> Json[(Local JSON files)]
-    FetchWorker --> Controller
-    Controller --> UI
-    UI --> TableModel[TrackTableModel]
+    DownloadWorker --> Downloader[DownloadManager]
+    Resolver --> Limiter[YouTubeWorkLimiter]
+    Downloader --> Limiter
+
+    FetchWorker --> Repository[JsonTrackRepository]
+    LookupWorker --> Repository
+    DownloadWorker --> Repository
+    Controller --> Repository
 ```
 
-## Fetch Workflow
+The main roles are:
 
-When the user enters `first` and clicks `Fetch`, this is the implemented workflow:
+- `MainWindow` owns widgets, user-facing signals, presentation state, and table
+  interaction. `TrackTableModel` adapts immutable `Track` values to Qt's model API.
+- `ApplicationController` coordinates workflows, scopes worker results by username
+  and generation, and translates service outcomes into UI state.
+- Worker `QObject`s run on owned `QThread`s and bridge Qt signals to blocking service
+  operations.
+- `LastFmLovedTracksScraper`, `YouTubeResolver`, `DownloadManager`,
+  `PlaybackService`, and `ScrobblingService` contain service behavior without owning
+  widgets.
+- `YouTubeWorkLimiter` shares one configurable capacity across lookup and download
+  subprocesses and prevents the same track from being processed twice concurrently.
+- `JsonTrackRepository` is the persistent source of truth for track snapshots,
+  incremental updates, caches, and Last.fm credentials.
+
+## End-to-End Workflow
 
 ```mermaid
 sequenceDiagram
     actor User
     participant UI as MainWindow
-    participant Controller as ApplicationController
-    participant Thread as QThread
-    participant Worker as FetchLovedTracksWorker
-    participant Scraper as LastFmLovedTracksScraper
-    participant ApiClient as LastFmLovedTracksApiClient
-    participant LastFm as Last.fm Web API
-    participant Storage as JsonTrackRepository
-    participant Table as TrackTableModel
+    participant C as ApplicationController
+    participant F as Fetch worker
+    participant L as Lookup workers
+    participant D as Download workers
+    participant R as JsonTrackRepository
 
-    User->>UI: Enter "first" and click Fetch
-    UI->>Controller: fetch_requested signal
-    Controller->>UI: Disable username/fetch controls
-    Controller->>UI: Status "Starting fetch"
-    Controller->>Thread: Start worker thread
-    Thread->>Worker: run()
-    Worker->>UI: Status "Looking up Last.fm user first"
-    Worker->>Scraper: fetch_and_store_loved_tracks("first")
-    Scraper->>ApiClient: fetch_page("first", 1)
-    ApiClient->>LastFm: GET user.getLovedTracks page=1
-    LastFm-->>ApiClient: JSON page with totalPages/total
-    ApiClient-->>Scraper: LovedTracksApiPage
-    Scraper->>Worker: Progress "Found Last.fm user first"
-    Scraper->>Worker: Progress "Fetched N/T tracks" if total is known
-    Scraper->>ApiClient: fetch_page("first", next page) if totalPages allows
-    ApiClient->>LastFm: GET user.getLovedTracks page=2..N
-    LastFm-->>ApiClient: JSON page 2..N
-    Scraper-->>Worker: list[Track]
-    Worker->>Storage: save_tracks("first", tracks)
-    Storage-->>Worker: JSON written
-    Worker->>UI: Status "Fetched X tracks"
-    Worker->>Controller: tracks_loaded("first", tracks)
-    Controller->>UI: set_tracks(tracks)
-    UI->>Table: Replace table data
-    Controller->>UI: Status "Fetched and stored X tracks for first."
-    Controller->>Controller: Start automatic YouTube lookup
-    Controller->>UI: Re-enable workflow controls after chained workers finish
+    User->>UI: Enter username and press Fetch
+    UI->>C: fetch_requested
+    C->>F: Start Last.fm fetch
+    loop Every Last.fm page
+        F->>R: Append discovered tracks
+        F-->>C: Partial track batch
+        C-->>UI: Refresh table immediately
+        C->>L: Start lookup for eligible tracks
+        loop Every resolved track
+            L->>R: Append lookup result
+            L-->>C: Track ready or independent failure
+            C->>D: Queue ready track
+            D->>R: Append download result
+            D-->>C: Track downloaded or independent failure
+            C-->>UI: Refresh affected state
+        end
+    end
+    F->>R: Compact full user snapshot
+    L->>R: Compact lookup results
+    D->>R: Compact download results and cache
 ```
 
-## Last.fm API Fetching
+The phases overlap deliberately. Later Last.fm pages can still be arriving while
+earlier entries are being checked and downloaded. Lookup completion can feed download
+immediately; it does not wait for the whole lookup batch.
 
-The normal Last.fm implementation is split into two pieces:
+### Last.fm Discovery
 
-- `LastFmLovedTracksApiClient`: fetches and parses `user.getLovedTracks` JSON pages.
-- `LastFmLovedTracksScraper`: orchestrates pagination, progress, and storage-facing results.
+`LastFmLovedTracksApiClient` parses `user.getLovedTracks` JSON. The scraper follows
+the API's `page` and `totalPages` metadata, applies bounded retry/backoff, and emits
+progress plus partial track lists. Fetch has independent Pause/Resume and Stop
+controls.
 
-The API client extracts tracks from Last.fm JSON items.
+Before launching a bulk fetch, the controller performs a timeout-bounded cache-count
+check or first-user existence preflight. The paginated fetch itself runs on its worker.
+
+Each discovered `Track` begins with artist, title, optional Last.fm URL and loved-at
+timestamp, and `Fetched` status. Cache application can immediately advance a track to
+`Queued` or `Downloaded`.
+
+### YouTube Lookup and Download
+
+Lookup and download use one shared concurrency setting:
+
+- valid range: one through five;
+- default: five;
+- the limit counts lookup and download subprocesses together;
+- changing it affects work that has not acquired a slot yet;
+- a per-track key prevents overlapping workflows from writing the same audio target.
+
+Lookup checks the shared cache before invoking `yt-dlp`. On a miss it tries a bounded
+query ladder: exact artist/title, a cleaned artist/title form, and title alone. A hit
+becomes `Queued`; exhausted lookup attempts become `Not found`.
+
+Download uses `yt-dlp` to select the best available audio stream. Transient failures
+are retried with jitter and a changing YouTube player-client strategy. `ffprobe`
+records the resulting file type and bitrate. A successful file becomes `Downloaded`;
+exhausted retries become `Failed`.
+
+### Stop, Resume, and Username Switching
+
+The visible **Stop YouTube** control covers both lookup and download. It sets the
+operation-owned cancellation events, wakes threads waiting for capacity, and
+terminates active external process groups. The UI stays in `Stopping…` until every
+owned worker has finished cleanup. If eligible entries remain, the action then becomes
+**Resume YouTube** and restarts only unresolved or queued work.
+
+The username field stays editable throughout discovery, lookup, and download. Editing
+it advances the controller's workflow generation and cancels work for the previous
+username. Completed journal entries stay saved, while late Qt signals are rejected
+unless their username and generation still match the current workflow. This makes
+entries and user libraries independent even when cancellation completes asynchronously.
+
+### Priority Playback Preparation
+
+Selecting an unavailable track and pressing Play starts a one-track priority lookup or
+download without losing the background queue. When the local file becomes ready, the
+controller starts playback. Normal controls provide pause, stop, seek, volume, mute,
+next-track, and randomized continuation.
+
+Artist artwork loads on a separate worker. The preview stays at a bounded size and is
+hidden when no valid image is available, so it cannot consume vertical space from the
+track table or stretch the playback controls.
+
+## Track State Model
 
 ```mermaid
-flowchart TD
-    Json[Last.fm user.getLovedTracks JSON] --> Items[Read lovedtracks.track items]
-    Items --> Title[Track title from name]
-    Items --> ArtistName[Artist name from artist.#text]
-    Items --> Url[Last.fm track URL from url]
-    Items --> LovedAt[Loved timestamp from date.uts]
-    Title --> Track[Track object]
-    ArtistName --> Track
-    Url --> Track
-    LovedAt --> Track
+stateDiagram-v2
+    [*] --> Fetched
+    Fetched --> Searching: lookup starts
+    Fetched --> Queued: lookup cache hit
+    Searching --> Queued: URL resolved
+    Searching --> LookupFailed: retryable lookup error
+    Searching --> NotFound: attempts exhausted
+    LookupFailed --> Searching: retry
+    NotFound --> Searching: startup or user retry
+    Queued --> Downloading: download starts
+    Downloading --> Downloaded: Audio stored
+    Downloading --> Failed: retries exhausted
+    Failed --> Downloading: startup or user retry
 ```
 
-Each fetched `Track` currently stores:
+Playback is runtime state owned by `PlaybackService`; it does not replace the durable
+`Downloaded` track status. The `Track` value object is immutable, and merge rules avoid
+regressing completed state while allowing explicit recovery from provisional failures.
 
-- artist
-- title
-- Last.fm URL
-- loved-at timestamp, when Last.fm returns one
-- YouTube URL, initially `null`
-- local file path, initially `null`
-- status, initially `Fetched`
-- retry count
-- error
+## Persistence
 
-## Status-Bar Feedback
+Mutable application data lives below `$XDG_DATA_HOME/myLastFmPlayer/`, defaulting to
+`~/.local/share/myLastFmPlayer/`:
 
-Fetch progress is sent through the worker to the UI status bar.
+| Path | Purpose |
+| --- | --- |
+| `tracks/<username>.json` | Compact per-user track snapshot |
+| `tracks/<username>.updates.jsonl` | Append-only updates written during active work |
+| `lookup-cache.json` | Shared artist/title-to-YouTube lookup outcomes |
+| `download-cache.json` | Shared artist/title-to-local-file mappings |
+| `lastfm-credentials.json` | User-authorized Last.fm session data |
+| `downloads/` | Downloaded audio files |
 
-```mermaid
-flowchart LR
-    ScraperProgress[FetchProgress] --> WorkerSignal[worker.progress]
-    WorkerSignal --> ControllerConnection[Qt signal connection]
-    ControllerConnection --> UIProgress[MainWindow.set_progress]
-    UIProgress --> ProgressBar[Progress bar label]
-    UIProgress --> StatusBar[Status bar message]
-```
+Repository access is protected by a re-entrant lock. Snapshot and cache writes use a
+same-directory temporary file followed by atomic replacement. Journals make each
+completed entry durable without rewriting a large library after every result; loading
+replays the journal over the snapshot, and completed runs compact it.
 
-Examples of messages:
+Theme, language, volume, mute, Last.fm username, scrobbling choice, browser-cookie
+source, window geometry, data retention, and YouTube concurrency live in `QSettings`.
+Metadata and credentials are retained on quit by default. Users can opt into cleanup;
+downloaded audio is never removed by that preference.
 
-```text
-Looking up Last.fm user first
-Found Last.fm user first
-Fetched 99/200 tracks
-Fetched 200 tracks
-Fetched and stored 200 tracks for first.
-```
+## Failure Boundaries
 
-If the total count is missing from the API response, the app still shows cumulative progress:
+- A lookup or download failure updates only that track and does not stop peer work.
+- External commands have timeouts and cooperative process-group cancellation.
+- Worker callbacks are scoped to their username and workflow generation.
+- Repository updates are locked, atomic, and recoverable from the update journal.
+- Network-dependent integration tests are opt-in; deterministic unit, UI, packaging,
+  installed-launch, documentation, lint, translation, and coverage checks run in the
+  normal pipeline.
 
-```text
-Fetched 99 tracks
-```
+## Deployment and Release
 
-Errors follow the same path and are shown in the status bar and feedback log.
-
-## Local Storage Layout
-
-By default, user data is stored below:
-
-```text
-~/.local/share/myLastFmPlayer/
-```
-
-The important files are:
-
-```mermaid
-flowchart TD
-    DataDir["~/.local/share/myLastFmPlayer"] --> TracksDir["tracks/"]
-    TracksDir --> UserJson["first.json"]
-    DataDir --> Cache["download-cache.json"]
-    DataDir --> Downloads["downloads/"]
-```
-
-For username `first`, the per-user file is:
-
-```text
-~/.local/share/myLastFmPlayer/tracks/first.json
-```
-
-The JSON contains an array of track records.
-
-## YouTube Lookup Workflow
-
-The YouTube resolver starts automatically after a successful fetch with at least one track.
-
-```mermaid
-sequenceDiagram
-    participant Controller as ApplicationController
-    participant Worker as LookupTracksWorker
-    participant Storage as JsonTrackRepository
-    participant Resolver as YouTubeResolver
-    participant Ytdlp as yt-dlp
-
-    Controller->>Worker: resolve_youtube_urls()
-    Worker->>Storage: load_tracks(username)
-    Storage-->>Worker: tracks
-    Worker->>Resolver: resolve_tracks(tracks)
-    Resolver->>Ytdlp: yt-dlp --dump-single-json --no-playlist ytsearch1:<artist title>
-    Ytdlp-->>Resolver: first result JSON
-    Resolver-->>Worker: tracks with youtube_url/status
-    Worker->>Storage: save_tracks(username, resolved_tracks)
-    Worker->>Controller: tracks_resolved(username, tracks)
-```
-
-Current lookup rules:
-
-- Query is exactly `<artist> <title>`.
-- First result only.
-- Found track becomes `Queued`.
-- No result becomes `Not found`.
-- Progress is emitted per track, for example `Searching 1/31`.
-- A selected track can be prioritized and resolved as a one-track job.
-
-## Download Queue Workflow
-
-Downloads start automatically after lookup when queued tracks have a YouTube URL. The old manual download panel is no longer part of the main UI; the controller still owns a download entry point for automatic queue work and priority play/retry flows.
-
-```mermaid
-sequenceDiagram
-    participant Controller as ApplicationController
-    participant Worker as DownloadTracksWorker
-    participant Manager as DownloadManager
-    participant Storage as JsonTrackRepository
-    participant Ytdlp as yt-dlp
-
-    Controller->>Controller: automatic lookup completion or priority play/retry
-    Controller->>Worker: run in QThread
-    Worker->>Manager: download_and_store_tracks(username, repository, concurrency)
-    Manager->>Storage: load_tracks(username)
-    Manager->>Storage: mark_cached_downloads(tracks)
-    Manager->>Ytdlp: yt-dlp --extract-audio --audio-format mp3 <youtube_url>
-    Ytdlp-->>Manager: downloaded MP3 or error
-    Manager->>Storage: save_tracks(username, updated_tracks)
-    Manager->>Storage: save_download_cache(updated_tracks)
-    Worker->>Controller: tracks_downloaded(username, tracks)
-    Controller->>UI: set_tracks(tracks)
-```
-
-Current download rules:
-
-- FIFO queue order by default.
-- Default concurrency is `2`, controlled in Preferences with a range of `1` to `10`.
-- Tracks already in the shared cache are marked `Downloaded` and skipped.
-- Each failing download is retried up to `3` times.
-- Retry backoff is random between `1` and `5` seconds.
-- Pressing Play on a not-yet-downloaded track starts a one-track priority download once a YouTube URL is available.
-- Stop Downloads cancels pending work and wakes paused download workers.
-
-## Artist Preview Workflow
-
-The right-side artist preview is updated for the selected or playing track. The label title shows `Artist: <name>`, and clicking the image opens the Last.fm artist page in a Firefox private window.
-
-```mermaid
-sequenceDiagram
-    participant Controller as ApplicationController
-    participant Worker as ArtistImageWorker
-    participant ArtistInfo as LastFmArtistInfoClient
-    participant LastFm as Last.fm Web API / artist page
-    participant UI as MainWindow
-    participant Firefox as Firefox
-
-    Controller->>Worker: load artist image for selected artist
-    Worker->>ArtistInfo: fetch_artist_image(artist)
-    ArtistInfo->>LastFm: artist.getInfo
-    ArtistInfo->>LastFm: optional artist page image metadata fetch
-    Worker-->>Controller: ArtistImage(page_url, image_bytes)
-    Controller->>UI: show artist image and page URL
-    UI->>Controller: artist_page_requested(url)
-    Controller->>Firefox: firefox --private-window url
-```
-
-## Playback Workflow
-
-Playback is implemented for one selected downloaded local file at a time.
-
-```mermaid
-sequenceDiagram
-    participant UI as MainWindow
-    participant Controller as ApplicationController
-    participant Playback as PlaybackService
-    participant Backend as QtPlaybackBackend
-    participant Player as QMediaPlayer
-    participant Storage as JsonTrackRepository
-
-    UI->>Controller: play_requested signal
-    Controller->>UI: selected_track()
-    Controller->>Playback: play(track)
-    Playback->>Backend: play(local_path)
-    Backend->>Player: setSource(file) and play()
-    Playback-->>Controller: Track(status=Playing)
-    Controller->>UI: update selected row
-    Controller->>Storage: save visible tracks
-    UI->>Controller: pause_requested or stop_requested
-    Controller->>Playback: pause() or stop()
-```
-
-Current playback rules:
-
-- The selected track must already be `Downloaded` and have an existing local file.
-- Starting another track stops the previous one first.
-- Pause leaves the track status unchanged.
-- Stop returns the current track to `Downloaded`.
-- Playback errors are shown in the feedback log.
-
-## Logging
-
-The app configures logging to stdout at startup.
-
-```mermaid
-flowchart LR
-    Main[main.py] --> Logging[configure_logging]
-    Controller[ApplicationController] --> Logs[stdout logs]
-    Worker[Workers] --> Logs
-    Download[DownloadManager] --> Logs
-    Playback[PlaybackService] --> Logs
-    ApiClient[LastFmLovedTracksApiClient] --> Logs
-    Scraper[LastFmLovedTracksScraper] --> Logs
-    UI[MainWindow status updates] --> Logs
-```
-
-This makes fetch activity visible in the terminal when running:
-
-```sh
-my-lastfm-player
-```
-
-## Important Current Limitation
-
-Fetching and displaying the Last.fm loved-track list is implemented through the Last.fm Web API. API failures, invalid users, or missing response metadata still surface through the existing worker error and progress paths.
+`my-lastfm-player` and `python -m my_lastfm_player` enter the same startup path. The
+package supports Python 3.14 or newer on Linux x86_64. A release is built only after
+the canonical `localPipeline.sh` gate passes. The manual GitHub workflow rebuilds and
+verifies the project, then publishes the wheel, source distribution, documentation,
+C4 diagrams, tests, coverage, static-analysis results, and pipeline provenance.

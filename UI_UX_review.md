@@ -3,6 +3,7 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
+Fix status refreshed through v0.0.164; all three original HIGH findings are resolved.
 
 ## Method and priorities
 
@@ -21,7 +22,8 @@ the reproduced layout and interaction failures do not depend on live services.
 HIGH means a major obstruction to normal use or unexpected loss of saved state.
 MEDIUM means a confirmed interaction, feedback, or accessibility defect.
 LOW means a clarity or convenience improvement. There are 15 findings: 3 HIGH,
-9 MEDIUM, and 3 LOW. Suggested fixes below are proposals, not implemented changes.
+9 MEDIUM, and 3 LOW. Fixed items are annotated in place; suggestions on unresolved
+items remain proposals.
 
 ## Findings
 
