@@ -25,7 +25,7 @@ LOW means a clarity or convenience improvement. There are 15 findings: 3 HIGH,
 
 ## Findings
 
-### 1. HIGH — Artist artwork expands the entire playback row and collapses the library
+### 1. HIGH — Artist artwork expands the entire playback row and collapses the library — Fixed in v0.0.162
 
 Evidence: `my_lastfm_player/ui/main_window.py:110`, `:145`, `:412`, and `:481`.
 The image label is expanding in both directions with no maximum size. Its scaled
@@ -51,6 +51,11 @@ use a compact artwork placeholder or hide the empty group without moving transpo
 
 Acceptance: loading, clearing, and replacing portrait/landscape artwork must not increase
 transport height or shrink the library. Enlarging the window must reveal more track rows.
+
+Fixed in v0.0.162: artwork is bounded to 120×120 pixels in a compact 180-pixel-wide
+panel, the playback group has a fixed vertical policy, and surplus width goes to playback.
+The artist panel is hidden when it has no valid image. A Qt geometry regression test verifies
+that loading artwork changes neither playback-group height nor track-table height.
 
 ### 2. HIGH — Closing the app deletes saved library state and authentication by default
 

@@ -60,6 +60,7 @@ from my_lastfm_player.ui.track_table_model import (
 
 LOGGER = logging.getLogger(__name__)
 ARTIST_IMAGE_SIZE = 120
+ARTIST_IMAGE_PANEL_WIDTH = 180
 ERROR_TEXT_COLOR = "#d64545"
 ERROR_INDICATOR_MAX_LENGTH = 80
 
@@ -107,8 +108,8 @@ class ArtistImageLabel(QLabel):
         super().__init__(parent)
         self._page_url: str | None = None
         self._source_pixmap: QPixmap | None = None
-        self.setMinimumSize(ARTIST_IMAGE_SIZE, ARTIST_IMAGE_SIZE)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.setFixedSize(ARTIST_IMAGE_SIZE, ARTIST_IMAGE_SIZE)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setScaledContents(False)
         self.hide()
@@ -416,7 +417,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         layout.setSpacing(12)
 
         self.playback_group = QGroupBox()
-        self.playback_group.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
+        self.playback_group.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         playback_layout = QVBoxLayout(self.playback_group)
         playback_button_layout = QHBoxLayout()
         self.artist_image_label = ArtistImageLabel()
@@ -478,15 +479,20 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         playback_layout.addWidget(self.randomize_checkbox)
 
         self.artist_image_group = QGroupBox()
+        self.artist_image_group.setFixedWidth(ARTIST_IMAGE_PANEL_WIDTH)
         self.artist_image_group.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Fixed,
         )
         artist_image_layout = QVBoxLayout(self.artist_image_group)
-        artist_image_layout.addWidget(self.artist_image_label, stretch=1)
+        artist_image_layout.addWidget(
+            self.artist_image_label,
+            alignment=Qt.AlignmentFlag.AlignCenter,
+        )
+        self.artist_image_group.hide()
 
-        layout.addWidget(self.playback_group)
-        layout.addWidget(self.artist_image_group, stretch=1)
+        layout.addWidget(self.playback_group, stretch=1)
+        layout.addWidget(self.artist_image_group)
 
         return panel
 
@@ -763,6 +769,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         self._set_artist_title(artist_name)
         self.artist_image_label.set_artist_image(image_bytes, page_url)
+        self.artist_image_group.setVisible(not self.artist_image_label.isHidden())
 
     def _set_artist_title(self, artist_name: str | None = None) -> None:
         self._artist_title_name = artist_name

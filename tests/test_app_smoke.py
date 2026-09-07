@@ -52,8 +52,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.161"
-    assert __display_version__ == "0.0.161"
+    assert __version__ == "0.0.162"
+    assert __display_version__ == "0.0.162"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -866,23 +866,21 @@ def test_main_window_playback_controls_emit_signals(qapp) -> None:
     assert events == ["play", "pause", "stop", "next"]
 
 
-def test_artist_image_label_rescales_its_pixmap_on_resize(qapp) -> None:
+def test_artist_image_label_keeps_a_bounded_size(qapp) -> None:
     label = ArtistImageLabel()
     label.show()
 
-    label.resize(200, 200)
     assert label.pixmap().isNull()  # nothing loaded yet, so nothing to scale
 
     label.set_artist_image(png_bytes(), "https://www.last.fm/music/Artist")
-    label.resize(140, 140)  # the label enforces a 120px minimum
     qapp.processEvents()
-    small = label.pixmap().size()
+    original_size = label.size()
     label.resize(260, 260)
     qapp.processEvents()
-    large = label.pixmap().size()
 
-    assert small.width() <= 140
-    assert large.width() > small.width()
+    assert label.size() == original_size
+    assert label.width() == main_window_module.ARTIST_IMAGE_SIZE
+    assert label.height() == main_window_module.ARTIST_IMAGE_SIZE
 
 
 def test_main_window_artist_image_is_clickable(qapp) -> None:
@@ -896,18 +894,20 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
     assert controls_layout.itemAt(0).widget() is window.playback_group
     assert controls_layout.itemAt(1).widget() is window.artist_image_group
     assert controls_layout.count() == 2
-    assert controls_layout.stretch(1) == 1
+    assert controls_layout.stretch(0) == 1
+    assert controls_layout.stretch(1) == 0
     assert window.artist_image_group.title() == "Artist: Artist"
     assert (
         window.artist_image_group.sizePolicy().horizontalPolicy()
-        == QSizePolicy.Policy.Expanding
+        == QSizePolicy.Policy.Fixed
     )
-    assert window.playback_group.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Minimum
+    assert window.playback_group.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Expanding
     assert window.artist_image_label.parentWidget() is window.artist_image_group
     assert (
         window.artist_image_label.sizePolicy().horizontalPolicy()
-        == QSizePolicy.Policy.Expanding
+        == QSizePolicy.Policy.Fixed
     )
+    assert not window.artist_image_group.isHidden()
     assert not window.artist_image_label.isHidden()
     assert window.artist_image_label.pixmap() is not None
 
@@ -925,7 +925,24 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
     window.set_artist_image(None, None)
 
     assert window.artist_image_label.isHidden()
+    assert window.artist_image_group.isHidden()
     assert window.artist_image_group.title() == "Artist"
+
+
+def test_artist_image_does_not_expand_controls_or_collapse_library(qapp) -> None:
+    window = MainWindow()
+    window.resize(1120, 720)
+    window.show()
+    qapp.processEvents()
+    controls_height = window.playback_group.height()
+    table_height = window.track_table.height()
+
+    window.set_artist_image(png_bytes(), "https://www.last.fm/music/Artist", "Artist")
+    qapp.processEvents()
+
+    assert window.playback_group.height() == controls_height
+    assert window.artist_image_group.height() <= controls_height
+    assert window.track_table.height() == table_height
 
 
 def test_main_window_artist_image_ignores_invalid_data_and_non_left_clicks(qapp) -> None:
