@@ -99,9 +99,9 @@ class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter p
         )
 
     def keep_data_on_quit(self) -> bool:
-        """Return True when the user opted to keep cached data after the app closes."""
+        """Return whether saved application data should remain after the app closes."""
 
-        return bool(self._settings.value(KEEP_DATA_ON_QUIT_KEY, False, bool))
+        return bool(self._settings.value(KEEP_DATA_ON_QUIT_KEY, True, bool))
 
     def set_keep_data_on_quit(self, keep: bool) -> None:
         """Persist the keep-data-on-quit preference."""

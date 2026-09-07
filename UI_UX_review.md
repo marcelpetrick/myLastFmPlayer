@@ -57,7 +57,7 @@ panel, the playback group has a fixed vertical policy, and surplus width goes to
 The artist panel is hidden when it has no valid image. A Qt geometry regression test verifies
 that loading artwork changes neither playback-group height nor track-table height.
 
-### 2. HIGH — Closing the app deletes saved library state and authentication by default
+### 2. HIGH — Closing the app deletes saved library state and authentication by default — Fixed in v0.0.163
 
 Evidence: `my_lastfm_player/settings.py:101`, `my_lastfm_player/controller.py:233`,
 and `my_lastfm_player/storage.py:129`.
@@ -72,6 +72,11 @@ selected privacy mode when changing defaults.
 
 Acceptance: a fresh profile can fetch, close, and reopen without losing its saved library
 or session. Explicit cleanup has a clear scope and predictable result.
+
+Fixed in v0.0.163: new profiles retain saved application data by default. Preferences
+names the library and Last.fm session explicitly and explains that disabling retention
+deletes track lists, lookup/download caches, and authentication while keeping audio files.
+The persisted opt-out remains available for users who intentionally want cleanup on quit.
 
 ### 3. HIGH — Users cannot stop the automatic YouTube workflow from the UI
 

@@ -68,16 +68,16 @@ def test_scrobbling_enabled_can_use_legacy_default(tmp_path: Path) -> None:
     assert not AppSettings(raw).scrobbling_enabled(default_enabled=False)
 
 
-def test_keep_data_on_quit_defaults_to_false_and_persists(tmp_path: Path) -> None:
+def test_keep_data_on_quit_defaults_to_true_and_persists(tmp_path: Path) -> None:
     path = tmp_path / "settings.ini"
     settings = AppSettings(_ini_settings(path))
 
-    assert settings.keep_data_on_quit() is False
+    assert settings.keep_data_on_quit() is True
 
-    settings.set_keep_data_on_quit(True)
+    settings.set_keep_data_on_quit(False)
 
     reloaded = AppSettings(_ini_settings(path))
-    assert reloaded.keep_data_on_quit() is True
+    assert reloaded.keep_data_on_quit() is False
 
 
 def test_randomize_playback_defaults_to_false_and_persists(tmp_path: Path) -> None:

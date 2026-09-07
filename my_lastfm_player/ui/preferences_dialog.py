@@ -111,7 +111,10 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         self.privacy_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         privacy_layout = QVBoxLayout(self.privacy_group)
         self.keep_data_checkbox = QCheckBox(self)
+        self.keep_data_hint = QLabel(self)
+        self.keep_data_hint.setWordWrap(True)
         privacy_layout.addWidget(self.keep_data_checkbox)
+        privacy_layout.addWidget(self.keep_data_hint)
         layout.addWidget(self.privacy_group)
         layout.addStretch(1)
 
@@ -175,7 +178,15 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         )
         self.browser_combo.setItemText(0, self.tr("None (disabled)"))
         self.privacy_group.setTitle(self.tr("Privacy"))
-        self.keep_data_checkbox.setText(self.tr("Keep cached data after quitting"))
+        self.keep_data_checkbox.setText(
+            self.tr("Keep saved library and Last.fm session after quitting")
+        )
+        self.keep_data_hint.setText(
+            self.tr(
+                "When disabled, closing the app deletes saved track lists, lookup and "
+                "download caches, and Last.fm authentication. Downloaded audio files remain."
+            )
+        )
         self._fit_to_content()
 
     def _refresh(self) -> None:

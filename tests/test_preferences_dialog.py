@@ -60,7 +60,7 @@ def _make_svc(**kwargs) -> ScrobblingService:
 class FakeSettings:
     def __init__(self) -> None:
         self.browser = ""
-        self.keep_data = False
+        self.keep_data = True
         self.concurrency = 4
         self.scrobbling = True
 
@@ -260,9 +260,12 @@ def test_preferences_dialog_keep_data_toggle_persists(qapp, monkeypatch) -> None
     monkeypatch.setattr(preferences_module, "AppSettings", lambda: settings)
 
     dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
-    dialog.keep_data_checkbox.setChecked(True)
+    assert dialog.keep_data_checkbox.isChecked()
+    assert "Downloaded audio files remain" in dialog.keep_data_hint.text()
 
-    assert settings.keep_data
+    dialog.keep_data_checkbox.setChecked(False)
+
+    assert not settings.keep_data
 
 
 def test_preferences_dialog_uses_content_minimum_height(qapp) -> None:
