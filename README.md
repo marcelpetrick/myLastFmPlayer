@@ -11,7 +11,7 @@
 
 **Note: project is generated with AI.**
 
-Current version: `0.0.163` — work in progress (WIP), but past MVP and actively used
+Current version: `0.0.164` — work in progress (WIP), but past MVP and actively used
 
 ## Current state
 

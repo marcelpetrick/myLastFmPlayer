@@ -792,21 +792,21 @@ def test_controller_starts_download_after_successful_lookup(qapp, tmp_path) -> N
     assert calls == ["example"]
 
 
-def test_controller_stop_downloads_stops_only_current_operation_and_clears_ui(qapp) -> None:
+def test_controller_stop_youtube_work_clears_active_ui_without_workers(qapp) -> None:
     window = MainWindow()
 
     class FakeManager:
         pass
 
     controller = ApplicationController(window, download_manager=FakeManager())  # type: ignore[arg-type]
-    window.set_download_active(True)
+    window.set_youtube_work_state(active=True)
     controller._download_worker_active = True
 
-    controller.stop_downloads()
+    controller.stop_youtube_work()
 
     assert not controller._download_worker_active
-    assert controller._download_stop_requested
-    assert not window._download_active
+    assert controller._youtube_stop_requested
+    assert not window._youtube_work_active
 
 
 def test_controller_starts_priority_download_after_lookup_for_pending_play(qapp, tmp_path) -> None:
@@ -2156,7 +2156,7 @@ def test_controller_download_tracks_sets_active_flag_for_non_priority_run(
     controller.download_tracks()
 
     assert controller._download_worker_active
-    assert not controller._download_stop_requested
+    assert not controller._youtube_stop_requested
 
 
 def test_controller_pause_playback_reports_resume_failure(qapp) -> None:
@@ -2364,9 +2364,15 @@ def test_previous_generation_workers_do_not_block_same_username_work(qapp, tmp_p
     controller._worker_generations[download] = controller._workflow_generation
 
     controller._workflow_generation += 1
+    state_changes: list[dict[str, bool]] = []
+    window.set_youtube_work_state = lambda **state: state_changes.append(state)  # type: ignore[method-assign]
 
     assert not controller._has_active_lookup_worker("user")
     assert not controller._has_active_download_worker("user")
+
+    controller._forget_worker(lookup)
+
+    assert state_changes == []
 
 
 def test_current_worker_progress_and_error_reach_ui(qapp) -> None:
@@ -2432,10 +2438,12 @@ def test_controller_handle_tracks_downloaded_clears_pending_retry(qapp) -> None:
     window.set_username("user")
     controller = ApplicationController(window)
     controller._pending_retry_cache_key = "some_key"
+    controller._youtube_stop_requested = True
 
     controller._handle_tracks_downloaded("user", [])
 
     assert controller._pending_retry_cache_key is None
+    assert "YouTube work stopped" in window.feedback_log.toPlainText()
 
 
 def test_controller_handle_tracks_downloaded_continues_bulk_download(qapp, tmp_path) -> None:
@@ -2736,19 +2744,137 @@ def test_controller_retires_download_worker_and_starts_remaining_queue(
     assert starts == ["user"]
 
 
-def test_controller_stop_downloads_sets_each_current_worker_event(qapp, tmp_path) -> None:
+def test_controller_stop_youtube_work_stops_current_lookup_and_download_workers(
+    qapp, tmp_path
+) -> None:
     window = MainWindow()
     window.set_username("user")
     repository = JsonTrackRepository(data_dir=tmp_path)
     controller = ApplicationController(window, repository=repository)
     current = DownloadTracksWorker("user", controller.download_manager, repository)
+    lookup = LookupTracksWorker("user", controller.youtube_resolver, repository)
     other = DownloadTracksWorker("other", controller.download_manager, repository)
-    controller._active_workers.extend([current, other])
+    controller._active_workers.extend([current, lookup, other])
 
-    controller.stop_downloads()
+    controller.stop_youtube_work()
 
     assert current._stop_event.is_set()
+    assert lookup._stop_event.is_set()
     assert not other._stop_event.is_set()
+    assert window._youtube_work_stopping
+    assert not window.youtube_work_button.isEnabled()
+
+    controller._update_youtube_work_state("user")
+
+    assert window._youtube_work_stopping
+
+
+def test_controller_offers_resume_after_stopped_youtube_work_finishes(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks("user", [Track(artist="Artist", title="Track")])
+    controller = ApplicationController(window, repository=repository)
+    worker = LookupTracksWorker("user", controller.youtube_resolver, repository)
+    controller._active_workers.append(worker)
+
+    controller.stop_youtube_work()
+    assert window._youtube_work_stopping
+
+    controller._forget_worker(worker)
+
+    assert window._youtube_work_stopped
+    assert window.youtube_work_button.isEnabled()
+    assert window.youtube_work_button.text() == "Resume YouTube"
+
+
+def test_controller_resume_youtube_work_continues_lookup_then_download(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    controller = ApplicationController(window, repository=repository)
+    lookups: list[tuple[str, int]] = []
+    downloads: list[str] = []
+    controller._start_automatic_lookup = (  # type: ignore[method-assign]
+        lambda username, count: lookups.append((username, count))
+    )
+    controller._start_automatic_download = downloads.append  # type: ignore[method-assign]
+    controller._youtube_stop_requested = True
+
+    repository.save_tracks("user", [Track(artist="Artist", title="Unresolved")])
+    controller._resume_youtube_work()
+
+    assert lookups == [("user", 1)]
+    assert downloads == []
+    assert not controller._youtube_stop_requested
+
+    repository.save_tracks(
+        "user",
+        [
+            Track(
+                artist="Artist",
+                title="Queued",
+                youtube_url="https://youtu.be/result",
+                status=TrackStatus.QUEUED,
+            )
+        ],
+    )
+    controller._resume_youtube_work()
+
+    assert downloads == ["user"]
+
+
+def test_controller_resume_youtube_work_reports_when_queue_is_empty(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("user")
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+    )
+
+    controller._resume_youtube_work()
+
+    assert "No YouTube work remains to resume." in window.feedback_log.toPlainText()
+    assert not window.youtube_work_button.isEnabled()
+
+
+def test_controller_resume_youtube_work_ignores_missing_username(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    controller._youtube_stop_requested = True
+
+    controller._resume_youtube_work()
+
+    assert controller._youtube_stop_requested
+
+
+def test_controller_explicit_stop_blocks_youtube_followup_work(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.set_username("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    queued = Track(
+        artist="Artist",
+        title="Track",
+        youtube_url="https://youtu.be/result",
+        status=TrackStatus.QUEUED,
+    )
+    repository.save_tracks("user", [queued])
+    controller = ApplicationController(window, repository=repository)
+    controller._youtube_stop_requested = True
+    starts: list[str] = []
+    controller._start_automatic_lookup = (  # type: ignore[method-assign]
+        lambda _username, _count: starts.append("lookup")
+    )
+    controller._start_automatic_download = (  # type: ignore[method-assign]
+        lambda _username: starts.append("download")
+    )
+
+    controller._ensure_automatic_lookup("user", 1)
+    controller._ensure_automatic_download("user")
+    controller._handle_tracks_resolved("user", [queued])
+
+    assert starts == []
+    assert "YouTube work stopped" in window.feedback_log.toPlainText()
 
 
 def test_controller_does_not_auto_download_after_explicit_stop(qapp, tmp_path) -> None:
@@ -2756,7 +2882,7 @@ def test_controller_does_not_auto_download_after_explicit_stop(qapp, tmp_path) -
     controller = ApplicationController(
         window, repository=JsonTrackRepository(data_dir=tmp_path)
     )
-    controller._download_stop_requested = True
+    controller._youtube_stop_requested = True
     starts: list[str] = []
     controller._start_automatic_download = lambda username: starts.append(username)  # type: ignore[method-assign]
 

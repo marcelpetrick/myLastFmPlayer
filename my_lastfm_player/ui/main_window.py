@@ -162,8 +162,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
     fetch_requested = pyqtSignal()
     fetch_pause_requested = pyqtSignal()
     fetch_stop_requested = pyqtSignal()
-    download_requested = pyqtSignal()
-    download_stop_requested = pyqtSignal()
+    _youtube_resume_requested = pyqtSignal()
+    _youtube_stop_requested = pyqtSignal()
     retry_download_requested = pyqtSignal(str)
     play_requested = pyqtSignal()
     pause_requested = pyqtSignal()
@@ -184,7 +184,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         super().__init__()
         self.translation_manager = translation_manager
         self._fetch_paused = False
-        self._download_active = False
+        self._youtube_work_active = False
+        self._youtube_work_stopped = False
+        self._youtube_work_stopping = False
         self._last_progress_label = "Idle"
         self._last_status_message = "Ready"
         self._playback_duration_ms = 0
@@ -318,10 +320,13 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.fetch_button = QPushButton()
         self.fetch_pause_button = QPushButton()
         self.fetch_stop_button = QPushButton()
+        self.youtube_work_button = QPushButton()
         self.fetch_button.clicked.connect(self.fetch_requested.emit)
         self.fetch_pause_button.clicked.connect(self.fetch_pause_requested.emit)
         self.fetch_stop_button.clicked.connect(self.fetch_stop_requested.emit)
+        self.youtube_work_button.clicked.connect(self._handle_youtube_work_button)
         self.set_fetch_control_state(active=False, paused=False)
+        self.set_youtube_work_state(active=False)
 
         self.track_count_label = QLabel()
 
@@ -336,7 +341,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         layout.addWidget(self.fetch_pause_button, 0, 3)
         layout.addWidget(self.fetch_stop_button, 0, 4)
         layout.addWidget(self.track_count_label, 1, 0)
-        layout.addWidget(self.dependency_label, 1, 1, 1, 4)
+        layout.addWidget(self.dependency_label, 1, 1, 1, 3)
+        layout.addWidget(self.youtube_work_button, 1, 4)
 
         return frame
 
@@ -576,10 +582,46 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             self.fetch_pause_button.setToolTip(self.tr("Pause the active Last.fm fetch"))
         self.fetch_stop_button.setToolTip(self.tr("Stop the active Last.fm fetch"))
 
-    def set_download_active(self, active: bool) -> None:
-        """Track whether the automatic bulk download worker is active."""
+    def set_youtube_work_state(
+        self,
+        *,
+        active: bool,
+        stopping: bool = False,
+        stopped: bool = False,
+    ) -> None:
+        """Show whether YouTube checks/downloads can be stopped or resumed."""
 
-        self._download_active = active
+        self._youtube_work_active = active
+        self._youtube_work_stopping = stopping
+        self._youtube_work_stopped = stopped
+        self.youtube_work_button.setEnabled((active or stopped) and not stopping)
+        self._update_youtube_work_button_text()
+
+    def _handle_youtube_work_button(self) -> None:
+        if self._youtube_work_active:
+            self._youtube_stop_requested.emit()
+        elif self._youtube_work_stopped:
+            self._youtube_resume_requested.emit()
+
+    def _update_youtube_work_button_text(self) -> None:
+        if self._youtube_work_stopping:
+            text = self.tr("Stopping YouTube…")
+        elif self._youtube_work_stopped:
+            text = self.tr("Resume YouTube")
+        else:
+            text = self.tr("Stop YouTube")
+        self.youtube_work_button.setText(text)
+        self.youtube_work_button.setToolTip(
+            self.tr("Stop or resume YouTube checks and downloads")
+        )
+
+    def _update_fetch_button_text(self) -> None:
+        self.fetch_button.setText(self.tr("Fetch"))
+        self.fetch_button.setToolTip(
+            self.tr(
+                "Fetch loved tracks, then automatically check and download them from YouTube"
+            )
+        )
 
     def set_workflow_enabled(self, enabled: bool) -> None:
         """Enable or disable controls that start long-running workflows."""
@@ -1062,7 +1104,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.help_menu.setTitle(self.tr("Help"))
         self.username_label.setText(self.tr("Last.fm username"))
         self.username_input.setPlaceholderText(self.tr("Enter username"))
-        self.fetch_button.setText(self.tr("Fetch"))
+        self._update_fetch_button_text()
+        self._update_youtube_work_button_text()
         self.track_filter_label.setText(self.tr("Filter"))
         self.track_filter_input.setPlaceholderText(self.tr("Artist or track title"))
         self.track_filter_reset_button.setText(self.tr("Reset"))

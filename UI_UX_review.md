@@ -78,7 +78,7 @@ names the library and Last.fm session explicitly and explains that disabling ret
 deletes track lists, lookup/download caches, and authentication while keeping audio files.
 The persisted opt-out remains available for users who intentionally want cleanup on quit.
 
-### 3. HIGH — Users cannot stop the automatic YouTube workflow from the UI
+### 3. HIGH — Users cannot stop the automatic YouTube workflow from the UI — Fixed in v0.0.164
 
 Evidence: `my_lastfm_player/ui/main_window.py:165`, `:314`, and `:573`;
 `my_lastfm_player/controller.py:686` and `:1402`.
@@ -95,6 +95,11 @@ Fetch that discovering tracks also starts YouTube checks and downloads.
 
 Acceptance: stop with five operations active, verify that no new operations start, and
 resume remaining items without changing usernames or restarting the app.
+
+Fixed in v0.0.164: the source panel exposes a Stop YouTube control whenever lookup or
+download workers are active. It cooperatively stops both kinds of worker, blocks automatic
+follow-up work, retains completed items, and shows a disabled stopping state until all active
+work exits. The same control then offers Resume YouTube when unresolved or queued items remain.
 
 ### 4. MEDIUM — Some network operations still block the UI thread
 

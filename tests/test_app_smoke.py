@@ -52,8 +52,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.163"
-    assert __display_version__ == "0.0.163"
+    assert __version__ == "0.0.164"
+    assert __display_version__ == "0.0.164"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -823,14 +823,27 @@ def test_rich_text_dialog_uses_larger_scrollable_layout_for_long_text(qapp, monk
     assert text_browser.verticalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAsNeeded
 
 
-def test_main_window_download_active_tracks_internal_state(qapp) -> None:
+def test_main_window_youtube_button_stops_and_resumes_work(qapp) -> None:
     window = MainWindow()
+    events: list[str] = []
+    window._youtube_stop_requested.connect(lambda: events.append("stop"))
+    window._youtube_resume_requested.connect(lambda: events.append("resume"))
 
-    window.set_download_active(True)
-    assert window._download_active
+    assert not window.youtube_work_button.isEnabled()
+    assert "automatically" in window.fetch_button.toolTip()
+    window.set_youtube_work_state(active=True)
+    assert window.youtube_work_button.text() == "Stop YouTube"
+    window.youtube_work_button.click()
 
-    window.set_download_active(False)
-    assert not window._download_active
+    window.set_youtube_work_state(active=True, stopping=True)
+    assert window.youtube_work_button.text() == "Stopping YouTube…"
+    assert not window.youtube_work_button.isEnabled()
+
+    window.set_youtube_work_state(active=False, stopped=True)
+    assert window.youtube_work_button.text() == "Resume YouTube"
+    window.youtube_work_button.click()
+
+    assert events == ["stop", "resume"]
 
 
 def test_main_window_workflow_enabled_toggles_fetch_controls(qapp) -> None:

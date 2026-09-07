@@ -264,6 +264,21 @@ def test_lookup_worker_emits_error_and_finished(tmp_path: Path) -> None:
     assert finished_events == [True]
 
 
+def test_lookup_worker_reports_cancellation_without_false_completion(tmp_path: Path) -> None:
+    worker = LookupTracksWorker(
+        "example",
+        FakeResolver(),  # type: ignore[arg-type]
+        JsonTrackRepository(data_dir=tmp_path),
+    )
+    progress_events: list[tuple[int, str]] = []
+    worker.progress.connect(lambda value, label: progress_events.append((value, label)))
+
+    worker.stop_lookup()
+    worker.run()
+
+    assert progress_events[-1] == (0, "YouTube lookup stopped")
+
+
 class FakeDownloadManager:
     def __init__(self, tracks: list[Track] | None = None, error: Exception | None = None) -> None:
         self.tracks = tracks or []

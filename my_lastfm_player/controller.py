@@ -117,7 +117,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._fetch_paused = False
         self._started_incremental_lookup_for_fetch = False
         self._download_worker_active = False
-        self._download_stop_requested = False
+        self._youtube_stop_requested = False
         self._playback_callbacks_connected = False
         self._scrobbling_service: ScrobblingService | None = None
         self._scrobble_submitted = False
@@ -146,8 +146,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         )
         self.window.fetch_pause_requested.connect(self.toggle_fetch_pause)
         self.window.fetch_stop_requested.connect(self.stop_fetch)
-        self.window.download_requested.connect(self.download_tracks)
-        self.window.download_stop_requested.connect(self.stop_downloads)
+        self.window._youtube_resume_requested.connect(self._resume_youtube_work)
+        self.window._youtube_stop_requested.connect(self.stop_youtube_work)
         self.window.retry_download_requested.connect(self.retry_track_download)
         self.window.play_requested.connect(self.play_selected_track)
         self.window.pause_requested.connect(self.pause_playback)
@@ -282,8 +282,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._started_incremental_lookup_for_fetch = False
         self._pending_lookup_users.discard(username)
         self._download_worker_active = False
-        self._download_stop_requested = False
-        self.window.set_download_active(False)
+        self._youtube_stop_requested = False
+        self.window.set_youtube_work_state(active=False)
         if cancelled:
             self._report_user_action(
                 translate(
@@ -606,6 +606,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 )
             )
             return
+        self._youtube_stop_requested = False
         if self.load_cached_tracks_for_entered_username(verify_online_count=True):
             self.window.set_fetch_control_state(active=False, paused=False)
             self.window.set_progress(
@@ -794,11 +795,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             priority_cache_key,
             max_downloads,
         )
-        self._download_stop_requested = False
         self._run_worker(worker)
         if priority_cache_key is None:
             self._download_worker_active = True
-            self.window.set_download_active(True)
 
     def play_selected_track(self) -> None:
         """Play the selected track or prepare it for playback when needed."""
@@ -995,6 +994,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
 
         self._active_threads.append(thread)
         self._active_workers.append(worker)
+        if isinstance(worker, (LookupTracksWorker, DownloadTracksWorker)):
+            self.window.set_youtube_work_state(active=True)
         LOGGER.info(
             "Starting thread for %s; active_threads=%d active_workers=%d",
             worker_name,
@@ -1159,17 +1160,27 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         not_found_count = sum(
             1 for t in current_tracks if t.status is TrackStatus.NOT_FOUND
         )
-        self._report_user_action(
-            translate(
-                "ApplicationController",
-                "Resolved YouTube URLs for {resolved_count}/{count} tracks; "
-                "{not_found_count} were not found.",
-                count=len(current_tracks),
-                resolved_count=resolved_count,
-                not_found_count=not_found_count,
+        if self._youtube_stop_requested:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "YouTube work stopped; completed items remain saved.",
+                )
             )
-        )
+        else:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Resolved YouTube URLs for {resolved_count}/{count} tracks; "
+                    "{not_found_count} were not found.",
+                    count=len(current_tracks),
+                    resolved_count=resolved_count,
+                    not_found_count=not_found_count,
+                )
+            )
         LOGGER.info("Loaded %s resolved tracks into UI for %s", len(current_tracks), username)
+        if self._youtube_stop_requested:
+            return
         if self._pending_play_cache_key and self._track_has_youtube_url(
             current_tracks,
             self._pending_play_cache_key,
@@ -1191,10 +1202,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         if not self._is_current_workflow_username(username):
             return
         was_bulk = self._download_worker_active
-        stop_was_requested = self._download_stop_requested
+        stop_was_requested = self._youtube_stop_requested
         self._download_worker_active = False
-        self._download_stop_requested = stop_was_requested
-        self.window.set_download_active(False)
+        self._youtube_stop_requested = stop_was_requested
         if not isinstance(tracks, list):
             self.window.append_feedback(
                 translate(
@@ -1216,17 +1226,25 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         failed_count = sum(
             1 for t in current_tracks if t.status is TrackStatus.FAILED
         )
-        self._report_user_action(
-            translate(
-                "ApplicationController",
-                "Download run for {username} finished: "
-                "{downloaded_count}/{count} tracks downloaded, {failed_count} failed.",
-                count=len(current_tracks),
-                username=username,
-                downloaded_count=downloaded_count,
-                failed_count=failed_count,
+        if stop_was_requested:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "YouTube work stopped; completed items remain saved.",
+                )
             )
-        )
+        else:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Download run for {username} finished: "
+                    "{downloaded_count}/{count} tracks downloaded, {failed_count} failed.",
+                    count=len(current_tracks),
+                    username=username,
+                    downloaded_count=downloaded_count,
+                    failed_count=failed_count,
+                )
+            )
         LOGGER.info("Loaded %s downloaded tracks into UI for %s", len(current_tracks), username)
         if self._pending_play_cache_key:
             self._play_prepared_track(self._pending_play_cache_key)
@@ -1364,6 +1382,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 )
             )
             return
+        self._youtube_stop_requested = False
         self._pending_play_cache_key = track.cache_key
         self._save_visible_tracks()
         self._report_user_action(
@@ -1393,25 +1412,67 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.resolve_youtube_urls(username)
 
     def _ensure_automatic_lookup(self, username: str, track_count: int) -> None:
+        if self._youtube_stop_requested:
+            return
         if self._has_active_lookup_worker(username):
             self._pending_lookup_users.add(username)
             return
         self._pending_lookup_users.discard(username)
         self._start_automatic_lookup(username, track_count)
 
-    def stop_downloads(self) -> None:
-        """Cancel the current user's download operations and clear their UI state."""
+    def stop_youtube_work(self) -> None:
+        """Cancel current YouTube checks/downloads and retain completed items."""
 
         self._download_worker_active = False
-        self._download_stop_requested = True
+        self._youtube_stop_requested = True
         username = self.window.username()
+        stopped_worker = False
         for worker in tuple(self._active_workers):
-            if isinstance(worker, DownloadTracksWorker) and worker.username == username:
+            if worker.username != username:
+                continue
+            if isinstance(worker, LookupTracksWorker):
+                worker.stop_lookup()
+                stopped_worker = True
+            elif isinstance(worker, DownloadTracksWorker):
                 worker.stop_download()
-        self.window.set_download_active(False)
-        self._report_user_action(
-            translate("ApplicationController", "Downloads stopped by user.")
+                stopped_worker = True
+        self._pending_lookup_users.discard(username)
+        self._pending_play_cache_key = None
+        self._pending_retry_cache_key = None
+        self.window.set_youtube_work_state(
+            active=stopped_worker,
+            stopping=stopped_worker,
         )
+        self._report_user_action(
+            translate(
+                "ApplicationController",
+                "Stopping YouTube checks and downloads; completed items remain saved.",
+            )
+        )
+
+    def _resume_youtube_work(self) -> None:
+        """Resume unresolved checks or queued downloads for the current user."""
+
+        username = self.window.username()
+        if not username:
+            return
+        self._youtube_stop_requested = False
+        self.window.set_youtube_work_state(active=False)
+        tracks = self.repository.load_tracks(username)
+        self._report_user_action(
+            translate("ApplicationController", "Resuming YouTube work.")
+        )
+        if self._has_lookup_candidates(tracks):
+            self._ensure_automatic_lookup(username, len(tracks))
+        elif self._has_download_candidates(tracks):
+            self._ensure_automatic_download(username)
+        else:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "No YouTube work remains to resume.",
+                )
+            )
 
     def retry_track_download(self, cache_key: str) -> None:
         """Reset a track's state and trigger priority lookup + download for it."""
@@ -1429,6 +1490,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         track = next((t for t in tracks if t.cache_key == cache_key), None)
         if track is None:
             return
+        self._youtube_stop_requested = False
         if track.status in {
             TrackStatus.NOT_FOUND,
             TrackStatus.LOOKUP_FAILED,
@@ -1468,6 +1530,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.download_tracks(username)
 
     def _ensure_automatic_download(self, username: str) -> None:
+        if self._youtube_stop_requested:
+            return
         if self._download_worker_active or self._has_active_download_worker(username):
             return
         self._start_automatic_download(username)
@@ -1491,7 +1555,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         if self._pending_retry_cache_key == track.cache_key:
             self._start_priority_download(username, track.cache_key)
             return
-        if not self._download_stop_requested:
+        if not self._youtube_stop_requested:
             self._ensure_automatic_download(username)
 
     def _has_download_candidates(self, tracks: list[Track]) -> bool:
@@ -1678,6 +1742,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             username == self._workflow_username
             and worker_generation == self._workflow_generation
             and isinstance(worker, LookupTracksWorker)
+            and not self._youtube_stop_requested
         ):
             tracks = self.repository.load_tracks(username)
             if username in self._pending_lookup_users:
@@ -1692,9 +1757,32 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             and isinstance(worker, DownloadTracksWorker)
         ):
             tracks = self.repository.load_tracks(username)
-            if self._has_download_candidates(tracks) and not self._download_stop_requested:
+            if self._has_download_candidates(tracks) and not self._youtube_stop_requested:
                 self._ensure_automatic_download(username)
+        if (
+            isinstance(worker, (LookupTracksWorker, DownloadTracksWorker))
+            and username == self._workflow_username
+            and worker_generation == self._workflow_generation
+        ):
+            self._update_youtube_work_state(username)
         LOGGER.info("Worker released; active_workers=%d", len(self._active_workers))
+
+    def _update_youtube_work_state(self, username: str) -> None:
+        active = self._has_active_lookup_worker(username) or self._has_active_download_worker(
+            username
+        )
+        if active:
+            self.window.set_youtube_work_state(
+                active=True,
+                stopping=self._youtube_stop_requested,
+            )
+            return
+        tracks = self.repository.load_tracks(username)
+        resumable = self._has_lookup_candidates(tracks) or self._has_download_candidates(tracks)
+        self.window.set_youtube_work_state(
+            active=False,
+            stopped=self._youtube_stop_requested and resumable,
+        )
 
     @staticmethod
     def _has_lookup_candidates(tracks: list[Track]) -> bool:

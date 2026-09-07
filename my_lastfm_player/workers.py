@@ -206,14 +206,20 @@ class LookupTracksWorker(QObject):
                 concurrency=self.concurrency,
                 stop_event=self._stop_event,
             )
-            self.progress.emit(
-                100,
-                translate(
-                    "LookupTracksWorker",
-                    "Resolved {count} tracks",
-                    count=len(tracks),
-                ),
-            )
+            if self._stop_event.is_set():
+                self.progress.emit(
+                    0,
+                    translate("LookupTracksWorker", "YouTube lookup stopped"),
+                )
+            else:
+                self.progress.emit(
+                    100,
+                    translate(
+                        "LookupTracksWorker",
+                        "Resolved {count} tracks",
+                        count=len(tracks),
+                    ),
+                )
             self.tracks_resolved.emit(self.username, tracks)
         except Exception as error:  # noqa: BLE001 - worker boundary must report all failures.
             LOGGER.exception("YouTube lookup failed for %s", self.username)
