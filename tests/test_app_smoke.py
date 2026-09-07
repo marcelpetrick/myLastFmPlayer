@@ -52,8 +52,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.165"
-    assert __display_version__ == "0.0.165"
+    assert __version__ == "0.0.166"
+    assert __display_version__ == "0.0.166"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -954,7 +954,12 @@ def test_artist_image_does_not_expand_controls_or_collapse_library(qapp) -> None
     qapp.processEvents()
 
     assert window.playback_group.height() == controls_height
-    assert window.artist_image_group.height() <= controls_height
+    assert (
+        window.artist_image_group.sizePolicy().verticalPolicy()
+        == QSizePolicy.Policy.Fixed
+    )
+    assert window.playback_group.sizePolicy().verticalPolicy() == QSizePolicy.Policy.Fixed
+    assert window.artist_image_group.width() == main_window_module.ARTIST_IMAGE_PANEL_WIDTH
     assert window.track_table.height() == table_height
 
 
