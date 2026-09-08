@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from pathlib import Path
+from threading import Event
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -20,10 +21,29 @@ from my_lastfm_player.settings import AppSettings
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.ui.main_window import MainWindow
 from my_lastfm_player.workers import (
+    BackgroundCallWorker,
     DownloadTracksWorker,
     FetchLovedTracksWorker,
     LookupTracksWorker,
 )
+
+
+def run_background_workers_inline(controller: ApplicationController) -> None:
+    """Make service-call workers deterministic for focused controller tests."""
+
+    def start(
+        worker: BackgroundCallWorker,
+        on_result=None,
+        on_error=None,
+    ) -> None:
+        controller._background_callbacks[worker] = (on_result, on_error)
+        worker.result.connect(controller._handle_background_result)
+        worker.failed.connect(controller._handle_background_error)
+        worker.finished.connect(controller._forget_background_worker)
+        controller._active_background_workers.append(worker)
+        worker.run()
+
+    controller._start_background_worker = start  # type: ignore[method-assign]
 
 
 class FakeScrobbleNetwork:
@@ -56,6 +76,7 @@ def scrobbling_controller(window, playback) -> tuple[ApplicationController, list
     service.try_connect()
     controller = ApplicationController(window, playback_service=playback)  # type: ignore[arg-type]
     controller._scrobbling_service = service
+    run_background_workers_inline(controller)
     return controller, scrobbles
 
 
@@ -162,10 +183,11 @@ class FakeArtistImageWorker:
         self.deleted = True
 
 
-def test_controller_start_connects_fetch_signal_and_checks_dependencies(qapp) -> None:
+def test_controller_start_connects_fetch_signal_and_checks_dependencies(qapp, tmp_path) -> None:
     window = MainWindow()
     controller = ApplicationController(
         window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
         dependency_checker=lambda: DependencyCheckResult(installed=("ffmpeg",), missing=()),
     )
 
@@ -189,7 +211,7 @@ def test_controller_reports_missing_dependencies(qapp) -> None:
     assert "🔴 Missing dependencies: yt-dlp" in window.feedback_log.toPlainText()
 
 
-def test_controller_retranslates_dependency_label_on_language_change(qapp) -> None:
+def test_controller_retranslates_dependency_label_on_language_change(qapp, tmp_path) -> None:
     call_count = 0
 
     def counting_checker() -> DependencyCheckResult:
@@ -198,7 +220,11 @@ def test_controller_retranslates_dependency_label_on_language_change(qapp) -> No
         return DependencyCheckResult(installed=("ffmpeg",), missing=())
 
     window = MainWindow()
-    ApplicationController(window, dependency_checker=counting_checker).start()
+    ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        dependency_checker=counting_checker,
+    ).start()
     calls_after_start = call_count
 
     window.language_changed.emit()
@@ -447,6 +473,7 @@ def test_controller_loads_cached_tracks_without_fetching(qapp, tmp_path) -> None
     )
     workers: list[object] = []
     controller._run_worker = workers.append  # type: ignore[method-assign]
+    run_background_workers_inline(controller)
 
     controller.fetch_loved_tracks()
 
@@ -470,6 +497,7 @@ def test_controller_fetches_fresh_tracks_when_online_count_differs(qapp, tmp_pat
     )
     workers: list[object] = []
     controller._run_worker = workers.append  # type: ignore[method-assign]
+    run_background_workers_inline(controller)
 
     controller.fetch_loved_tracks()
 
@@ -492,6 +520,7 @@ def test_controller_fetches_fresh_tracks_when_online_count_is_unknown(qapp, tmp_
     )
     workers: list[object] = []
     controller._run_worker = workers.append  # type: ignore[method-assign]
+    run_background_workers_inline(controller)
 
     controller.fetch_loved_tracks()
 
@@ -508,10 +537,11 @@ def test_controller_uses_cache_when_online_count_check_fails(qapp, tmp_path) -> 
     controller = ApplicationController(
         window,
         repository=repository,
-        scraper=CountCheckingScraper(controller_module.LastFmError("network down")),  # type: ignore[arg-type]
+        scraper=CountCheckingScraper(RuntimeError("network down")),  # type: ignore[arg-type]
     )
     workers: list[object] = []
     controller._run_worker = workers.append  # type: ignore[method-assign]
+    run_background_workers_inline(controller)
 
     controller.fetch_loved_tracks()
 
@@ -525,7 +555,7 @@ def test_controller_aborts_fresh_fetch_when_lastfm_is_unreachable(qapp, tmp_path
     window.username_input.setText("example")
     repository = JsonTrackRepository(data_dir=tmp_path)
     # No tracks saved — no cache, so pre-flight runs.
-    scraper = CountCheckingScraper(controller_module.LastFmError("user not found"))
+    scraper = CountCheckingScraper(RuntimeError("user not found"))
     controller = ApplicationController(
         window,
         repository=repository,
@@ -533,6 +563,7 @@ def test_controller_aborts_fresh_fetch_when_lastfm_is_unreachable(qapp, tmp_path
     )
     workers: list[object] = []
     controller._run_worker = workers.append  # type: ignore[method-assign]
+    run_background_workers_inline(controller)
 
     controller.fetch_loved_tracks()
 
@@ -554,6 +585,7 @@ def test_controller_shows_expected_count_before_fresh_fetch(qapp, tmp_path) -> N
     )
     workers: list[object] = []
     controller._run_worker = workers.append  # type: ignore[method-assign]
+    run_background_workers_inline(controller)
 
     controller.fetch_loved_tracks()
 
@@ -576,12 +608,98 @@ def test_controller_skips_preflight_when_cache_count_already_checked(qapp, tmp_p
     )
     workers: list[object] = []
     controller._run_worker = workers.append  # type: ignore[method-assign]
+    run_background_workers_inline(controller)
 
     controller.fetch_loved_tracks()
 
     # fetch_loved_track_count called once only (from cache check, not again in pre-flight)
     assert scraper.checked_usernames == ["example"]
     assert len(workers) == 1
+
+
+def test_fetch_preflight_keeps_username_editing_responsive(qapp, tmp_path) -> None:
+    started = Event()
+    release = Event()
+
+    class BlockingCountScraper:
+        def fetch_loved_track_count(self, username: str) -> int:
+            started.set()
+            release.wait(timeout=2)
+            return 1
+
+    window = MainWindow()
+    window.username_input.setText("first-user")
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        scraper=BlockingCountScraper(),  # type: ignore[arg-type]
+    )
+    window.username_input.textEdited.connect(controller._handle_username_text_edited)
+
+    controller.fetch_loved_tracks()
+
+    assert started.wait(timeout=1)
+    assert window.username_input.isEnabled()
+    assert window.fetch_stop_button.isEnabled()
+    assert not window.fetch_pause_button.isEnabled()
+
+    window.username_input.setFocus()
+    QTest.keyClick(window.username_input, Qt.Key.Key_A, Qt.KeyboardModifier.ControlModifier)
+    QTest.keyClicks(window.username_input, "second-user")
+
+    assert window.username() == "second-user"
+    assert controller._active_fetch_preflight is None
+    assert window.fetch_button.isEnabled()
+
+    release.set()
+    QTest.qWait(20)
+    assert controller._active_fetch_worker is None
+
+
+def test_fetch_preflight_rejects_duplicate_and_can_be_stopped(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("example")
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+        scraper=CountCheckingScraper(1),  # type: ignore[arg-type]
+    )
+    pending_workers: list[BackgroundCallWorker] = []
+    controller._start_background_worker = (  # type: ignore[method-assign]
+        lambda worker, _on_result=None, _on_error=None: pending_workers.append(worker)
+    )
+
+    controller.fetch_loved_tracks()
+    controller.fetch_loved_tracks()
+
+    assert len(pending_workers) == 1
+    assert "already running" in window.feedback_log.toPlainText()
+
+    controller.stop_fetch()
+
+    assert pending_workers[0].is_cancelled
+    assert controller._active_fetch_preflight is None
+    assert window.fetch_button.isEnabled()
+
+
+def test_stale_fetch_preflight_callbacks_are_ignored(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("current")
+    controller = ApplicationController(
+        window,
+        repository=JsonTrackRepository(data_dir=tmp_path),
+    )
+    controller._workflow_username = "current"
+    controller._workflow_generation = 2
+    controller._active_fetch_preflight = BackgroundCallWorker(lambda: 1)
+    started: list[object] = []
+    controller._start_fresh_fetch = lambda *_args: started.append(True)  # type: ignore[method-assign]
+
+    controller._handle_fetch_preflight_result("old", 1, [], 1)
+    controller._handle_fetch_preflight_error("old", 1, [], RuntimeError("late"))
+
+    assert started == []
+    assert controller._active_fetch_preflight is not None
 
 
 def test_controller_rejects_empty_username_for_lookup(qapp) -> None:
@@ -1672,6 +1790,7 @@ def test_controller_starts_fetch_lookup_and_download_workers(
         workers.append((worker.__class__.__name__, worker))
 
     controller._run_worker = fake_run_worker  # type: ignore[method-assign]
+    run_background_workers_inline(controller)
 
     controller.fetch_loved_tracks()
     controller.resolve_youtube_urls(priority_cache_key="track", max_tracks=1)
@@ -1969,20 +2088,7 @@ def test_controller_load_cached_tracks_returns_false_for_empty_username(qapp) ->
     assert result is False
 
 
-def test_controller_load_cached_tracks_reports_when_no_cached_tracks_and_verify(
-    qapp, tmp_path
-) -> None:
-    window = MainWindow()
-    window.username_input.setText("user")
-    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
-
-    result = controller.load_cached_tracks_for_entered_username(verify_online_count=True)
-
-    assert result is False
-    assert "No cached tracks found for user" in window.feedback_log.toPlainText()
-
-
-def test_controller_load_cached_tracks_returns_false_without_verify_message(
+def test_controller_load_cached_tracks_returns_false_when_cache_is_empty(
     qapp,
     tmp_path,
 ) -> None:
@@ -1996,7 +2102,7 @@ def test_controller_load_cached_tracks_returns_false_without_verify_message(
     assert "No cached tracks found" not in window.feedback_log.toPlainText()
 
 
-def test_controller_load_cached_tracks_uses_cache_without_online_verify(
+def test_controller_load_cached_tracks_uses_cache(
     qapp,
     tmp_path,
 ) -> None:
@@ -2014,23 +2120,16 @@ def test_controller_load_cached_tracks_uses_cache_without_online_verify(
     assert "checking Last.fm before using them" not in window.feedback_log.toPlainText()
 
 
-def test_controller_load_cached_tracks_reports_count_when_verify_and_tracks_present(
-    qapp, tmp_path
-) -> None:
+def test_controller_ignores_unchanged_committed_username_edit(qapp) -> None:
     window = MainWindow()
-    window.username_input.setText("user")
-    repository = JsonTrackRepository(data_dir=tmp_path)
-    repository.save_tracks("user", [Track(artist="A", title="T")])
-    controller = ApplicationController(
-        window,
-        repository=repository,
-        scraper=CountCheckingScraper(1),  # type: ignore[arg-type]
-    )
+    window.set_username("user")
+    controller = ApplicationController(window)
+    generation = controller._workflow_generation
 
-    result = controller.load_cached_tracks_for_entered_username(verify_online_count=True)
+    controller._handle_username_text_edited(" user ")
 
-    assert result is True
-    assert "Found 1 cached tracks for user" in window.feedback_log.toPlainText()
+    assert controller._workflow_generation == generation
+    assert controller._workflow_username == "user"
 
 
 def test_controller_does_not_reload_cache_while_fresh_fetch_is_active(qapp, tmp_path) -> None:
@@ -2087,9 +2186,41 @@ def test_controller_init_scrobbling_reports_session_key_not_verified(
         ),
     )
     controller = ApplicationController(window, repository=repository)
+    run_background_workers_inline(controller)
     controller._init_scrobbling()
 
     assert "could not be verified" in window.feedback_log.toPlainText()
+
+
+def test_controller_reports_successful_and_failed_session_verification(qapp) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    controller._scrobbling_service = SimpleNamespace(username="listener")  # type: ignore[assignment]
+
+    controller._handle_scrobbling_connect_result(True)
+    controller._handle_scrobbling_connect_error(RuntimeError("offline"))
+
+    feedback = window.feedback_log.toPlainText()
+    assert "Connected Last.fm scrobbling as listener" in feedback
+    assert "could not be verified" in feedback
+
+
+def test_controller_background_call_cleanup_and_unhandled_error(qapp, caplog) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window)
+    worker = BackgroundCallWorker(lambda: None)
+    controller._active_background_workers.append(worker)
+    controller._active_fetch_preflight = worker
+    controller._fetch_preflight_username = "example"
+
+    controller._handle_background_result(worker, 42)
+    controller._handle_background_error(worker, RuntimeError("offline"))
+    controller._forget_background_worker(worker)
+
+    assert "Background service call failed: offline" in caplog.text
+    assert controller._active_background_workers == []
+    assert controller._active_fetch_preflight is None
+    assert controller._fetch_preflight_username is None
 
 
 def test_controller_save_scrobbling_credentials_without_service(qapp, tmp_path) -> None:

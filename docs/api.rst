@@ -116,6 +116,9 @@ Workers
 
 .. automodule:: my_lastfm_player.workers
    :members:
+   :exclude-members: artist_image_loaded, error, failed, fetch_stopped, finished,
+      progress, result, track_updated, tracks_downloaded, tracks_loaded,
+      tracks_resolved, tracks_updated
 
 YouTube
 -------

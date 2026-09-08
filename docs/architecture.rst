@@ -299,16 +299,17 @@ exception: a track may leave ``NOT FOUND`` once a lookup finally produces a URL.
 Worker Lifecycle
 ----------------
 
-Long-running network and I/O operations run on dedicated ``QThread`` instances
-to keep the UI responsive. The controller owns both the thread and the worker;
-the worker is moved to the thread before the thread starts (Qt's
-``moveToThread`` pattern). Progress and completion signals cross back to the
-main thread through Qt's queued connections.
+Long-running workflows run on dedicated ``QThread`` instances. The controller owns
+both the thread and worker and uses Qt's ``moveToThread`` pattern. Short blocking
+service calls run through ``BackgroundCallWorker`` on daemon threads. Both paths send
+results to the main thread through queued Qt signals, keeping UI handlers responsive.
 
-Cache-count verification and the first-user existence preflight are short,
-timeout-bounded Last.fm requests made by the controller before it launches the bulk
-fetch worker. The paginated fetch, artwork retrieval, lookup, download, and probing
-paths use workers.
+Cache-count verification, first-user preflight, stored-session verification,
+authentication, now-playing updates, and scrobble submission all use the service-call
+worker boundary. Paginated fetching, artwork retrieval, lookup, download, and probing
+use their dedicated workers. Late preflight results are discarded after cancellation
+or a username-generation change; authentication generations likewise prevent an old
+verification from reconnecting a deliberately disconnected session.
 
 Last.fm pages feed YouTube lookup as they arrive, and resolved tracks feed downloading
 without waiting for the lookup batch to finish. One shared coordinator, restricted to

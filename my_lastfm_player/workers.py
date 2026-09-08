@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from threading import Event
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
@@ -14,6 +15,45 @@ from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.youtube import DEFAULT_LOOKUP_CONCURRENCY, YouTubeResolver
 
 LOGGER = logging.getLogger(__name__)
+
+
+class BackgroundCallWorker(QObject):
+    """Run one blocking callable away from the Qt UI thread."""
+
+    result = pyqtSignal(object, object)
+    failed = pyqtSignal(object, object)
+    finished = pyqtSignal(object)
+
+    def __init__(self, operation: Callable[[], object]) -> None:
+        super().__init__()
+        self.operation = operation
+        self._cancelled = Event()
+
+    @property
+    def is_cancelled(self) -> bool:
+        """Return whether delivery of this call's result was cancelled."""
+
+        return self._cancelled.is_set()
+
+    @pyqtSlot()
+    def run(self) -> None:
+        """Execute the callable and report its result or exception."""
+
+        try:
+            result = self.operation()
+            if not self.is_cancelled:
+                self.result.emit(self, result)
+        except Exception as error:  # noqa: BLE001 - background boundary reports failures.
+            LOGGER.exception("Background call failed")
+            if not self.is_cancelled:
+                self.failed.emit(self, error)
+        finally:
+            self.finished.emit(self)
+
+    def cancel(self) -> None:
+        """Suppress delivery when the blocking operation eventually returns."""
+
+        self._cancelled.set()
 
 
 class ArtistImageWorker(QObject):

@@ -1,7 +1,7 @@
 # Runtime Architecture
 
 This document is the concise, implementation-facing architecture description for
-`myLastFmPlayer` 0.0.166. The rendered C4 diagrams and class reference are in
+`myLastFmPlayer` 0.0.167. The rendered C4 diagrams and class reference are in
 [`docs/architecture.rst`](../docs/architecture.rst) and
 [`docs/api.rst`](../docs/api.rst).
 
@@ -138,8 +138,12 @@ the API's `page` and `totalPages` metadata, applies bounded retry/backoff, and e
 progress plus partial track lists. Fetch has independent Pause/Resume and Stop
 controls.
 
-Before launching a bulk fetch, the controller performs a timeout-bounded cache-count
-check or first-user existence preflight. The paginated fetch itself runs on its worker.
+Before launching a bulk fetch, the controller runs its timeout-bounded cache-count or
+first-user existence preflight on a background service-call worker. The same lightweight
+worker boundary keeps session verification, authentication, now-playing updates, and
+scrobble submission off the UI thread. Generation and authentication-state checks discard
+late results after a username change, stop, re-authentication, or disconnect. The paginated
+fetch itself runs on its dedicated workflow worker.
 
 Each discovered `Track` begins with artist, title, optional Last.fm URL and loved-at
 timestamp, and `Fetched` status. Cache application can immediately advance a track to

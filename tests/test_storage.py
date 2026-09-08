@@ -100,6 +100,32 @@ def test_repository_ignores_a_truncated_journal_entry(tmp_path: Path) -> None:
     assert repository.load_tracks("user") == [track]
 
 
+def test_repository_ignores_non_object_journal_entry(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.tracks_dir.mkdir(parents=True)
+    repository.user_updates_path("user").write_text("[]\n", encoding="utf-8")
+
+    assert repository.load_tracks("user") == []
+
+
+def test_repository_wraps_journal_read_error(tmp_path: Path, monkeypatch) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.tracks_dir.mkdir(parents=True)
+    journal_path = repository.user_updates_path("user")
+    journal_path.write_text("{}\n", encoding="utf-8")
+    original_read_text = Path.read_text
+
+    def read_text(path: Path, *args, **kwargs) -> str:
+        if path == journal_path:
+            raise OSError("denied")
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+
+    with pytest.raises(StorageError, match="Could not read"):
+        repository.load_tracks("user")
+
+
 def test_repository_delete_tracks_removes_only_user_json(tmp_path: Path) -> None:
     repository = JsonTrackRepository(data_dir=tmp_path)
     repository.save_tracks("first", [Track(artist="Artist", title="Title")])

@@ -8,10 +8,74 @@ from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.workers import (
     ArtistImageWorker,
+    BackgroundCallWorker,
     DownloadTracksWorker,
     FetchLovedTracksWorker,
     LookupTracksWorker,
 )
+
+
+def test_background_call_worker_emits_result_and_finished() -> None:
+    worker = BackgroundCallWorker(lambda: 42)
+    results: list[tuple[BackgroundCallWorker, object]] = []
+    finished: list[BackgroundCallWorker] = []
+    worker.result.connect(lambda sender, value: results.append((sender, value)))
+    worker.finished.connect(finished.append)
+
+    worker.run()
+
+    assert results == [(worker, 42)]
+    assert finished == [worker]
+
+
+def test_background_call_worker_emits_failure_and_finished() -> None:
+    def fail() -> object:
+        raise RuntimeError("network failed")
+
+    worker = BackgroundCallWorker(fail)
+    failures: list[tuple[BackgroundCallWorker, Exception]] = []
+    finished: list[BackgroundCallWorker] = []
+    worker.failed.connect(lambda sender, error: failures.append((sender, error)))
+    worker.finished.connect(finished.append)
+
+    worker.run()
+
+    assert len(failures) == 1
+    assert failures[0][0] is worker
+    assert str(failures[0][1]) == "network failed"
+    assert finished == [worker]
+
+
+def test_background_call_worker_cancellation_suppresses_delivery() -> None:
+    worker = BackgroundCallWorker(lambda: 42)
+    results: list[object] = []
+    finished: list[BackgroundCallWorker] = []
+    worker.result.connect(lambda _sender, value: results.append(value))
+    worker.finished.connect(finished.append)
+
+    worker.cancel()
+    worker.run()
+
+    assert worker.is_cancelled
+    assert results == []
+    assert finished == [worker]
+
+
+def test_cancelled_background_call_suppresses_failure_delivery() -> None:
+    def fail() -> object:
+        raise RuntimeError("late failure")
+
+    worker = BackgroundCallWorker(fail)
+    failures: list[Exception] = []
+    finished: list[BackgroundCallWorker] = []
+    worker.failed.connect(lambda _sender, error: failures.append(error))
+    worker.finished.connect(finished.append)
+
+    worker.cancel()
+    worker.run()
+
+    assert failures == []
+    assert finished == [worker]
 
 
 class FakeScraper:

@@ -1,6 +1,6 @@
 # Software Requirements Specification
 
-This is the current product requirements baseline for `myLastFmPlayer` 0.0.166.
+This is the current product requirements baseline for `myLastFmPlayer` 0.0.167.
 It describes the implemented and vetted application rather than an unfinished MVP.
 Runtime design details are in [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md).
 
@@ -157,9 +157,8 @@ state and shall not destroy the durable downloaded state.
 
 ### 4.1 Responsiveness and Performance
 
-- Paginated HTTP fetches, lookup, download, image, and media-probe operations shall
-  execute outside the Qt UI thread; bounded cache-count and first-user preflight calls
-  may run before the fetch worker starts.
+- All network, paginated HTTP fetch, lookup, download, image, and media-probe operations
+  shall execute outside the Qt UI thread.
 - The UI shall stay responsive with libraries of at least 1,000 entries.
 - Incremental results shall be visible without requiring the full pipeline to finish.
 - The configured shared limit shall prevent unbounded external process creation.

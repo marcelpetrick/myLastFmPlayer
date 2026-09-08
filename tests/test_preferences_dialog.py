@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from threading import Event
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtTest import QTest
+
 from my_lastfm_player.scrobbling import ScrobblingService
 from my_lastfm_player.ui import preferences_dialog as preferences_module
 from my_lastfm_player.ui.preferences_dialog import PreferencesDialog
+from my_lastfm_player.workers import BackgroundCallWorker
 
 
 class FakeUser:
@@ -55,6 +61,12 @@ def _make_svc(**kwargs) -> ScrobblingService:
         sg_factory=FakeSG,
         **kwargs,
     )
+
+
+def run_auth_workers_inline(dialog: PreferencesDialog) -> None:
+    """Make authentication workers deterministic for focused dialog tests."""
+
+    dialog._start_auth_worker = lambda worker: worker.run()  # type: ignore[method-assign]
 
 
 class FakeSettings:
@@ -126,9 +138,10 @@ def test_preferences_dialog_none_service(qapp) -> None:
 
 def test_preferences_dialog_authenticate_starts_auth(qapp, monkeypatch) -> None:
     opened: list[str] = []
-    monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url))
+    monkeypatch.setattr("webbrowser.open", lambda url: not opened.append(url))
     svc = _make_svc()
     dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+    run_auth_workers_inline(dialog)
 
     dialog.authenticate_button.click()
 
@@ -145,17 +158,104 @@ def test_preferences_dialog_authenticate_failure_shows_error(qapp) -> None:
         sg_factory=BrokenAuthSG,
     )
     dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+    run_auth_workers_inline(dialog)
 
     dialog._on_authenticate()
 
     assert not svc.auth_in_progress
-    assert "Not connected" in dialog.status_label.text()
+    assert "Could not start authentication" in dialog.status_label.text()
+
+
+def test_preferences_dialog_browser_failure_keeps_manual_link(qapp, monkeypatch) -> None:
+    monkeypatch.setattr("webbrowser.open", lambda _url: False)
+    svc = _make_svc()
+    dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+    run_auth_workers_inline(dialog)
+
+    dialog._on_authenticate()
+
+    assert "Could not open the browser" in dialog.status_label.text()
+    assert "https://last.fm/api/auth/?token=tok" in dialog.status_label.text()
+    assert dialog.status_label.textInteractionFlags() & Qt.TextInteractionFlag.TextSelectableByMouse
+    assert dialog.authorize_button.isEnabled()
+
+
+def test_preferences_dialog_authorization_keeps_controls_responsive(qapp) -> None:
+    started = Event()
+    release = Event()
+    svc = _make_svc()
+    assert svc.start_web_auth()
+
+    def complete_auth() -> bool:
+        started.set()
+        release.wait(timeout=2)
+        return False
+
+    svc.complete_web_auth = complete_auth  # type: ignore[method-assign]
+    dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+
+    dialog._on_authorize()
+
+    assert started.wait(timeout=1)
+    assert not dialog.authorize_button.isEnabled()
+    assert dialog.concurrency_input.isEnabled()
+
+    release.set()
+    for _attempt in range(20):
+        QTest.qWait(10)
+        if not dialog._active_auth_workers:
+            break
+    assert not dialog._active_auth_workers
+    assert "Authorization not confirmed" in dialog.status_label.text()
+
+
+def test_preferences_dialog_close_invalidates_in_flight_authentication(qapp) -> None:
+    started = Event()
+    release = Event()
+    svc = _make_svc()
+    assert svc.start_web_auth()
+
+    def complete_auth() -> bool:
+        started.set()
+        release.wait(timeout=2)
+        return True
+
+    svc.complete_web_auth = complete_auth  # type: ignore[method-assign]
+    dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+    dialog._on_authorize()
+    assert started.wait(timeout=1)
+
+    dialog.reject()
+    release.set()
+    for _attempt in range(20):
+        QTest.qWait(10)
+        if not dialog._active_auth_workers:
+            break
+
+    assert not svc.is_authenticated
+    assert not svc.auth_in_progress
+    assert not dialog._active_auth_workers
+
+
+def test_preferences_dialog_reports_unexpected_background_auth_error(qapp) -> None:
+    dialog = PreferencesDialog(None, _make_svc())  # type: ignore[arg-type]
+    run_auth_workers_inline(dialog)
+
+    def fail() -> object:
+        raise RuntimeError("transport unavailable")
+
+    dialog._run_auth_call(fail, lambda _result: None)
+
+    assert "Last.fm authentication failed: transport unavailable" in dialog.status_label.text()
+    assert dialog._active_auth_workers == []
+    dialog._forget_auth_worker(BackgroundCallWorker(lambda: None))
 
 
 def test_preferences_dialog_authorize_completes_auth(qapp, monkeypatch) -> None:
-    monkeypatch.setattr("webbrowser.open", lambda url: None)
+    monkeypatch.setattr("webbrowser.open", lambda url: True)
     svc = _make_svc()
     dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+    run_auth_workers_inline(dialog)
 
     dialog.authenticate_button.click()
     dialog.authorize_button.click()
@@ -169,6 +269,7 @@ def test_preferences_dialog_authorize_completes_auth(qapp, monkeypatch) -> None:
 def test_preferences_dialog_authorize_without_start_shows_error(qapp) -> None:
     svc = _make_svc()
     dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+    run_auth_workers_inline(dialog)
     dialog.authorize_button.setVisible(True)
 
     dialog._on_authorize()
@@ -218,9 +319,10 @@ def test_preferences_dialog_scrobbling_checkbox_checked_by_default(qapp) -> None
 
 
 def test_preferences_dialog_auth_in_progress_state(qapp, monkeypatch) -> None:
-    monkeypatch.setattr("webbrowser.open", lambda url: None)
+    monkeypatch.setattr("webbrowser.open", lambda url: True)
     svc = _make_svc()
     dialog = PreferencesDialog(None, svc)  # type: ignore[arg-type]
+    run_auth_workers_inline(dialog)
 
     dialog._on_authenticate()
 
@@ -233,6 +335,7 @@ def test_preferences_dialog_auth_in_progress_state(qapp, monkeypatch) -> None:
 
 def test_preferences_dialog_buttons_ignore_none_service(qapp) -> None:
     dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
+    run_auth_workers_inline(dialog)
 
     dialog._on_authenticate()
     dialog._on_authorize()

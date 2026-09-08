@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from threading import Lock
 from typing import Any
 
 LOGGER = logging.getLogger(__name__)
@@ -40,6 +41,8 @@ class ScrobblingService:  # pylint: disable=too-many-instance-attributes
         self._authenticated = False
         self._network_factory = network_factory or _pylast_network_factory
         self._sg_factory = sg_factory or _pylast_sg_factory
+        self._auth_lock = Lock()
+        self._auth_generation = 0
 
     @property
     def is_authenticated(self) -> bool:
@@ -68,62 +71,85 @@ class ScrobblingService:  # pylint: disable=too-many-instance-attributes
 
     def try_connect(self) -> bool:
         """Verify stored session key against Last.fm.  Returns ``True`` on success."""
-        if not self._session_key or not self.has_api_credentials:
-            return False
-        if not self._username:
-            # Legacy credentials may have lost the username; without it pylast
-            # cannot issue user.getInfo to verify the session.  Force re-auth.
-            LOGGER.warning("Stored Last.fm session has no username; please re-authenticate")
-            self._authenticated = False
-            return False
+        with self._auth_lock:
+            if not self._session_key or not self.has_api_credentials:
+                return False
+            if not self._username:
+                # Legacy credentials may have lost the username; without it pylast
+                # cannot issue user.getInfo to verify the session.  Force re-auth.
+                LOGGER.warning("Stored Last.fm session has no username; please re-authenticate")
+                self._authenticated = False
+                return False
+            generation = self._auth_generation
+            session_key = self._session_key
+            username = self._username
         try:
             network = self._network_factory(
                 api_key=self._api_key,
                 api_secret=self._api_secret,
-                session_key=self._session_key,
-                username=self._username,
+                session_key=session_key,
+                username=username,
             )
-            self._username = network.get_authenticated_user().get_name(
+            verified_username = network.get_authenticated_user().get_name(
                 properly_capitalized=True
             )
-            self._network = network
-            self._authenticated = True
-            LOGGER.info("Last.fm connected as %s", self._username)
+            with self._auth_lock:
+                if generation != self._auth_generation:
+                    return False
+                self._username = verified_username
+                self._network = network
+                self._authenticated = True
+            LOGGER.info("Last.fm connected as %s", verified_username)
             return True
         except Exception:  # noqa: BLE001
             LOGGER.warning("Last.fm connect failed; session key may be expired")
-            self._authenticated = False
+            with self._auth_lock:
+                if generation == self._auth_generation:
+                    self._authenticated = False
             return False
 
     def start_web_auth(self) -> str | None:
         """Start the Last.fm OAuth flow.  Returns the authorization URL or ``None``."""
         if not self.has_api_credentials:
             return None
+        with self._auth_lock:
+            self._auth_generation += 1
+            generation = self._auth_generation
         try:
             network = self._network_factory(
                 api_key=self._api_key,
                 api_secret=self._api_secret,
             )
-            self._sg = self._sg_factory(network)
-            url = self._sg.get_web_auth_url()
-            self._pending_auth_url = url
+            session_generator = self._sg_factory(network)
+            url = session_generator.get_web_auth_url()
+            with self._auth_lock:
+                if generation != self._auth_generation:
+                    return None
+                self._sg = session_generator
+                self._pending_auth_url = url
             return url
         except Exception:  # noqa: BLE001
             LOGGER.warning("Failed to start Last.fm web auth")
-            self._sg = None
-            self._pending_auth_url = None
+            with self._auth_lock:
+                if generation == self._auth_generation:
+                    self._sg = None
+                    self._pending_auth_url = None
             return None
 
     def complete_web_auth(self) -> bool:
         """Finish the OAuth flow after the user has authorized.  Returns ``True`` on success."""
-        if self._sg is None or self._pending_auth_url is None:
-            return False
+        with self._auth_lock:
+            if self._sg is None or self._pending_auth_url is None:
+                return False
+            generation = self._auth_generation
+            session_generator = self._sg
+            pending_auth_url = self._pending_auth_url
         try:
             # auth.getSession returns both session key and username; use the
             # combined call so we don't need a follow-up user.getInfo (which
             # would fail with 400 because the network has no username yet).
-            session_key, username = self._sg.get_web_auth_session_key_username(
-                self._pending_auth_url
+            session_key, username = session_generator.get_web_auth_session_key_username(
+                pending_auth_url
             )
             network = self._network_factory(
                 api_key=self._api_key,
@@ -131,12 +157,15 @@ class ScrobblingService:  # pylint: disable=too-many-instance-attributes
                 session_key=session_key,
                 username=username,
             )
-            self._username = username
-            self._session_key = session_key
-            self._network = network
-            self._authenticated = True
-            self._sg = None
-            self._pending_auth_url = None
+            with self._auth_lock:
+                if generation != self._auth_generation:
+                    return False
+                self._username = username
+                self._session_key = session_key
+                self._network = network
+                self._authenticated = True
+                self._sg = None
+                self._pending_auth_url = None
             LOGGER.info("Last.fm authenticated as %s", self._username)
             return True
         except Exception:  # noqa: BLE001
@@ -145,12 +174,22 @@ class ScrobblingService:  # pylint: disable=too-many-instance-attributes
 
     def disconnect(self) -> None:
         """Clear the session key and mark as not authenticated."""
-        self._session_key = ""
-        self._network = None
-        self._authenticated = False
-        self._sg = None
-        self._pending_auth_url = None
+        with self._auth_lock:
+            self._auth_generation += 1
+            self._session_key = ""
+            self._network = None
+            self._authenticated = False
+            self._sg = None
+            self._pending_auth_url = None
         LOGGER.info("Last.fm disconnected")
+
+    def cancel_pending_authentication(self) -> None:
+        """Invalidate authentication work without disconnecting an established session."""
+
+        with self._auth_lock:
+            self._auth_generation += 1
+            self._sg = None
+            self._pending_auth_url = None
 
     def scrobble(self, artist: str, title: str, timestamp: int, duration_seconds: int = 0) -> None:
         """Submit a scrobble.  Silently skipped when not authenticated or disabled."""

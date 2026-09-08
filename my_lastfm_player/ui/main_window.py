@@ -568,10 +568,12 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.username_input.setEnabled(True)
         self.refresh_action.setEnabled(enabled)
 
-    def set_fetch_control_state(self, active: bool, paused: bool = False) -> None:
+    def set_fetch_control_state(
+        self, active: bool, paused: bool = False, *, can_pause: bool = True
+    ) -> None:
         """Enable pause/stop fetch controls and show pause or resume state."""
 
-        self.fetch_pause_button.setEnabled(active)
+        self.fetch_pause_button.setEnabled(active and can_pause)
         self.fetch_stop_button.setEnabled(active)
         self._fetch_paused = paused
         self.fetch_pause_button.setText(self.tr("Resume") if paused else self.tr("Pause"))

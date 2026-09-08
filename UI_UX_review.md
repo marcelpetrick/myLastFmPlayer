@@ -3,7 +3,8 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.164; all three original HIGH findings are resolved.
+Fix status refreshed through v0.0.167; all three original HIGH findings and two MEDIUM
+findings are resolved.
 
 ## Method and priorities
 
@@ -103,7 +104,7 @@ download workers are active. It cooperatively stops both kinds of worker, blocks
 follow-up work, retains completed items, and shows a disabled stopping state until all active
 work exits. The same control then offers Resume YouTube when unresolved or queued items remain.
 
-### 4. MEDIUM — Some network operations still block the UI thread
+### 4. MEDIUM — Some network operations still block the UI thread — Fixed in v0.0.167
 
 Evidence: `my_lastfm_player/controller.py:376`, `:585`, `:1268`, and `:1556`;
 `my_lastfm_player/ui/preferences_dialog.py:233` and `:245`;
@@ -118,6 +119,13 @@ and show a cancellable busy state immediately. Scrobbling should not delay local
 
 Acceptance: delayed/failing service doubles must leave a UI heartbeat, typing, playback
 controls, and cancellation responsive throughout preflight and authentication.
+
+Fixed in v0.0.167: cache-count preflight, startup session verification, authentication,
+now-playing, and scrobble calls run on background service-call workers. Fetch exposes Stop
+during preflight while keeping username entry available, and username-generation checks
+suppress stale results. Authentication generations prevent an in-flight verification from
+undoing a disconnect. Delayed-service regression tests exercise responsive typing,
+cancellation, preferences controls, and stale-result handling.
 
 ### 5. MEDIUM — The playback timeline supports clicks but breaks dragging and keyboard seeking
 
@@ -232,7 +240,7 @@ spaces in username/filter fields continues to work.
 Acceptance: fetch, filter, select, play, pause, seek, retry, open the artist page, and close
 preferences can be completed without a mouse. Verify the resulting names with a screen reader.
 
-### 12. MEDIUM — Authentication failure feedback is overwritten immediately
+### 12. MEDIUM — Authentication failure feedback is overwritten immediately — Fixed in v0.0.167
 
 Evidence: `my_lastfm_player/ui/preferences_dialog.py:181` and `:233`.
 When `start_web_auth()` returns no URL, the dialog sets “Could not start authentication”
@@ -245,6 +253,11 @@ browser launch result and provide a selectable authorization link and a retry ac
 
 Acceptance: service failure and browser-launch failure each leave a persistent explanation;
 retrying successfully clears it without hiding unresolved authorization instructions.
+
+Fixed in v0.0.167: authentication failures remain visible after state refresh, browser
+launch results are checked, and a failed launch leaves the authorization URL selectable for
+manual use. Buttons show a busy state during background authentication and recover to the
+correct action when it finishes.
 
 ### 13. LOW — A filter with no matches looks like an unexplained empty library
 

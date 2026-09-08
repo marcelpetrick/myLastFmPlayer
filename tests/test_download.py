@@ -376,6 +376,28 @@ def test_operation_stop_keeps_pending_download_queued(tmp_path: Path) -> None:
     assert runner.commands == []
 
 
+def test_retry_helper_honors_an_already_requested_stop(tmp_path: Path) -> None:
+    stop_event = threading.Event()
+    stop_event.set()
+    manager = DownloadManager()
+
+    result = manager._download_track_with_retries(
+        queued_track(), tmp_path, stop_event=stop_event
+    )
+
+    assert result.status is TrackStatus.QUEUED
+    assert result.error is None
+
+
+def test_default_command_runner_honors_stop_before_acquiring_slot() -> None:
+    stop_event = threading.Event()
+    stop_event.set()
+    manager = DownloadManager()
+
+    with pytest.raises(WorkCancelled, match="cancelled"):
+        manager._run(["yt-dlp", "unused"], stop_event=stop_event)
+
+
 def test_unexpected_download_failure_is_isolated_to_one_track(tmp_path: Path) -> None:
     manager = DownloadManager()
     broken = queued_track(artist="Broken")

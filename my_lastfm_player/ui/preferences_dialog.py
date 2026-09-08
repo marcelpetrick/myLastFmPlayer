@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import webbrowser
+from collections.abc import Callable
+from threading import Thread
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -26,6 +29,7 @@ from my_lastfm_player.settings import (
     YTDLP_BROWSER_CHOICES,
     AppSettings,
 )
+from my_lastfm_player.workers import BackgroundCallWorker
 
 PREFERENCES_MINIMUM_WIDTH = 520
 
@@ -37,6 +41,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         super().__init__(parent)
         self._service = service
         self._settings = AppSettings()
+        self._active_auth_workers: list[BackgroundCallWorker] = []
         self.setMinimumWidth(PREFERENCES_MINIMUM_WIDTH)
         self._build_ui()
         self.retranslate_ui()
@@ -217,6 +222,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
             )
             self.authenticate_button.setEnabled(False)
             self.authorize_button.setVisible(False)
+            self.authorize_button.setEnabled(False)
             self.disconnect_button.setEnabled(True)
         elif self._service.auth_in_progress:
             self.status_label.setText(
@@ -224,11 +230,13 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
             )
             self.authenticate_button.setEnabled(False)
             self.authorize_button.setVisible(True)
+            self.authorize_button.setEnabled(True)
             self.disconnect_button.setEnabled(False)
         else:
             self.status_label.setText(self.tr("🔴 Not connected"))
             self.authenticate_button.setEnabled(True)
             self.authorize_button.setVisible(False)
+            self.authorize_button.setEnabled(False)
             self.disconnect_button.setEnabled(False)
         self._fit_to_content()
 
@@ -244,27 +252,102 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
     def _on_authenticate(self) -> None:
         if self._service is None:
             return
-        url = self._service.start_web_auth()
-        if url:
-            webbrowser.open(url)
-        else:
+        self._set_auth_busy(self.tr("Starting Last.fm authentication…"))
+
+        def start_auth() -> tuple[str | None, bool]:
+            url = self._service.start_web_auth() if self._service is not None else None
+            return url, bool(url and webbrowser.open(url))
+
+        self._run_auth_call(start_auth, self._handle_auth_started)
+
+    def _handle_auth_started(self, result: object) -> None:
+        url, browser_opened = result if isinstance(result, tuple) else (None, False)
+        self._refresh()
+        if not url:
             self.status_label.setText(
                 self.tr("⚠ Could not start authentication. Check API credentials.")
             )
-        self._refresh()
+        elif not browser_opened:
+            self.status_label.setText(
+                self.tr(
+                    "⚠ Could not open the browser. Open this authorization link manually: "
+                    "{url}"
+                ).format(url=url)
+            )
+            self.status_label.setTextInteractionFlags(
+                self.status_label.textInteractionFlags()
+                | Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+        self._fit_to_content()
 
     def _on_authorize(self) -> None:
         if self._service is None:
             return
-        if self._service.complete_web_auth():
-            self._refresh()
-        else:
+        self._set_auth_busy(self.tr("Confirming Last.fm authorization…"))
+        self._run_auth_call(
+            self._service.complete_web_auth,
+            self._handle_auth_completed,
+        )
+
+    def _handle_auth_completed(self, result: object) -> None:
+        self._refresh()
+        if not result:
             self.status_label.setText(
                 self.tr(
                     "⚠ Authorization not confirmed yet. "
                     "Authorize in the browser, then try again."
                 )
             )
+            self._fit_to_content()
+
+    def _set_auth_busy(self, message: str) -> None:
+        self.status_label.setText(message)
+        self.authenticate_button.setEnabled(False)
+        self.authorize_button.setEnabled(False)
+        self.disconnect_button.setEnabled(False)
+
+    def _run_auth_call(
+        self,
+        operation: Callable[[], object],
+        on_result: Callable[[object], None],
+    ) -> None:
+        worker = BackgroundCallWorker(operation)
+        worker.result.connect(lambda _worker, result: on_result(result))
+        worker.failed.connect(self._handle_auth_call_error)
+        worker.finished.connect(self._forget_auth_worker)
+        self._active_auth_workers.append(worker)
+        self._start_auth_worker(worker)
+
+    @staticmethod
+    def _start_auth_worker(worker: BackgroundCallWorker) -> None:
+        Thread(
+            target=worker.run,
+            name="myLastFmPlayer-auth-call",
+            daemon=True,
+        ).start()
+
+    def _handle_auth_call_error(
+        self, _worker: BackgroundCallWorker, error: Exception
+    ) -> None:
+        self._refresh()
+        self.status_label.setText(
+            self.tr("⚠ Last.fm authentication failed: {error}").format(error=error)
+        )
+        self._fit_to_content()
+
+    def _forget_auth_worker(self, worker: BackgroundCallWorker) -> None:
+        if worker in self._active_auth_workers:
+            self._active_auth_workers.remove(worker)
+
+    def reject(self) -> None:
+        """Close the dialog without allowing late authentication state changes."""
+
+        if self._active_auth_workers:
+            for worker in tuple(self._active_auth_workers):
+                worker.cancel()
+            if self._service is not None:
+                self._service.cancel_pending_authentication()
+        super().reject()
 
     def _on_disconnect(self) -> None:
         if self._service is None:

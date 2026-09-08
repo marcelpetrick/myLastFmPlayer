@@ -192,7 +192,9 @@ class LastFmLovedTracksApiClient:
             )
             return api_page
 
-        raise last_error or LastFmError(f"Could not fetch Last.fm loved tracks from {self.api_url}")
+        raise last_error or LastFmError(  # pragma: no cover - loop always returns or raises.
+            f"Could not fetch Last.fm loved tracks from {self.api_url}"
+        )
 
     def _raise_for_unsuccessful_response(self, response: requests.Response) -> None:
         status_code = response.status_code
@@ -292,7 +294,9 @@ class LastFmArtistInfoClient:
                     continue
                 raise last_error from error
 
-        raise last_error or LastFmError(f"Could not fetch Last.fm artist info from {self.api_url}")
+        raise last_error or LastFmError(  # pragma: no cover - loop always returns or raises.
+            f"Could not fetch Last.fm artist info from {self.api_url}"
+        )
 
     def _fetch_image_bytes(self, image_url: str) -> bytes | None:
         try:

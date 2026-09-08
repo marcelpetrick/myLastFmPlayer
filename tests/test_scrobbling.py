@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import types
+from threading import Event, Thread
 
 from my_lastfm_player.scrobbling import (
     SCROBBLE_THRESHOLD,
@@ -129,6 +130,41 @@ def test_try_connect_handles_network_error() -> None:
     assert not svc.is_authenticated
 
 
+def test_disconnect_invalidates_in_flight_session_verification() -> None:
+    started = Event()
+    release = Event()
+
+    class BlockingUser:
+        def get_name(self, properly_capitalized: bool = False) -> str:
+            started.set()
+            release.wait(timeout=2)
+            return "testuser"
+
+    class BlockingNetwork(FakeNetwork):
+        def get_authenticated_user(self) -> BlockingUser:
+            return BlockingUser()
+
+    svc = ScrobblingService(
+        api_key="k",
+        api_secret="s",
+        session_key="stored",
+        username="storeduser",
+        network_factory=lambda **kwargs: BlockingNetwork(**kwargs),
+    )
+    results: list[bool] = []
+    thread = Thread(target=lambda: results.append(svc.try_connect()))
+    thread.start()
+    assert started.wait(timeout=1)
+
+    svc.disconnect()
+    release.set()
+    thread.join(timeout=1)
+
+    assert results == [False]
+    assert not svc.is_authenticated
+    assert svc.session_key == ""
+
+
 # ── Web auth flow ─────────────────────────────────────────────────────────────
 
 def test_start_web_auth_returns_url() -> None:
@@ -151,6 +187,35 @@ def test_start_web_auth_handles_error() -> None:
     svc = ScrobblingService(api_key="k", api_secret="s", network_factory=failing_network)
 
     assert svc.start_web_auth() is None
+    assert not svc.auth_in_progress
+
+
+def test_disconnect_invalidates_in_flight_web_auth_start() -> None:
+    started = Event()
+    release = Event()
+
+    class BlockingSG(FakeSG):
+        def get_web_auth_url(self) -> str:
+            started.set()
+            release.wait(timeout=2)
+            return "https://last.fm/api/auth/?token=late"
+
+    svc = ScrobblingService(
+        api_key="k",
+        api_secret="s",
+        network_factory=lambda **kwargs: FakeNetwork(**kwargs),
+        sg_factory=BlockingSG,
+    )
+    results: list[str | None] = []
+    thread = Thread(target=lambda: results.append(svc.start_web_auth()))
+    thread.start()
+    assert started.wait(timeout=1)
+
+    svc.disconnect()
+    release.set()
+    thread.join(timeout=1)
+
+    assert results == [None]
     assert not svc.auth_in_progress
 
 
@@ -196,6 +261,37 @@ def test_complete_web_auth_handles_error() -> None:
     assert not svc.is_authenticated
 
 
+def test_disconnect_invalidates_in_flight_web_auth_completion() -> None:
+    started = Event()
+    release = Event()
+
+    class BlockingSG(FakeSG):
+        def get_web_auth_session_key_username(self, url: str) -> tuple[str, str]:
+            started.set()
+            release.wait(timeout=2)
+            return "late-session", "late-user"
+
+    svc = ScrobblingService(
+        api_key="k",
+        api_secret="s",
+        network_factory=lambda **kwargs: FakeNetwork(**kwargs),
+        sg_factory=BlockingSG,
+    )
+    assert svc.start_web_auth()
+    results: list[bool] = []
+    thread = Thread(target=lambda: results.append(svc.complete_web_auth()))
+    thread.start()
+    assert started.wait(timeout=1)
+
+    svc.disconnect()
+    release.set()
+    thread.join(timeout=1)
+
+    assert results == [False]
+    assert not svc.is_authenticated
+    assert svc.session_key == ""
+
+
 # ── disconnect ────────────────────────────────────────────────────────────────
 
 def test_disconnect_clears_session() -> None:
@@ -208,6 +304,16 @@ def test_disconnect_clears_session() -> None:
     assert not svc.is_authenticated
     assert svc.session_key == ""
     assert not svc.auth_in_progress
+
+
+def test_cancel_pending_authentication_keeps_connected_session() -> None:
+    svc, _ = _make_service(session_key="k", username="user")
+    assert svc.try_connect()
+
+    svc.cancel_pending_authentication()
+
+    assert svc.is_authenticated
+    assert svc.session_key == "k"
 
 
 # ── scrobble ──────────────────────────────────────────────────────────────────
