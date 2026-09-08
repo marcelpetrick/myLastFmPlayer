@@ -3,6 +3,7 @@ from __future__ import annotations
 import runpy
 import sys
 import types
+from dataclasses import replace
 
 import pytest
 from PyQt6.QtCore import (
@@ -53,8 +54,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.168"
-    assert __display_version__ == "0.0.168"
+    assert __version__ == "0.0.169"
+    assert __display_version__ == "0.0.169"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -337,6 +338,48 @@ def test_main_window_binds_track_data_and_selection(qapp) -> None:
     assert window.track_model.data(window.track_model.index(0, 0)) == "Zed"
     assert window.track_model.data(window.track_model.index(1, 3)) == "Downloaded"
     assert window.selected_track() == tracks[1]
+
+
+def test_main_window_preserves_selection_and_scroll_across_track_refresh(qapp) -> None:
+    window = MainWindow()
+    tracks = [
+        Track(artist=f"Keep {index:03}", title=f"Track {index}")
+        for index in range(80)
+    ]
+    window.resize(800, 600)
+    window.show()
+    window.set_tracks(tracks)
+    window.track_filter_input.setText("keep")
+    window.track_sort_model.sort(0, Qt.SortOrder.DescendingOrder)
+    source_index = window.track_model.index(30, 2)
+    proxy_index = window.track_sort_model.mapFromSource(source_index)
+    window.track_table.selectRow(proxy_index.row())
+    window.track_table.setCurrentIndex(proxy_index)
+    scrollbar = window.track_table.verticalScrollBar()
+    scrollbar.setValue(min(15, scrollbar.maximum()))
+    scroll_value = scrollbar.value()
+
+    window.set_tracks(
+        [replace(track, status=TrackStatus.SEARCHING) for track in tracks]
+    )
+
+    assert window.selected_track() == replace(
+        tracks[30], status=TrackStatus.SEARCHING
+    )
+    assert window.track_table.currentIndex().column() == 2
+    assert scrollbar.value() == scroll_value
+
+
+def test_main_window_drops_selection_when_selected_track_disappears(qapp) -> None:
+    window = MainWindow()
+    first = Track(artist="First", title="Track")
+    second = Track(artist="Second", title="Track")
+    window.set_tracks([first, second])
+    window.select_track_row(1)
+
+    window.set_tracks([first])
+
+    assert window.selected_track() is None
 
 
 def test_main_window_selection_helpers_handle_empty_and_invalid_rows(qapp) -> None:

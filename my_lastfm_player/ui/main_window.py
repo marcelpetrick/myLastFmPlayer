@@ -547,11 +547,29 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
     def set_tracks(self, tracks: list[Track]) -> None:
         """Replace the visible table contents with ``tracks``."""
 
+        selected_track = self.selected_track()
+        selected_key = selected_track.cache_key if selected_track is not None else None
+        current_column = max(0, self.track_table.currentIndex().column())
+        scroll_value = self.track_table.verticalScrollBar().value()
         self.track_model.set_tracks(tracks)
+        if selected_key is not None:
+            self._restore_track_selection(selected_key, current_column)
+        self.track_table.verticalScrollBar().setValue(scroll_value)
         self._track_count = len(tracks)
         self._update_track_count_label()
         LOGGER.info("Table now contains %d tracks", len(tracks))
         self.show_status(self.tr("Loaded {count} tracks").format(count=len(tracks)))
+
+    def _restore_track_selection(self, cache_key: str, current_column: int) -> None:
+        for source_row, track in enumerate(self.track_model.tracks()):
+            if track.cache_key != cache_key:
+                continue
+            source_index = self.track_model.index(source_row, current_column)
+            proxy_index = self.track_sort_model.mapFromSource(source_index)
+            if proxy_index.isValid():
+                self.track_table.selectRow(proxy_index.row())
+                self.track_table.setCurrentIndex(proxy_index)
+            return
 
     def _update_track_count_label(self) -> None:
         self.track_count_label.setText(

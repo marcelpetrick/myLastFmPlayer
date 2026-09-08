@@ -3,7 +3,7 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.168; all three original HIGH findings and three MEDIUM
+Fix status refreshed through v0.0.169; all three original HIGH findings and four MEDIUM
 findings are resolved.
 
 ## Method and priorities
@@ -151,7 +151,7 @@ thirty-second page steps. Position callbacks update duration but do not overwrit
 handle or displayed user position during an active drag. Offscreen Qt interaction tests
 cover dragging, click seeking, keyboard actions, and concurrent playback updates.
 
-### 6. MEDIUM — Background table refreshes discard the user's selection
+### 6. MEDIUM — Background table refreshes discard the user's selection — Fixed in v0.0.169
 
 Evidence: `my_lastfm_player/ui/track_table_model.py:112`;
 `my_lastfm_player/controller.py:1080`, `:1142`, and `:1190`.
@@ -165,6 +165,11 @@ position by stable track key across unavoidable resets.
 
 Acceptance: select and scroll during incremental fetch, lookup completion, and download
 completion; selection must survive while that track remains present, including under filtering.
+
+Fixed in v0.0.169: the main window snapshots the selected track's stable cache key,
+current column, and vertical scroll position before a model reset, then restores them through
+the sort/filter proxy when the track still exists and remains visible. Regression tests cover
+status-changing refreshes under active filtering and sorting, plus intentional removal.
 
 ### 7. MEDIUM — Paused playback still presents “Pause” and disables “Play”
 

@@ -1,6 +1,6 @@
 # Software Requirements Specification
 
-This is the current product requirements baseline for `myLastFmPlayer` 0.0.168.
+This is the current product requirements baseline for `myLastFmPlayer` 0.0.169.
 It describes the implemented and vetted application rather than an unfinished MVP.
 Runtime design details are in [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md).
 
@@ -163,6 +163,8 @@ state and shall not destroy the durable downloaded state.
   shall execute outside the Qt UI thread.
 - The UI shall stay responsive with libraries of at least 1,000 entries.
 - Incremental results shall be visible without requiring the full pipeline to finish.
+- Incremental table refreshes shall preserve a surviving selected track and the user's
+  scroll position across sorting and filtering.
 - The configured shared limit shall prevent unbounded external process creation.
 
 ### 4.2 Reliability
