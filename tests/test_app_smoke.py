@@ -54,8 +54,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.169"
-    assert __display_version__ == "0.0.169"
+    assert __version__ == "0.0.170"
+    assert __display_version__ == "0.0.170"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -921,6 +921,18 @@ def test_main_window_playback_controls_emit_signals(qapp) -> None:
     window.next_button.click()
 
     assert events == ["play", "pause", "stop", "next"]
+
+
+def test_main_window_paused_transport_state_survives_retranslation(qapp) -> None:
+    window = MainWindow()
+
+    window.set_playback_controls(active=True, paused=True)
+    window.retranslate_ui()
+
+    assert window.play_button.isEnabled()
+    assert window.pause_button.isEnabled()
+    assert window.pause_button.text() == "Resume"
+    assert window.pause_button.toolTip() == "Resume playback"
 
 
 def test_artist_image_label_keeps_a_bounded_size(qapp) -> None:

@@ -3,7 +3,7 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.169; all three original HIGH findings and four MEDIUM
+Fix status refreshed through v0.0.170; all three original HIGH findings and five MEDIUM
 findings are resolved.
 
 ## Method and priorities
@@ -171,7 +171,7 @@ current column, and vertical scroll position before a model reset, then restores
 the sort/filter proxy when the track still exists and remains visible. Regression tests cover
 status-changing refreshes under active filtering and sorting, plus intentional removal.
 
-### 7. MEDIUM — Paused playback still presents “Pause” and disables “Play”
+### 7. MEDIUM — Paused playback still presents “Pause” and disables “Play” — Fixed in v0.0.170
 
 Evidence: `my_lastfm_player/controller.py:820`;
 `my_lastfm_player/ui/main_window.py:980` and `:1070`.
@@ -185,6 +185,11 @@ when the language changes.
 
 Acceptance: each state exposes the correct action, including after failed playback and
 language switching. A paused user can identify Resume without reading the log.
+
+Fixed in v0.0.170: transport controls retain an explicit idle/playing/paused state.
+Pausing changes the action and tooltip to Resume and enables Play as a second conventional
+resume action; either returns the controls to playing state. Retranslation derives labels
+from the retained state, and controller tests cover pause, Play-to-resume, and failures.
 
 ### 8. MEDIUM — Track failures lack an accessible explanation and clear recovery action
 

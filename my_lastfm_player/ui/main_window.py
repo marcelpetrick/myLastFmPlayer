@@ -194,6 +194,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._last_progress_label = "Idle"
         self._last_status_message = "Ready"
         self._playback_duration_ms = 0
+        self._playback_paused = False
         self._track_count = 0
         self._now_playing_idle = True
         self._artist_title_name: str | None = None
@@ -1056,17 +1057,24 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         self.set_playback_timeline(0, 0)
 
-    def set_playback_controls(self, *, active: bool) -> None:
-        """Update playback button states.
+    def set_playback_controls(self, *, active: bool, paused: bool = False) -> None:
+        """Update idle, playing, and paused transport states."""
 
-        When ``active`` is ``True`` (playing or paused) Play is disabled and
-        Pause/Stop/Next are enabled.  When ``False`` (idle) only Play is enabled.
-        """
-
-        self.play_button.setEnabled(not active)
+        self._playback_paused = active and paused
+        self.play_button.setEnabled(not active or self._playback_paused)
         self.pause_button.setEnabled(active)
         self.stop_button.setEnabled(active)
         self.next_button.setEnabled(active)
+        self._update_playback_button_text()
+
+    def _update_playback_button_text(self) -> None:
+        self.play_button.setText(self.tr("Play"))
+        if self._playback_paused:
+            self.pause_button.setText(self.tr("Resume"))
+            self.pause_button.setToolTip(self.tr("Resume playback"))
+        else:
+            self.pause_button.setText(self.tr("Pause"))
+            self.pause_button.setToolTip(self.tr("Pause playback"))
 
     def _emit_timeline_seek(self) -> None:
         if self._playback_duration_ms <= 0:
@@ -1162,8 +1170,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.playback_group.setTitle(self.tr("Playback"))
         if self._now_playing_idle:
             self.now_playing_label.setText(self.tr("Not playing"))
-        self.play_button.setText(self.tr("Play"))
-        self.pause_button.setText(self.tr("Pause"))
+        self._update_playback_button_text()
         self.stop_button.setText(self.tr("Stop"))
         self.next_button.setText(self.tr("Next"))
         self.volume_label.setText(self.tr("Volume"))

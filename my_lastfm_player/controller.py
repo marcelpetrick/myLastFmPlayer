@@ -891,6 +891,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
     def play_selected_track(self) -> None:
         """Play the selected track or prepare it for playback when needed."""
 
+        if self.playback_service.is_paused():
+            self.pause_playback()
+            return
         selected_track = self.window.selected_track()
         if selected_track is None:
             choice = self._random.choice if self.window.randomize_playback() else None
@@ -917,6 +920,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._report_user_action(
                 translate("ApplicationController", "Playback resumed.")
             )
+            self.window.set_playback_controls(active=True, paused=False)
         else:
             try:
                 self.playback_service.pause()
@@ -926,6 +930,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._report_user_action(
                 translate("ApplicationController", "Playback paused.")
             )
+            self.window.set_playback_controls(active=True, paused=True)
 
     def stop_playback(self) -> None:
         """Stop active playback and clear the playing-row indicator."""

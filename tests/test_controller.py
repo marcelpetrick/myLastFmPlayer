@@ -1549,10 +1549,14 @@ def test_controller_pause_toggles_to_resume(qapp, tmp_path) -> None:
     controller.pause_playback()
     assert playback.events == ["pause"]
     assert "Playback paused." in window.feedback_log.toPlainText()
+    assert window.pause_button.text() == "Resume"
+    assert window.play_button.isEnabled()
 
-    controller.pause_playback()
+    controller.play_selected_track()
     assert playback.events == ["pause", "resume"]
     assert "Playback resumed." in window.feedback_log.toPlainText()
+    assert window.pause_button.text() == "Pause"
+    assert not window.play_button.isEnabled()
 
 
 def test_playback_button_states(qapp, tmp_path) -> None:

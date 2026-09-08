@@ -215,209 +215,209 @@
         <translation>Downloads starten</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="900" />
+        <location filename="../controller.py" line="903" />
         <source>Select a downloaded track before playing.</source>
         <translation>Wählen Sie vor der Wiedergabe einen heruntergeladenen Titel aus.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="918" />
+        <location filename="../controller.py" line="921" />
         <source>Playback resumed.</source>
         <translation>Die Wiedergabe wurde fortgesetzt.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="927" />
+        <location filename="../controller.py" line="931" />
         <source>Playback paused.</source>
         <translation>Wiedergabe pausiert.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="971" />
-        <location filename="../controller.py" line="936" />
+        <location filename="../controller.py" line="976" />
+        <location filename="../controller.py" line="941" />
         <source>No track is currently playing.</source>
         <translation>Derzeit wird kein Titel abgespielt.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="947" />
+        <location filename="../controller.py" line="952" />
         <source>Playback stopped.</source>
         <translation>Die Wiedergabe wurde gestoppt.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="992" />
+        <location filename="../controller.py" line="997" />
         <source>Seeked playback to {seconds} seconds.</source>
         <translation>Wiedergabe auf {seconds} Sekunden gesprungen.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1173" />
+        <location filename="../controller.py" line="1178" />
         <source>Fetch for {username} returned invalid track data.</source>
         <translation>Der Abruf für {username} hat ungültige Titeldaten zurückgegeben.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1183" />
+        <location filename="../controller.py" line="1188" />
         <source>Fetched and stored {count} tracks for {username}.</source>
         <translation>{count} Titel für {username} abgerufen und gespeichert.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1207" />
+        <location filename="../controller.py" line="1212" />
         <source>Stopped fetch for {username} returned invalid data.</source>
         <translation>Der Abruf für {username} wurde gestoppt und lieferte ungültige Daten.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1217" />
+        <location filename="../controller.py" line="1222" />
         <source>Stopped fetch for {username} after {count} tracks.</source>
         <translation>Der Abruf für {username} wurde nach {count} Titeln gestoppt.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1230" />
+        <location filename="../controller.py" line="1235" />
         <source>Fetch for {username} returned invalid partial data.</source>
         <translation>Der Abruf für {username} hat ungültige Teildaten zurückgegeben.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1242" />
+        <location filename="../controller.py" line="1247" />
         <source>Fetch progress for {username}: {count} tracks are visible now.</source>
         <translation>Abruffortschritt für {username}: {count} Titel sind jetzt sichtbar.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1250" />
+        <location filename="../controller.py" line="1255" />
         <source>Fetched {count} tracks for {username}</source>
         <translation>{count} Titel für {username} abgerufen</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1265" />
+        <location filename="../controller.py" line="1270" />
         <source>Workflow for {username} returned an invalid track update.</source>
         <translation>Der Ablauf für {username} hat eine ungültige Titelaktualisierung zurückgegeben.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1275" />
+        <location filename="../controller.py" line="1280" />
         <source>Track update from {username}: {artist} - {title} is now {status}.</source>
         <translation>Titelaktualisierung von {username}: {artist} – {title} hat jetzt den Status {status}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1292" />
+        <location filename="../controller.py" line="1297" />
         <source>Lookup for {username} returned invalid track data.</source>
         <translation>Die YouTube-Ermittlung für {username} hat ungültige Titeldaten zurückgegeben.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1375" />
-        <location filename="../controller.py" line="1309" />
+        <location filename="../controller.py" line="1380" />
+        <location filename="../controller.py" line="1314" />
         <source>YouTube work stopped; completed items remain saved.</source>
         <translation>YouTube-Arbeit wurde gestoppt; abgeschlossene Einträge bleiben gespeichert.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1316" />
+        <location filename="../controller.py" line="1321" />
         <source>Resolved YouTube URLs for {resolved_count}/{count} tracks; {not_found_count} were not found.</source>
         <translation>YouTube-URLs für {resolved_count}/{count} Titel ermittelt; {not_found_count} wurden nicht gefunden.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1342" />
+        <location filename="../controller.py" line="1347" />
         <source>No queued tracks are ready for download.</source>
         <translation>Keine Titel in der Warteschlange sind zum Download bereit.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1354" />
+        <location filename="../controller.py" line="1359" />
         <source>Download for {username} returned invalid track data.</source>
         <translation>Der Download für {username} hat ungültige Titeldaten zurückgegeben.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1382" />
+        <location filename="../controller.py" line="1387" />
         <source>Download run for {username} finished: {downloaded_count}/{count} tracks downloaded, {failed_count} failed.</source>
         <translation>Downloadlauf für {username} abgeschlossen: {downloaded_count}/{count} Titel heruntergeladen, {failed_count} fehlgeschlagen.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1409" />
+        <location filename="../controller.py" line="1414" />
         <source>Failed</source>
         <translation>Fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1456" />
+        <location filename="../controller.py" line="1461" />
         <source>Updating Last.fm now-playing for {artist} - {title}.</source>
         <translation>Last.fm-Wiedergabestatus für {artist} – {title} wird aktualisiert.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1468" />
+        <location filename="../controller.py" line="1473" />
         <source>Playing {artist} - {title}.</source>
         <translation>{artist} – {title} wird abgespielt.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1492" />
+        <location filename="../controller.py" line="1497" />
         <source>Last.fm returned invalid artist image data.</source>
         <translation>Last.fm hat ungültige Künstlerbild-Daten zurückgegeben.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1526" />
+        <location filename="../controller.py" line="1531" />
         <source>Enter a Last.fm username before preparing playback.</source>
         <translation>Geben Sie einen Last.fm-Benutzernamen ein, bevor Sie die Wiedergabe vorbereiten.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1536" />
+        <location filename="../controller.py" line="1541" />
         <source>Preparing {artist} - {title} for playback.</source>
         <translation>{artist} – {title} wird für die Wiedergabe vorbereitet.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1553" />
+        <location filename="../controller.py" line="1558" />
         <source>Starting automatic YouTube lookup for {count} fetched tracks.</source>
         <translation>Automatische YouTube-Ermittlung für {count} abgerufene Titel wird gestartet.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1594" />
+        <location filename="../controller.py" line="1599" />
         <source>Stopping YouTube checks and downloads; completed items remain saved.</source>
         <translation>YouTube-Prüfungen und -Downloads werden beendet; abgeschlossene Einträge bleiben gespeichert.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1610" />
+        <location filename="../controller.py" line="1615" />
         <source>Resuming YouTube work.</source>
         <translation>YouTube-Arbeit wird fortgesetzt.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1618" />
+        <location filename="../controller.py" line="1623" />
         <source>No YouTube work remains to resume.</source>
         <translation>Es gibt keine YouTube-Arbeit mehr zum Fortsetzen.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1630" />
+        <location filename="../controller.py" line="1635" />
         <source>Enter a Last.fm username before retrying a download.</source>
         <translation>Geben Sie einen Last.fm-Benutzernamen ein, bevor Sie einen Download erneut versuchen.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1659" />
+        <location filename="../controller.py" line="1664" />
         <source>Retrying download for {artist} - {title}.</source>
         <translation>Download für {artist} – {title} wird erneut versucht.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1672" />
+        <location filename="../controller.py" line="1677" />
         <source>Starting automatic download queue for resolved tracks.</source>
         <translation>Automatische Download-Warteschlange für ermittelte Titel wird gestartet.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1687" />
+        <location filename="../controller.py" line="1692" />
         <source>Starting priority download for selected track.</source>
         <translation>Prioritäts-Download für den ausgewählten Titel wird gestartet.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1782" />
+        <location filename="../controller.py" line="1787" />
         <source>Submitting Last.fm scrobble for {artist} - {title}.</source>
         <translation>Last.fm-Scrobble für {artist} – {title} wird gesendet.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1816" />
+        <location filename="../controller.py" line="1821" />
         <source>Finished playback for {artist} - {title}.</source>
         <translation>Wiedergabe für {artist} – {title} abgeschlossen.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1829" />
+        <location filename="../controller.py" line="1834" />
         <source>Playback finished.</source>
         <translation>Wiedergabe beendet.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1840" />
+        <location filename="../controller.py" line="1845" />
         <source>Continuing with random track: {artist} - {title}.</source>
         <translation>Weiter mit zufälligem Titel: {artist} – {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1851" />
+        <location filename="../controller.py" line="1856" />
         <source>Continuing with next track: {artist} - {title}.</source>
         <translation>Weiter mit dem nächsten Titel: {artist} – {title}.</translation>
     </message>
     <message>
-        <location filename="../controller.py" line="1871" />
+        <location filename="../controller.py" line="1876" />
         <source>All background work is finished; controls are enabled again.</source>
         <translation>Alle Hintergrundarbeiten sind abgeschlossen; die Bedienelemente sind wieder aktiviert.</translation>
     </message>
@@ -527,357 +527,368 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="1194" />
-        <location filename="../ui/main_window.py" line="208" />
+        <location filename="../ui/main_window.py" line="1201" />
+        <location filename="../ui/main_window.py" line="209" />
         <source>Ready</source>
         <translation>Bereit</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="418" />
+        <location filename="../ui/main_window.py" line="419" />
         <source>Retry Download</source>
         <translation>Download erneut versuchen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1187" />
-        <location filename="../ui/main_window.py" line="531" />
+        <location filename="../ui/main_window.py" line="1194" />
+        <location filename="../ui/main_window.py" line="532" />
         <source>Idle</source>
         <translation>Leerlauf</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="561" />
+        <location filename="../ui/main_window.py" line="562" />
         <source>Loaded {count} tracks</source>
         <translation>{count} Titel geladen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="576" />
+        <location filename="../ui/main_window.py" line="577" />
         <source>Playlist: {count} titles</source>
         <translation>Playlist: {count} Titel</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="605" />
+        <location filename="../ui/main_window.py" line="1073" />
+        <location filename="../ui/main_window.py" line="606" />
         <source>Resume</source>
         <translation>Fortsetzen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1166" />
-        <location filename="../ui/main_window.py" line="605" />
+        <location filename="../ui/main_window.py" line="1076" />
+        <location filename="../ui/main_window.py" line="606" />
         <source>Pause</source>
         <translation>Pause</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1167" />
-        <location filename="../ui/main_window.py" line="606" />
+        <location filename="../ui/main_window.py" line="1174" />
+        <location filename="../ui/main_window.py" line="607" />
         <source>Stop</source>
         <translation>Stoppen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="608" />
+        <location filename="../ui/main_window.py" line="609" />
         <source>Resume the paused Last.fm fetch</source>
         <translation>Angehaltenen Last.fm-Abruf fortsetzen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="610" />
+        <location filename="../ui/main_window.py" line="611" />
         <source>Pause the active Last.fm fetch</source>
         <translation>Aktiven Last.fm-Abruf pausieren</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="611" />
+        <location filename="../ui/main_window.py" line="612" />
         <source>Stop the active Last.fm fetch</source>
         <translation>Aktiven Last.fm-Abruf stoppen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="636" />
+        <location filename="../ui/main_window.py" line="637" />
         <source>Stopping YouTube…</source>
         <translation>YouTube wird beendet…</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="638" />
+        <location filename="../ui/main_window.py" line="639" />
         <source>Resume YouTube</source>
         <translation>YouTube fortsetzen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="640" />
+        <location filename="../ui/main_window.py" line="641" />
         <source>Stop YouTube</source>
         <translation>YouTube stoppen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="643" />
+        <location filename="../ui/main_window.py" line="644" />
         <source>Stop or resume YouTube checks and downloads</source>
         <translation>YouTube-Prüfungen und -Downloads stoppen oder fortsetzen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="647" />
+        <location filename="../ui/main_window.py" line="648" />
         <source>Fetch</source>
         <translation>Abrufen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="649" />
+        <location filename="../ui/main_window.py" line="650" />
         <source>Fetch loved tracks, then automatically check and download them from YouTube</source>
         <translation>Lieblingstitel abrufen, anschließend automatisch auf YouTube prüfen und herunterladen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="810" />
+        <location filename="../ui/main_window.py" line="811" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation>{artist} – {title} aktualisiert: {status}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1164" />
-        <location filename="../ui/main_window.py" line="827" />
+        <location filename="../ui/main_window.py" line="1172" />
+        <location filename="../ui/main_window.py" line="828" />
         <source>Not playing</source>
         <translation>Es läuft nichts</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="846" />
+        <location filename="../ui/main_window.py" line="847" />
         <source>Artist</source>
         <translation>Künstler</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1141" />
-        <location filename="../ui/main_window.py" line="914" />
+        <location filename="../ui/main_window.py" line="1149" />
+        <location filename="../ui/main_window.py" line="915" />
         <source>About myLastFmPlayer</source>
         <translation>Über myLastFmPlayer</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="920" />
+        <location filename="../ui/main_window.py" line="921" />
         <source>myLastFmPlayer {version}</source>
         <translation>myLastFmPlayer {version}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="921" />
+        <location filename="../ui/main_window.py" line="922" />
         <source>Author: Marcel Petrick &lt;a href="mailto:mail@marcelpetrick.it"&gt;mail@marcelpetrick.it&lt;/a&gt;</source>
         <translation>Autor: Marcel Petrick &lt;a href="mailto:mail@marcelpetrick.it"&gt;mail@marcelpetrick.it&lt;/a&gt;</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="925" />
+        <location filename="../ui/main_window.py" line="926" />
         <source>License: GNU GPLv3 or later.</source>
         <translation>Lizenz: GNU GPLv3 oder neuer.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="926" />
+        <location filename="../ui/main_window.py" line="927" />
         <source>This application fetches a user's public loved tracks from Last.fm, keeps local metadata, resolves playable sources through yt-dlp, downloads MP3 files, and plays them locally.</source>
         <translation>Diese Anwendung lädt die öffentlichen favorisierten Titel eines Benutzers von Last.fm, speichert lokale Metadaten, ermittelt abspielbare Quellen über yt-dlp, lädt MP3-Dateien herunter und spielt sie lokal ab.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="931" />
+        <location filename="../ui/main_window.py" line="932" />
         <source>It is intended as a practical Linux desktop helper for rebuilding a personal loved-track collection without manually searching every song.</source>
         <translation>Sie ist als praktischer Linux-Desktophelfer gedacht, um eine persönliche Sammlung favorisierter Titel wiederaufzubauen, ohne jeden Song manuell zu suchen.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="935" />
+        <location filename="../ui/main_window.py" line="936" />
         <source>Optional Last.fm scrobbling can connect the local playback workflow back to the user's Last.fm account.</source>
         <translation>Optionales Last.fm-Scrobbling kann den lokalen Wiedergabeablauf wieder mit dem Last.fm-Konto des Benutzers verbinden.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1142" />
-        <location filename="../ui/main_window.py" line="945" />
+        <location filename="../ui/main_window.py" line="1150" />
+        <location filename="../ui/main_window.py" line="946" />
         <source>Open Source Licenses</source>
         <translation>Open-Source-Lizenzen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="951" />
+        <location filename="../ui/main_window.py" line="952" />
         <source>myLastFmPlayer is GPLv3-or-later software and uses these open-source libraries and external tools:</source>
         <translation>myLastFmPlayer ist Software unter GPLv3 oder neuer und verwendet diese Open-Source-Bibliotheken und externen Werkzeuge:</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1015" />
-        <location filename="../ui/main_window.py" line="957" />
+        <location filename="../ui/main_window.py" line="1016" />
+        <location filename="../ui/main_window.py" line="958" />
         <source>Python Software Foundation License; runtime for the application.</source>
         <translation>Python Software Foundation License; Laufzeitumgebung für die Anwendung.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1017" />
-        <location filename="../ui/main_window.py" line="961" />
+        <location filename="../ui/main_window.py" line="1018" />
+        <location filename="../ui/main_window.py" line="962" />
         <source>GNU GPL v3; Python bindings for the Qt desktop interface.</source>
         <translation>GNU GPL v3; Python-Bindings für die Qt-Desktopoberfläche.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1018" />
-        <location filename="../ui/main_window.py" line="965" />
+        <location filename="../ui/main_window.py" line="1019" />
+        <location filename="../ui/main_window.py" line="966" />
         <source>GNU LGPL v3 / GPL v3; cross-platform UI toolkit.</source>
         <translation>GNU LGPL v3 / GPL v3; plattformübergreifendes UI-Toolkit.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1020" />
-        <location filename="../ui/main_window.py" line="969" />
+        <location filename="../ui/main_window.py" line="1021" />
+        <location filename="../ui/main_window.py" line="970" />
         <source>Apache License 2.0; HTTP client for Last.fm API calls.</source>
         <translation>Apache License 2.0; HTTP-Client für Last.fm-API-Aufrufe.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1021" />
-        <location filename="../ui/main_window.py" line="973" />
+        <location filename="../ui/main_window.py" line="1022" />
+        <location filename="../ui/main_window.py" line="974" />
         <source>Apache License 2.0; Last.fm scrobbling integration.</source>
         <translation>Apache License 2.0; Last.fm-Scrobbling-Integration.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1022" />
-        <location filename="../ui/main_window.py" line="977" />
+        <location filename="../ui/main_window.py" line="1023" />
+        <location filename="../ui/main_window.py" line="978" />
         <source>Unlicense; media lookup and download helper.</source>
         <translation>Unlicense; Helfer für Mediensuche und Download.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1024" />
-        <location filename="../ui/main_window.py" line="981" />
+        <location filename="../ui/main_window.py" line="1025" />
+        <location filename="../ui/main_window.py" line="982" />
         <source>LGPL/GPL family licenses depending on the installed build; audio conversion backend.</source>
         <translation>LGPL/GPL-Lizenzfamilie je nach installierter Version; Backend für Audiokonvertierung.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="986" />
+        <location filename="../ui/main_window.py" line="987" />
         <source>Development tools include {tools} under their respective open-source licenses.</source>
         <translation>Zu den Entwicklungswerkzeugen gehören {tools} unter ihren jeweiligen Open-Source-Lizenzen.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1002" />
+        <location filename="../ui/main_window.py" line="1003" />
         <source>This summary is informational; the complete license texts are provided by the installed projects and system packages.</source>
         <translation>Diese Zusammenfassung dient zur Information; die vollständigen Lizenztexte werden von den installierten Projekten und Systempaketen bereitgestellt.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1138" />
-        <source>Fetch loved tracks</source>
-        <translation>Favorisierte Titel abrufen</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1139" />
-        <source>Preferences</source>
-        <translation>Einstellungen</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1140" />
-        <source>Open data folder in file manager</source>
-        <translation>Datenordner im Dateimanager öffnen</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1143" />
-        <source>Quit</source>
-        <translation>Beenden</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1144" />
-        <source>Main</source>
-        <translation>Hauptmenü</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1145" />
-        <source>Theme</source>
-        <translation>Thema</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1146" />
-        <source>Light</source>
-        <translation>Hell</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1147" />
-        <source>Dark</source>
-        <translation>Dunkel</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1148" />
-        <source>Lilac</source>
-        <translation>Lila</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1149" />
-        <source>Mint</source>
-        <translation>Minze</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1150" />
-        <source>Language</source>
-        <translation>Sprache</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1151" />
-        <source>Help</source>
-        <translation>Hilfe</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1152" />
-        <source>Last.fm username</source>
-        <translation>Last.fm-Benutzername</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1153" />
-        <source>Enter username</source>
-        <translation>Benutzernamen eingeben</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1156" />
-        <source>Filter</source>
-        <translation>Filter</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1157" />
-        <source>Artist or track title</source>
-        <translation>Künstler oder Songtitel</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1158" />
-        <source>Reset</source>
-        <translation>Zurücksetzen</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1160" />
-        <source>Enter your Last.fm username and press Fetch to load your loved tracks.</source>
-        <translation>Geben Sie Ihren Last.fm-Benutzernamen ein und klicken Sie auf «Abrufen», um Ihre favorisierten Titel zu laden.</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1162" />
-        <source>Playback</source>
-        <translation>Wiedergabe</translation>
-    </message>
-    <message>
-        <location filename="../ui/main_window.py" line="1165" />
+        <location filename="../ui/main_window.py" line="1071" />
         <source>Play</source>
         <translation>Abspielen</translation>
     </message>
     <message>
+        <location filename="../ui/main_window.py" line="1074" />
+        <source>Resume playback</source>
+        <translation>Wiedergabe fortsetzen</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1077" />
+        <source>Pause playback</source>
+        <translation>Wiedergabe pausieren</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1146" />
+        <source>Fetch loved tracks</source>
+        <translation>Favorisierte Titel abrufen</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1147" />
+        <source>Preferences</source>
+        <translation>Einstellungen</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1148" />
+        <source>Open data folder in file manager</source>
+        <translation>Datenordner im Dateimanager öffnen</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1151" />
+        <source>Quit</source>
+        <translation>Beenden</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1152" />
+        <source>Main</source>
+        <translation>Hauptmenü</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1153" />
+        <source>Theme</source>
+        <translation>Thema</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1154" />
+        <source>Light</source>
+        <translation>Hell</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1155" />
+        <source>Dark</source>
+        <translation>Dunkel</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1156" />
+        <source>Lilac</source>
+        <translation>Lila</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1157" />
+        <source>Mint</source>
+        <translation>Minze</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1158" />
+        <source>Language</source>
+        <translation>Sprache</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1159" />
+        <source>Help</source>
+        <translation>Hilfe</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1160" />
+        <source>Last.fm username</source>
+        <translation>Last.fm-Benutzername</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1161" />
+        <source>Enter username</source>
+        <translation>Benutzernamen eingeben</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1164" />
+        <source>Filter</source>
+        <translation>Filter</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1165" />
+        <source>Artist or track title</source>
+        <translation>Künstler oder Songtitel</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1166" />
+        <source>Reset</source>
+        <translation>Zurücksetzen</translation>
+    </message>
+    <message>
         <location filename="../ui/main_window.py" line="1168" />
+        <source>Enter your Last.fm username and press Fetch to load your loved tracks.</source>
+        <translation>Geben Sie Ihren Last.fm-Benutzernamen ein und klicken Sie auf «Abrufen», um Ihre favorisierten Titel zu laden.</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1170" />
+        <source>Playback</source>
+        <translation>Wiedergabe</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1175" />
         <source>Next</source>
         <translation>Weiter</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1170" />
-        <location filename="../ui/main_window.py" line="1169" />
+        <location filename="../ui/main_window.py" line="1177" />
+        <location filename="../ui/main_window.py" line="1176" />
         <source>Volume</source>
         <translation>Lautstärke</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1171" />
+        <location filename="../ui/main_window.py" line="1178" />
         <source>Mute</source>
         <translation>Stumm</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1172" />
+        <location filename="../ui/main_window.py" line="1179" />
         <source>Randomize</source>
         <translation>Zufallswiedergabe</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1174" />
+        <location filename="../ui/main_window.py" line="1181" />
         <source>Open artist page on Last.fm</source>
         <translation>Künstlerseite auf Last.fm im privaten Fenster öffnen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1175" />
+        <location filename="../ui/main_window.py" line="1182" />
         <source>Playback position</source>
         <translation>Wiedergabeposition</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1176" />
+        <location filename="../ui/main_window.py" line="1183" />
         <source>Clear log</source>
         <translation>Protokoll löschen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1177" />
+        <location filename="../ui/main_window.py" line="1184" />
         <source>Clear status updates and errors</source>
         <translation>Statusmeldungen und Fehler löschen</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1179" />
+        <location filename="../ui/main_window.py" line="1186" />
         <source>Status updates and errors will appear here.</source>
         <translation>Statusmeldungen und Fehler werden hier angezeigt.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1184" />
+        <location filename="../ui/main_window.py" line="1191" />
         <source>Dependencies: yt-dlp, ffmpeg, and ffprobe not checked yet</source>
         <translation>Abhängigkeiten: yt-dlp, ffmpeg und ffprobe noch nicht überprüft</translation>
     </message>

@@ -1,7 +1,7 @@
 # Runtime Architecture
 
 This document is the concise, implementation-facing architecture description for
-`myLastFmPlayer` 0.0.169. The rendered C4 diagrams and class reference are in
+`myLastFmPlayer` 0.0.170. The rendered C4 diagrams and class reference are in
 [`docs/architecture.rst`](../docs/architecture.rst) and
 [`docs/api.rst`](../docs/api.rst).
 
