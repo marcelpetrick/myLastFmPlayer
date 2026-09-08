@@ -3,7 +3,7 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.167; all three original HIGH findings and two MEDIUM
+Fix status refreshed through v0.0.168; all three original HIGH findings and three MEDIUM
 findings are resolved.
 
 ## Method and priorities
@@ -127,7 +127,7 @@ suppress stale results. Authentication generations prevent an in-flight verifica
 undoing a disconnect. Delayed-service regression tests exercise responsive typing,
 cancellation, preferences controls, and stale-result handling.
 
-### 5. MEDIUM — The playback timeline supports clicks but breaks dragging and keyboard seeking
+### 5. MEDIUM — The playback timeline supports clicks but breaks dragging and keyboard seeking — Fixed in v0.0.168
 
 Evidence: `my_lastfm_player/ui/main_window.py:446`, `:961`, and `:997`.
 The event filter consumes every left-button press, including presses on the slider handle,
@@ -144,6 +144,12 @@ route keyboard actions to the backend. Do not overwrite an active drag with posi
 
 Acceptance: mouse click, drag, arrows, Page Up/Down, and Home/End all move actual playback
 as expected, including while position signals arrive.
+
+Fixed in v0.0.168: handle presses retain native slider dragging, groove clicks remain
+immediate, and keyboard actions emit real seek requests with five-second arrow and
+thirty-second page steps. Position callbacks update duration but do not overwrite the
+handle or displayed user position during an active drag. Offscreen Qt interaction tests
+cover dragging, click seeking, keyboard actions, and concurrent playback updates.
 
 ### 6. MEDIUM — Background table refreshes discard the user's selection
 

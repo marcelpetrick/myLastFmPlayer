@@ -1,6 +1,6 @@
 # Software Requirements Specification
 
-This is the current product requirements baseline for `myLastFmPlayer` 0.0.167.
+This is the current product requirements baseline for `myLastFmPlayer` 0.0.168.
 It describes the implemented and vetted application rather than an unfinished MVP.
 Runtime design details are in [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md).
 
@@ -87,6 +87,8 @@ The supported runtime is Linux x86_64 with Python 3.14 or newer and PyQt6.
 - The table shall support selection, sorting, filtering, tooltips for truncated text,
   and status-aware display.
 - Local playback shall support Play, Pause, Stop, seek, volume, mute, and next-track.
+- Timeline seeking shall support groove clicks, handle dragging, arrow and page keys,
+  and Home/End without playback updates overriding an active drag.
 - The application shall optionally continue with a random downloaded track.
 - Only one local track shall play at a time.
 - An artist preview shall load in the background for the selected or playing track.

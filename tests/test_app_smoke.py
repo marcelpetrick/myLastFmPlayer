@@ -18,7 +18,8 @@ from PyQt6.QtCore import (
     QTime,
 )
 from PyQt6.QtGui import QColor, QKeySequence, QMouseEvent, QPixmap, QStandardItemModel
-from PyQt6.QtWidgets import QSizePolicy
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QSizePolicy, QStyle, QStyleOptionSlider
 
 from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
@@ -52,8 +53,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.167"
-    assert __display_version__ == "0.0.167"
+    assert __version__ == "0.0.168"
+    assert __display_version__ == "0.0.168"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -1050,6 +1051,71 @@ def test_main_window_playback_timeline_click_seeks_immediately(qapp) -> None:
     assert window.playback_slider.value() == expected_position
     assert window.current_time_label.text() == format_playback_time(expected_position)
     assert seeks == [expected_position]
+
+
+def test_main_window_playback_timeline_handle_can_be_dragged(qapp) -> None:
+    window = MainWindow()
+    seeks: list[int] = []
+    window.seek_requested.connect(seeks.append)
+    window.show()
+    window.playback_slider.resize(300, window.playback_slider.height())
+    window.set_playback_timeline(50_000, 200_000)
+    option = QStyleOptionSlider()
+    window.playback_slider.initStyleOption(option)
+    handle = window.playback_slider.style().subControlRect(
+        QStyle.ComplexControl.CC_Slider,
+        option,
+        QStyle.SubControl.SC_SliderHandle,
+        window.playback_slider,
+    )
+    start = handle.center()
+    target = QPoint(window.playback_slider.width() * 3 // 4, start.y())
+
+    QTest.mousePress(window.playback_slider, Qt.MouseButton.LeftButton, pos=start)
+    assert window.playback_slider.isSliderDown()
+    QTest.mouseMove(window.playback_slider, target)
+    QTest.mouseRelease(window.playback_slider, Qt.MouseButton.LeftButton, pos=target)
+
+    assert not window.playback_slider.isSliderDown()
+    assert window.playback_slider.value() > 100_000
+    assert seeks == [window.playback_slider.value()]
+
+
+def test_main_window_playback_timeline_keyboard_actions_seek(qapp) -> None:
+    window = MainWindow()
+    seeks: list[int] = []
+    window.seek_requested.connect(seeks.append)
+    window.set_playback_timeline(60_000, 200_000)
+    window.playback_slider.setFocus()
+
+    QTest.keyClick(window.playback_slider, Qt.Key.Key_Right)
+    assert window.playback_slider.value() == 65_000
+    assert seeks[-1] == 65_000
+
+    QTest.keyClick(window.playback_slider, Qt.Key.Key_PageUp)
+    assert window.playback_slider.value() == 95_000
+    assert seeks[-1] == 95_000
+
+    QTest.keyClick(window.playback_slider, Qt.Key.Key_Home)
+    assert window.playback_slider.value() == 0
+    assert seeks[-1] == 0
+
+    QTest.keyClick(window.playback_slider, Qt.Key.Key_End)
+    assert window.playback_slider.value() == 200_000
+    assert seeks[-1] == 200_000
+
+
+def test_playback_updates_do_not_overwrite_an_active_timeline_drag(qapp) -> None:
+    window = MainWindow()
+    window.set_playback_timeline(50_000, 200_000)
+    window.playback_slider.setSliderDown(True)
+    window.playback_slider.setSliderPosition(150_000)
+
+    window.set_playback_timeline(55_000, 210_000)
+
+    assert window.playback_slider.sliderPosition() == 150_000
+    assert window.current_time_label.text() == "2:30"
+    assert window.total_time_label.text() == "3:30"
 
 
 def test_format_playback_time_handles_hours() -> None:

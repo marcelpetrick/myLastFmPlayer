@@ -34,6 +34,8 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSlider,
+    QStyle,
+    QStyleOptionSlider,
     QTableView,
     QTextBrowser,
     QVBoxLayout,
@@ -63,6 +65,8 @@ ARTIST_IMAGE_SIZE = 120
 ARTIST_IMAGE_PANEL_WIDTH = 180
 ERROR_TEXT_COLOR = "#d64545"
 ERROR_INDICATOR_MAX_LENGTH = 80
+PLAYBACK_SEEK_STEP_MS = 5_000
+PLAYBACK_SEEK_PAGE_MS = 30_000
 
 
 class TrackFilterProxyModel(QSortFilterProxyModel):
@@ -447,10 +451,14 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         playback_timeline_layout = QHBoxLayout()
         self.playback_slider = QSlider(Qt.Orientation.Horizontal)
         self.playback_slider.setRange(0, 0)
+        self.playback_slider.setSingleStep(PLAYBACK_SEEK_STEP_MS)
+        self.playback_slider.setPageStep(PLAYBACK_SEEK_PAGE_MS)
         self.playback_slider.setEnabled(False)
         self.playback_slider.setMinimumWidth(280)
         self.playback_slider.installEventFilter(self)
         self.playback_slider.sliderReleased.connect(self._emit_timeline_seek)
+        self.playback_slider.actionTriggered.connect(self._emit_timeline_action_seek)
+        self.playback_slider.valueChanged.connect(self._update_current_time_label)
         self.current_time_label = QLabel(format_playback_time(0))
         self.current_time_label.setMinimumWidth(48)
         self.current_time_label.setAlignment(
@@ -1017,11 +1025,13 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._playback_duration_ms = bounded_duration
         self.playback_slider.setEnabled(bounded_duration > 0)
         self.playback_slider.setMaximum(bounded_duration)
+        self.total_time_label.setText(format_playback_time(bounded_duration))
+        if self.playback_slider.isSliderDown():
+            return
         self.playback_slider.blockSignals(True)
         self.playback_slider.setValue(bounded_position)
         self.playback_slider.blockSignals(False)
         self.current_time_label.setText(format_playback_time(bounded_position))
-        self.total_time_label.setText(format_playback_time(bounded_duration))
 
     def reset_playback_timeline(self) -> None:
         """Reset the playback timeline to an idle state."""
@@ -1043,7 +1053,14 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
     def _emit_timeline_seek(self) -> None:
         if self._playback_duration_ms <= 0:
             return
-        self.seek_requested.emit(self.playback_slider.value())
+        self.seek_requested.emit(self.playback_slider.sliderPosition())
+
+    def _emit_timeline_action_seek(self, _action: int) -> None:
+        if not self.playback_slider.isSliderDown():
+            self._emit_timeline_seek()
+
+    def _update_current_time_label(self, position_ms: int) -> None:
+        self.current_time_label.setText(format_playback_time(position_ms))
 
     def eventFilter(self, watched: object, event: QEvent) -> bool:
         """Handle immediate seeking when the playback timeline groove is clicked."""
@@ -1055,6 +1072,16 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             and event.button() == Qt.MouseButton.LeftButton
             and self._playback_duration_ms > 0
         ):
+            option = QStyleOptionSlider()
+            self.playback_slider.initStyleOption(option)
+            handle = self.playback_slider.style().subControlRect(
+                QStyle.ComplexControl.CC_Slider,
+                option,
+                QStyle.SubControl.SC_SliderHandle,
+                self.playback_slider,
+            )
+            if handle.contains(event.position().toPoint()):
+                return False
             value = self._timeline_value_for_x_position(round(event.position().x()))
             self.set_playback_timeline(value, self._playback_duration_ms)
             self.seek_requested.emit(value)
