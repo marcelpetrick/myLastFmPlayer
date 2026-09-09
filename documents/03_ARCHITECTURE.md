@@ -1,7 +1,7 @@
 # Runtime Architecture
 
 This document is the concise, implementation-facing architecture description for
-`myLastFmPlayer` 0.0.173. The rendered C4 diagrams and class reference are in
+`myLastFmPlayer` 0.0.174. The rendered C4 diagrams and class reference are in
 [`docs/architecture.rst`](../docs/architecture.rst) and
 [`docs/api.rst`](../docs/api.rst).
 
@@ -211,6 +211,12 @@ Selection drives a visible retry action: lookup failures and missing results res
 priority YouTube check, while download failures with a retained URL restart only the
 download. Completed rows expose neither retry action, and the controller validates the
 durable state again before resetting it.
+
+Keyboard commands are owned by `MainWindow`. Ctrl+F focuses the library filter, and the
+Space playback shortcut is disabled while native text, button, slider, feedback, or
+artist-image input has focus, preserving normal widget behavior. The artist image has
+its own Enter/Return/Space handling when a page URL exists. Qt label buddies and explicit
+accessible names connect labels, sliders, the table, progress bars, artwork, and feedback.
 
 ## Track State Model
 

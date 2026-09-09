@@ -3,7 +3,7 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.173; all three original HIGH findings and eight MEDIUM
+Fix status refreshed through v0.0.174; all three original HIGH findings and all nine MEDIUM
 findings are resolved.
 
 ## Method and priorities
@@ -258,7 +258,7 @@ in a resizable scroll viewport, remains within 90% of the active screen, and kee
 in the non-scrolling outer layout. Geometry tests cover long synthetic metadata and a
 16-point Preferences font with actual overflow and a reachable Close button.
 
-### 11. MEDIUM — Keyboard and accessible labelling support is incomplete
+### 11. MEDIUM — Keyboard and accessible labelling support is incomplete — Fixed in v0.0.174
 
 Evidence: `my_lastfm_player/ui/main_window.py:100`, `:209`, `:320`, and `:358`;
 `my_lastfm_player/ui/preferences_dialog.py:89` and `:97`.
@@ -273,6 +273,14 @@ spaces in username/filter fields continues to work.
 
 Acceptance: fetch, filter, select, play, pause, seek, retry, open the artist page, and close
 preferences can be completed without a mouse. Verify the resulting names with a screen reader.
+
+Fixed in v0.0.174: Ctrl+F focuses and selects the filter; Space starts or toggles
+playback while remaining native input in text, button, slider, feedback, and artist-image
+controls; Ctrl+, opens Preferences; and Ctrl+Q quits. Available artwork is focusable and
+opens with Enter, Return, or Space. Input labels have buddies, and the table, filter,
+now-playing text, sliders, artwork, stage progress, and feedback expose accessible names.
+Qt interaction tests cover shortcuts, text-entry isolation, artwork activation, buddies,
+names, and Escape-closing Preferences.
 
 ### 12. MEDIUM — Authentication failure feedback is overwritten immediately — Fixed in v0.0.167
 

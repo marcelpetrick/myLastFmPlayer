@@ -1,6 +1,6 @@
 # Software Requirements Specification
 
-This is the current product requirements baseline for `myLastFmPlayer` 0.0.173.
+This is the current product requirements baseline for `myLastFmPlayer` 0.0.174.
 It describes the implemented and vetted application rather than an unfinished MVP.
 Runtime design details are in [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md).
 
@@ -105,6 +105,12 @@ The supported runtime is Linux x86_64 with Python 3.14 or newer and PyQt6.
   track table's height when an image is loaded.
 - Clicking available artwork shall open the artist's Last.fm page in a private Firefox
   window.
+- Ctrl+F shall focus and select the library filter, Space shall start or toggle playback
+  outside native text/button/slider input, Ctrl+, shall open Preferences, and Ctrl+Q
+  shall quit. Available artist artwork shall activate with Enter, Return, or Space.
+- Input labels shall be associated with their controls, and library, playback, progress,
+  artist, and feedback controls shall expose explicit accessible names where visible
+  text does not already supply one.
 
 ### 2.7 Scrobbling
 

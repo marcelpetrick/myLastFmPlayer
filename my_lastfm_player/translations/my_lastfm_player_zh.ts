@@ -536,408 +536,440 @@
 </context><context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="1314" />
-        <location filename="../ui/main_window.py" line="252" />
+        <location filename="../ui/main_window.py" line="1385" />
+        <location filename="../ui/main_window.py" line="277" />
         <source>Ready</source>
         <translation>就绪</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="486" />
+        <location filename="../ui/main_window.py" line="542" />
         <source>Retry</source>
         <translation>重试</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="488" />
+        <location filename="../ui/main_window.py" line="544" />
         <source>Select a failed track to retry</source>
         <translation>选择失败的曲目进行重试</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="500" />
+        <location filename="../ui/main_window.py" line="556" />
         <source>Retry YouTube Check</source>
         <translation>重试 YouTube 检查</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="501" />
+        <location filename="../ui/main_window.py" line="557" />
         <source>Search YouTube again for the selected track</source>
         <translation>再次在 YouTube 上搜索所选曲目</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="504" />
+        <location filename="../ui/main_window.py" line="560" />
         <source>Retry Download</source>
         <translation>重试下载</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="505" />
+        <location filename="../ui/main_window.py" line="561" />
         <source>Download the selected YouTube result again</source>
         <translation>再次下载所选 YouTube 结果</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1307" />
-        <location filename="../ui/main_window.py" line="652" />
+        <location filename="../ui/main_window.py" line="1378" />
+        <location filename="../ui/main_window.py" line="709" />
         <source>Idle</source>
         <translation>空闲</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="670" />
+        <location filename="../ui/main_window.py" line="727" />
         <source>Loaded {count} tracks</source>
         <translation>已加载 {count} 首曲目</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="685" />
+        <location filename="../ui/main_window.py" line="742" />
         <source>Playlist: {count} titles</source>
         <translation>播放列表：{count} 首曲目</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1183" />
-        <location filename="../ui/main_window.py" line="714" />
+        <location filename="../ui/main_window.py" line="1240" />
+        <location filename="../ui/main_window.py" line="771" />
         <source>Resume</source>
         <translation>恢复</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1186" />
-        <location filename="../ui/main_window.py" line="714" />
+        <location filename="../ui/main_window.py" line="1243" />
+        <location filename="../ui/main_window.py" line="771" />
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1285" />
-        <location filename="../ui/main_window.py" line="715" />
+        <location filename="../ui/main_window.py" line="1346" />
+        <location filename="../ui/main_window.py" line="772" />
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="717" />
+        <location filename="../ui/main_window.py" line="774" />
         <source>Resume the paused Last.fm fetch</source>
         <translation>恢复暂停的 Last.fm 获取</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="719" />
+        <location filename="../ui/main_window.py" line="776" />
         <source>Pause the active Last.fm fetch</source>
         <translation>暂停活动的 Last.fm 获取</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="720" />
+        <location filename="../ui/main_window.py" line="777" />
         <source>Stop the active Last.fm fetch</source>
         <translation>停止活动的 Last.fm 获取</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="745" />
+        <location filename="../ui/main_window.py" line="802" />
         <source>Stopping YouTube…</source>
         <translation>正在停止 YouTube…</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="747" />
+        <location filename="../ui/main_window.py" line="804" />
         <source>Resume YouTube</source>
         <translation>恢复 YouTube</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="749" />
+        <location filename="../ui/main_window.py" line="806" />
         <source>Stop YouTube</source>
         <translation>停止 YouTube</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="751" />
+        <location filename="../ui/main_window.py" line="808" />
         <source>Stop or resume YouTube checks and downloads</source>
         <translation>停止或恢复 YouTube 检查和下载</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="754" />
+        <location filename="../ui/main_window.py" line="811" />
         <source>Fetch</source>
         <translation>获取</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="756" />
+        <location filename="../ui/main_window.py" line="813" />
         <source>Fetch loved tracks, then automatically check and download them from YouTube</source>
         <translation>获取喜爱曲目，然后自动从 YouTube 检查并下载</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="916" />
+        <location filename="../ui/main_window.py" line="973" />
         <source>Updated {artist} - {title}: {status}</source>
         <translation>已更新 {artist} - {title}：{status}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1283" />
-        <location filename="../ui/main_window.py" line="933" />
+        <location filename="../ui/main_window.py" line="1343" />
+        <location filename="../ui/main_window.py" line="990" />
         <source>Not playing</source>
         <translation>未播放</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="952" />
+        <location filename="../ui/main_window.py" line="1009" />
         <source>Artist</source>
         <translation>艺术家</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1259" />
-        <location filename="../ui/main_window.py" line="1027" />
+        <location filename="../ui/main_window.py" line="1316" />
+        <location filename="../ui/main_window.py" line="1084" />
         <source>About myLastFmPlayer</source>
         <translation>关于 myLastFmPlayer</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1033" />
+        <location filename="../ui/main_window.py" line="1090" />
         <source>myLastFmPlayer {version}</source>
         <translation>myLastFmPlayer {version}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1034" />
+        <location filename="../ui/main_window.py" line="1091" />
         <source>Author: Marcel Petrick &lt;a href="mailto:mail@marcelpetrick.it"&gt;mail@marcelpetrick.it&lt;/a&gt;</source>
         <translation>作者：Marcel Petrick &lt;a href="mailto:mail@marcelpetrick.it"&gt;mail@marcelpetrick.it&lt;/a&gt;</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1038" />
+        <location filename="../ui/main_window.py" line="1095" />
         <source>License: GNU GPLv3 or later.</source>
         <translation>许可证：GNU GPLv3 或更高版本。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1039" />
+        <location filename="../ui/main_window.py" line="1096" />
         <source>This application fetches a user's public loved tracks from Last.fm, keeps local metadata, resolves playable sources through yt-dlp, downloads MP3 files, and plays them locally.</source>
         <translation>此应用会从 Last.fm 获取用户公开标记为喜爱的曲目，保留本地元数据，通过 yt-dlp 解析可播放来源，下载 MP3 文件并在本地播放。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1044" />
+        <location filename="../ui/main_window.py" line="1101" />
         <source>It is intended as a practical Linux desktop helper for rebuilding a personal loved-track collection without manually searching every song.</source>
         <translation>它可作为实用的 Linux 桌面助手，帮助重建个人喜爱曲目收藏，而不必手动搜索每一首歌。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1048" />
+        <location filename="../ui/main_window.py" line="1105" />
         <source>Optional Last.fm scrobbling can connect the local playback workflow back to the user's Last.fm account.</source>
         <translation>可选的 Last.fm 播放记录同步可将本地播放流程连接回用户的 Last.fm 账户。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1260" />
-        <location filename="../ui/main_window.py" line="1058" />
+        <location filename="../ui/main_window.py" line="1317" />
+        <location filename="../ui/main_window.py" line="1115" />
         <source>Open Source Licenses</source>
         <translation>开源许可证</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1064" />
+        <location filename="../ui/main_window.py" line="1121" />
         <source>myLastFmPlayer is GPLv3-or-later software and uses these open-source libraries and external tools:</source>
         <translation>myLastFmPlayer 是 GPLv3 或更高版本许可的软件，并使用以下开源库和外部工具：</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1128" />
-        <location filename="../ui/main_window.py" line="1070" />
+        <location filename="../ui/main_window.py" line="1185" />
+        <location filename="../ui/main_window.py" line="1127" />
         <source>Python Software Foundation License; runtime for the application.</source>
         <translation>Python Software Foundation License；应用的运行时。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1129" />
-        <location filename="../ui/main_window.py" line="1074" />
+        <location filename="../ui/main_window.py" line="1186" />
+        <location filename="../ui/main_window.py" line="1131" />
         <source>GNU GPL v3; Python bindings for the Qt desktop interface.</source>
         <translation>GNU GPL v3；Qt 桌面界面的 Python 绑定。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1130" />
-        <location filename="../ui/main_window.py" line="1078" />
+        <location filename="../ui/main_window.py" line="1187" />
+        <location filename="../ui/main_window.py" line="1135" />
         <source>GNU LGPL v3 / GPL v3; cross-platform UI toolkit.</source>
         <translation>GNU LGPL v3 / GPL v3；跨平台 UI 工具包。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1131" />
-        <location filename="../ui/main_window.py" line="1082" />
+        <location filename="../ui/main_window.py" line="1188" />
+        <location filename="../ui/main_window.py" line="1139" />
         <source>Apache License 2.0; HTTP client for Last.fm API calls.</source>
         <translation>Apache License 2.0；用于 Last.fm API 调用的 HTTP 客户端。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1132" />
-        <location filename="../ui/main_window.py" line="1086" />
+        <location filename="../ui/main_window.py" line="1189" />
+        <location filename="../ui/main_window.py" line="1143" />
         <source>Apache License 2.0; Last.fm scrobbling integration.</source>
         <translation>Apache License 2.0；Last.fm 播放记录同步集成。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1133" />
-        <location filename="../ui/main_window.py" line="1090" />
+        <location filename="../ui/main_window.py" line="1190" />
+        <location filename="../ui/main_window.py" line="1147" />
         <source>Unlicense; media lookup and download helper.</source>
         <translation>Unlicense；媒体查找和下载辅助工具。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1135" />
-        <location filename="../ui/main_window.py" line="1094" />
+        <location filename="../ui/main_window.py" line="1192" />
+        <location filename="../ui/main_window.py" line="1151" />
         <source>LGPL/GPL family licenses depending on the installed build; audio conversion backend.</source>
         <translation>根据已安装构建而定的 LGPL/GPL 系列许可证；音频转换后端。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1099" />
+        <location filename="../ui/main_window.py" line="1156" />
         <source>Development tools include {tools} under their respective open-source licenses.</source>
         <translation>开发工具包括 {tools}，它们分别使用各自的开源许可证。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1115" />
+        <location filename="../ui/main_window.py" line="1172" />
         <source>This summary is informational; the complete license texts are provided by the installed projects and system packages.</source>
         <translation>此摘要仅供参考；完整许可证文本由已安装的项目和系统软件包提供。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1181" />
+        <location filename="../ui/main_window.py" line="1238" />
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1184" />
+        <location filename="../ui/main_window.py" line="1241" />
         <source>Resume playback</source>
         <translation>继续播放</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1187" />
+        <location filename="../ui/main_window.py" line="1244" />
         <source>Pause playback</source>
         <translation>暂停播放</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1256" />
+        <location filename="../ui/main_window.py" line="1313" />
         <source>Fetch loved tracks</source>
         <translation>获取喜爱曲目</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1257" />
+        <location filename="../ui/main_window.py" line="1314" />
         <source>Preferences</source>
         <translation>偏好设置</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1258" />
+        <location filename="../ui/main_window.py" line="1315" />
         <source>Open data folder in file manager</source>
         <translation>在文件管理器中打开数据文件夹</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1261" />
+        <location filename="../ui/main_window.py" line="1318" />
         <source>Quit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1262" />
+        <location filename="../ui/main_window.py" line="1319" />
         <source>Main</source>
         <translation>主界面</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1263" />
+        <location filename="../ui/main_window.py" line="1320" />
         <source>Theme</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1264" />
+        <location filename="../ui/main_window.py" line="1321" />
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1265" />
+        <location filename="../ui/main_window.py" line="1322" />
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1266" />
+        <location filename="../ui/main_window.py" line="1323" />
         <source>Lilac</source>
         <translation>淡紫</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1267" />
+        <location filename="../ui/main_window.py" line="1324" />
         <source>Mint</source>
         <translation>薄荷绿</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1268" />
+        <location filename="../ui/main_window.py" line="1325" />
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1269" />
+        <location filename="../ui/main_window.py" line="1326" />
         <source>Help</source>
         <translation>帮助</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1270" />
+        <location filename="../ui/main_window.py" line="1329" />
+        <location filename="../ui/main_window.py" line="1327" />
         <source>Last.fm username</source>
         <translation>Last.fm 用户名</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1271" />
+        <location filename="../ui/main_window.py" line="1328" />
         <source>Enter username</source>
         <translation>输入用户名</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1274" />
+        <location filename="../ui/main_window.py" line="1332" />
         <source>Filter</source>
         <translation>筛选</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1275" />
+        <location filename="../ui/main_window.py" line="1333" />
         <source>Artist, title, status, or error</source>
         <translation>艺人、标题、状态或错误</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1276" />
+        <location filename="../ui/main_window.py" line="1334" />
+        <source>Filter tracks</source>
+        <translation>筛选曲目</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1335" />
+        <source>Track library</source>
+        <translation>曲目库</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1336" />
         <source>Reset</source>
         <translation>重置</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1279" />
+        <location filename="../ui/main_window.py" line="1339" />
         <source>Enter your Last.fm username and press Fetch to load your loved tracks.</source>
         <translation>请输入您的 Last.fm 用户名并点击「获取」以加载喜爱曲目。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1281" />
+        <location filename="../ui/main_window.py" line="1341" />
         <source>Playback</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1286" />
+        <location filename="../ui/main_window.py" line="1344" />
+        <source>Now playing</source>
+        <translation>正在播放</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1347" />
         <source>Next</source>
         <translation>下一首</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1288" />
-        <location filename="../ui/main_window.py" line="1287" />
+        <location filename="../ui/main_window.py" line="1360" />
+        <location filename="../ui/main_window.py" line="1349" />
+        <location filename="../ui/main_window.py" line="1348" />
         <source>Volume</source>
         <translation>音量</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1289" />
+        <location filename="../ui/main_window.py" line="1350" />
         <source>Mute</source>
         <translation>静音</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1290" />
+        <location filename="../ui/main_window.py" line="1351" />
         <source>Randomize</source>
         <translation>随机播放</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1292" />
+        <location filename="../ui/main_window.py" line="1356" />
+        <location filename="../ui/main_window.py" line="1353" />
         <source>Open artist page on Last.fm</source>
         <translation>在隐私窗口中打开 Last.fm 艺术家页面</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1293" />
+        <location filename="../ui/main_window.py" line="1354" />
+        <source>Artist image</source>
+        <translation>艺人图片</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1359" />
+        <location filename="../ui/main_window.py" line="1358" />
         <source>Playback position</source>
         <translation>播放位置</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1294" />
+        <location filename="../ui/main_window.py" line="1364" />
+        <location filename="../ui/main_window.py" line="1361" />
         <source>Last.fm discovery</source>
         <translation>Last.fm 发现</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1295" />
+        <location filename="../ui/main_window.py" line="1365" />
+        <location filename="../ui/main_window.py" line="1362" />
         <source>YouTube checks</source>
         <translation>YouTube 检查</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1296" />
+        <location filename="../ui/main_window.py" line="1366" />
+        <location filename="../ui/main_window.py" line="1363" />
         <source>Downloads</source>
         <translation>下载</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1297" />
+        <location filename="../ui/main_window.py" line="1367" />
         <source>Clear log</source>
         <translation>清除日志</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1298" />
+        <location filename="../ui/main_window.py" line="1368" />
         <source>Clear status updates and errors</source>
         <translation>清除状态更新和错误</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1299" />
+        <location filename="../ui/main_window.py" line="1369" />
         <source>Status updates and errors will appear here.</source>
         <translation>状态更新和错误将显示在此处。</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="1303" />
+        <location filename="../ui/main_window.py" line="1370" />
+        <source>Status updates and errors</source>
+        <translation>状态更新和错误</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="1374" />
         <source>Dependencies: yt-dlp, ffmpeg, and ffprobe not checked yet</source>
         <translation>依赖项：yt-dlp、ffmpeg 和 ffprobe 尚未检查</translation>
     </message>
@@ -1016,135 +1048,137 @@
 </context><context>
     <name>PreferencesDialog</name>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="198" />
-        <location filename="../ui/preferences_dialog.py" line="157" />
+        <location filename="../ui/preferences_dialog.py" line="204" />
+        <location filename="../ui/preferences_dialog.py" line="159" />
         <source>None (disabled)</source>
         <translation>无（已禁用）</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="177" />
+        <location filename="../ui/preferences_dialog.py" line="179" />
         <source>Preferences</source>
         <translation>偏好设置</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="178" />
+        <location filename="../ui/preferences_dialog.py" line="180" />
         <source>Last.fm Authentication</source>
         <translation>Last.fm 身份验证</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="179" />
+        <location filename="../ui/preferences_dialog.py" line="181" />
         <source>Authenticate with Last.fm</source>
         <translation>通过 Last.fm 进行身份验证</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="180" />
+        <location filename="../ui/preferences_dialog.py" line="182" />
         <source>I've authorized</source>
         <translation>我已授权</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="181" />
+        <location filename="../ui/preferences_dialog.py" line="183" />
         <source>Disconnect</source>
         <translation>断开连接</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="182" />
+        <location filename="../ui/preferences_dialog.py" line="184" />
         <source>Scrobbling</source>
         <translation>播放记录同步</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="183" />
+        <location filename="../ui/preferences_dialog.py" line="185" />
         <source>Enable scrobbling</source>
         <translation>启用播放记录同步</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="185" />
+        <location filename="../ui/preferences_dialog.py" line="187" />
         <source>Submits to Last.fm after 33% of each track has been played.</source>
         <translation>每首曲目播放 33% 后将播放记录提交到 Last.fm。</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="187" />
+        <location filename="../ui/preferences_dialog.py" line="189" />
         <source>YouTube Downloads</source>
         <translation>YouTube 下载</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="188" />
+        <location filename="../ui/preferences_dialog.py" line="192" />
+        <location filename="../ui/preferences_dialog.py" line="190" />
         <source>Browser cookies:</source>
         <translation>浏览器 Cookie：</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="189" />
+        <location filename="../ui/preferences_dialog.py" line="194" />
+        <location filename="../ui/preferences_dialog.py" line="191" />
         <source>Parallel YouTube checks and downloads:</source>
         <translation>并行 YouTube 检查和下载：</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="191" />
+        <location filename="../ui/preferences_dialog.py" line="197" />
         <source>Select the browser whose YouTube login cookies yt-dlp should use. Required for age-restricted videos. You must be signed into YouTube in the selected browser. The parallel-work limit applies to new YouTube checks and downloads.</source>
         <translation>选择 yt-dlp 应使用其 YouTube 登录 Cookie 的浏览器。播放有年龄限制的视频时必须使用此选项。您必须已在所选浏览器中登录 YouTube。并行任务限制适用于新的 YouTube 检查和下载。</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="199" />
+        <location filename="../ui/preferences_dialog.py" line="205" />
         <source>Privacy</source>
         <translation>隐私</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="201" />
+        <location filename="../ui/preferences_dialog.py" line="207" />
         <source>Keep saved library and Last.fm session after quitting</source>
         <translation>退出后保留已保存的曲库和 Last.fm 会话</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="204" />
+        <location filename="../ui/preferences_dialog.py" line="210" />
         <source>When disabled, closing the app deletes saved track lists, lookup and download caches, and Last.fm authentication. Downloaded audio files remain.</source>
         <translation>禁用后，关闭应用会删除已保存的曲目列表、查找和下载缓存以及 Last.fm 身份验证信息。已下载的音频文件会保留。</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="214" />
+        <location filename="../ui/preferences_dialog.py" line="220" />
         <source>⚠ API credentials not configured.
 Set LASTFM_API_KEY and LASTFM_API_SECRET environment variables.</source>
         <translation>⚠ 未配置 API 凭据。
 设置 LASTFM_API_KEY 和 LASTFM_API_SECRET 环境变量。</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="233" />
+        <location filename="../ui/preferences_dialog.py" line="239" />
         <source>🟢 Connected as {username}</source>
         <translation>🟢 已以 {username} 身份连接</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="243" />
+        <location filename="../ui/preferences_dialog.py" line="249" />
         <source>🔵 Browser opened — authorize the app, then click «I've authorized».</source>
         <translation>🔵 浏览器已打开 — 请授权此应用，然后点击“我已授权”。</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="250" />
+        <location filename="../ui/preferences_dialog.py" line="256" />
         <source>🔴 Not connected</source>
         <translation>🔴 未连接</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="291" />
+        <location filename="../ui/preferences_dialog.py" line="297" />
         <source>Starting Last.fm authentication…</source>
         <translation>正在启动 Last.fm 身份验证…</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="304" />
+        <location filename="../ui/preferences_dialog.py" line="310" />
         <source>⚠ Could not start authentication. Check API credentials.</source>
         <translation>⚠ 无法启动身份验证。请检查 API 凭据。</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="308" />
+        <location filename="../ui/preferences_dialog.py" line="314" />
         <source>⚠ Could not open the browser. Open this authorization link manually: {url}</source>
         <translation>⚠ 无法打开浏览器。请手动打开此授权链接：{url}</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="322" />
+        <location filename="../ui/preferences_dialog.py" line="328" />
         <source>Confirming Last.fm authorization…</source>
         <translation>正在确认 Last.fm 授权…</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="332" />
+        <location filename="../ui/preferences_dialog.py" line="338" />
         <source>⚠ Authorization not confirmed yet. Authorize in the browser, then try again.</source>
         <translation>⚠ 授权尚未确认。请先在浏览器中授权，然后重试。</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_dialog.py" line="370" />
+        <location filename="../ui/preferences_dialog.py" line="376" />
         <source>⚠ Last.fm authentication failed: {error}</source>
         <translation>⚠ Last.fm 身份验证失败：{error}</translation>
     </message>

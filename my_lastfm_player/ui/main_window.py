@@ -10,13 +10,17 @@ from PyQt6.QtGui import (
     QAction,
     QActionGroup,
     QCloseEvent,
+    QKeyEvent,
     QKeySequence,
     QMouseEvent,
     QPixmap,
     QResizeEvent,
+    QShortcut,
 )
 from PyQt6.QtWidgets import (
+    QAbstractButton,
     QAbstractItemView,
+    QApplication,
     QCheckBox,
     QDialog,
     QDialogButtonBox,
@@ -154,6 +158,7 @@ class ArtistImageLabel(QLabel):
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setScaledContents(False)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.hide()
 
     def set_artist_image(self, image_bytes: bytes | None, page_url: str | None) -> None:
@@ -162,17 +167,26 @@ class ArtistImageLabel(QLabel):
         self._page_url = page_url if page_url and image_bytes else None
         self.clear()
         self._source_pixmap = None
+        self.unsetCursor()
         if not image_bytes:
+            self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self.hide()
             return
 
         pixmap = QPixmap()
         if not pixmap.loadFromData(image_bytes):
+            self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self.hide()
             return
         self._source_pixmap = pixmap
         self._update_scaled_pixmap()
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        if self._page_url:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+        else:
+            self.unsetCursor()
+        self.setFocusPolicy(
+            Qt.FocusPolicy.StrongFocus if self._page_url else Qt.FocusPolicy.NoFocus
+        )
         self.show()
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
@@ -185,6 +199,17 @@ class ArtistImageLabel(QLabel):
             event.accept()
             return
         super().mousePressEvent(event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
+        if self._page_url and event.key() in {
+            Qt.Key.Key_Enter,
+            Qt.Key.Key_Return,
+            Qt.Key.Key_Space,
+        }:
+            self.artist_page_requested.emit(self._page_url)
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def _update_scaled_pixmap(self) -> None:
         if self._source_pixmap is None or self.width() <= 0 or self.height() <= 0:
@@ -257,13 +282,14 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         self.setWindowTitle(application_title(version))
 
-    def _build_actions(self) -> None:
+    def _build_actions(self) -> None:  # pylint: disable=too-many-statements
         self.refresh_action = QAction(self)
         self.refresh_action.setShortcut(QKeySequence.StandardKey.Refresh)
         self.refresh_action.triggered.connect(self.fetch_requested.emit)
 
         self.preferences_action = QAction(self)
         self.preferences_action.setIcon(preferences_icon())
+        self.preferences_action.setShortcut(QKeySequence("Ctrl+,"))
         self.preferences_action.triggered.connect(self.preferences_requested.emit)
 
         self.file_cache_action = QAction(self)
@@ -278,7 +304,16 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         self.quit_action = QAction(self)
         self.quit_action.setIcon(quit_icon())
+        self.quit_action.setShortcut(QKeySequence("Ctrl+Q"))
         self.quit_action.triggered.connect(self.close)
+
+        self.filter_shortcut = QShortcut(QKeySequence.StandardKey.Find, self)
+        self.filter_shortcut.activated.connect(self._focus_track_filter)
+        self.play_pause_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Space), self)
+        self.play_pause_shortcut.activated.connect(self._handle_play_pause_shortcut)
+        QApplication.instance().focusChanged.connect(
+            self._update_playback_shortcut_for_focus
+        )
 
         self.theme_light_action = QAction(self)
         self.theme_light_action.setIcon(theme_swatch_icon("#F3EEE3", "#B9AA86"))
@@ -314,6 +349,25 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
                 lambda _checked=False, code=language.code: self.set_language(code)
             )
             self.language_actions[language.code] = action
+
+    def _focus_track_filter(self) -> None:
+        self.track_filter_input.setFocus(Qt.FocusReason.ShortcutFocusReason)
+        self.track_filter_input.selectAll()
+
+    def _handle_play_pause_shortcut(self) -> None:
+        if self.pause_button.isEnabled():
+            self.pause_requested.emit()
+            return
+        self.play_requested.emit()
+
+    def _update_playback_shortcut_for_focus(
+        self, _previous: QWidget | None, current: QWidget | None
+    ) -> None:
+        native_space_widget = isinstance(
+            current,
+            (QAbstractButton, QLineEdit, QPlainTextEdit, QSlider, QTextBrowser),
+        ) or current is getattr(self, "artist_image_label", None)
+        self.play_pause_shortcut.setEnabled(not native_space_widget)
 
     def _build_menus(self) -> None:
         self.theme_menu = QMenu(self)
@@ -363,6 +417,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         self.username_label = QLabel()
         self.username_input = QLineEdit()
+        self.username_label.setBuddy(self.username_input)
         self.username_input.returnPressed.connect(self.fetch_requested.emit)
 
         self.fetch_button = QPushButton()
@@ -404,6 +459,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         filter_layout.setContentsMargins(0, 0, 0, 0)
         self.track_filter_label = QLabel()
         self.track_filter_input = QLineEdit()
+        self.track_filter_label.setBuddy(self.track_filter_input)
         self.track_filter_input.setClearButtonEnabled(True)
         self.track_filter_reset_button = QPushButton()
         self.retry_selected_button = QPushButton()
@@ -565,6 +621,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.volume_slider.setRange(MIN_VOLUME_PERCENT, MAX_VOLUME_PERCENT)
         self.volume_slider.setValue(MAX_VOLUME_PERCENT)
         self.volume_slider.valueChanged.connect(self.volume_changed.emit)
+        self.volume_label.setBuddy(self.volume_slider)
         self.mute_checkbox = QCheckBox()
         self.mute_checkbox.toggled.connect(self.mute_toggled.emit)
         volume_layout.addWidget(self.volume_label)
@@ -1269,10 +1326,13 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.help_menu.setTitle(self.tr("Help"))
         self.username_label.setText(self.tr("Last.fm username"))
         self.username_input.setPlaceholderText(self.tr("Enter username"))
+        self.username_input.setAccessibleName(self.tr("Last.fm username"))
         self._update_fetch_button_text()
         self._update_youtube_work_button_text()
         self.track_filter_label.setText(self.tr("Filter"))
         self.track_filter_input.setPlaceholderText(self.tr("Artist, title, status, or error"))
+        self.track_filter_input.setAccessibleName(self.tr("Filter tracks"))
+        self.track_table.setAccessibleName(self.tr("Track library"))
         self.track_filter_reset_button.setText(self.tr("Reset"))
         self._update_retry_action_state()
         self.empty_state_label.setText(
@@ -1281,6 +1341,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.playback_group.setTitle(self.tr("Playback"))
         if self._now_playing_idle:
             self.now_playing_label.setText(self.tr("Not playing"))
+        self.now_playing_label.setAccessibleName(self.tr("Now playing"))
         self._update_playback_button_text()
         self.stop_button.setText(self.tr("Stop"))
         self.next_button.setText(self.tr("Next"))
@@ -1290,13 +1351,23 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.randomize_checkbox.setText(self.tr("Randomize"))
         self._set_artist_title(self._artist_title_name)
         self.artist_image_label.setToolTip(self.tr("Open artist page on Last.fm"))
+        self.artist_image_label.setAccessibleName(self.tr("Artist image"))
+        self.artist_image_label.setAccessibleDescription(
+            self.tr("Open artist page on Last.fm")
+        )
         self.playback_slider.setToolTip(self.tr("Playback position"))
+        self.playback_slider.setAccessibleName(self.tr("Playback position"))
+        self.volume_slider.setAccessibleName(self.tr("Volume"))
         self.discovery_progress_label.setText(self.tr("Last.fm discovery"))
         self.lookup_progress_label.setText(self.tr("YouTube checks"))
         self.download_progress_label.setText(self.tr("Downloads"))
+        self.discovery_progress_bar.setAccessibleName(self.tr("Last.fm discovery"))
+        self.lookup_progress_bar.setAccessibleName(self.tr("YouTube checks"))
+        self.download_progress_bar.setAccessibleName(self.tr("Downloads"))
         self.clear_feedback_button.setText(self.tr("Clear log"))
         self.clear_feedback_button.setToolTip(self.tr("Clear status updates and errors"))
         self.feedback_log.setPlaceholderText(self.tr("Status updates and errors will appear here."))
+        self.feedback_log.setAccessibleName(self.tr("Status updates and errors"))
         self._update_track_count_label()
         if not self.dependency_label.text():
             self.dependency_label.setText(

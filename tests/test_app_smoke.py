@@ -55,8 +55,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.173"
-    assert __display_version__ == "0.0.173"
+    assert __version__ == "0.0.174"
+    assert __display_version__ == "0.0.174"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -754,6 +754,57 @@ def test_main_window_fetch_action_is_reachable_from_the_main_menu(qapp) -> None:
     assert emissions == [True]
 
 
+def test_main_window_keyboard_shortcuts_focus_filter_and_control_playback(qapp) -> None:
+    window = MainWindow()
+    window.show()
+    events: list[str] = []
+    window.play_requested.connect(lambda: events.append("play"))
+    window.pause_requested.connect(lambda: events.append("pause"))
+    window.track_filter_input.setText("existing filter")
+    window.username_input.setFocus()
+    qapp.processEvents()
+
+    QTest.keyClick(
+        window.username_input,
+        Qt.Key.Key_F,
+        Qt.KeyboardModifier.ControlModifier,
+    )
+
+    assert window.track_filter_input.hasFocus()
+    assert window.track_filter_input.selectedText() == "existing filter"
+
+    window.track_table.setFocus()
+    qapp.processEvents()
+    QTest.keyClick(window.track_table, Qt.Key.Key_Space)
+    window.set_playback_controls(active=True)
+    QTest.keyClick(window.track_table, Qt.Key.Key_Space)
+
+    window.username_input.clear()
+    window.username_input.setFocus()
+    qapp.processEvents()
+    QTest.keyClicks(window.username_input, "user name")
+
+    assert events == ["play", "pause"]
+    assert window.username_input.text() == "user name"
+    assert window.preferences_action.shortcut() == QKeySequence("Ctrl+,")
+    assert window.quit_action.shortcut() == QKeySequence("Ctrl+Q")
+
+
+def test_main_window_labels_and_controls_expose_accessible_relationships(qapp) -> None:
+    window = MainWindow()
+
+    assert window.username_label.buddy() is window.username_input
+    assert window.track_filter_label.buddy() is window.track_filter_input
+    assert window.volume_label.buddy() is window.volume_slider
+    assert window.username_input.accessibleName() == "Last.fm username"
+    assert window.track_filter_input.accessibleName() == "Filter tracks"
+    assert window.track_table.accessibleName() == "Track library"
+    assert window.now_playing_label.accessibleName() == "Now playing"
+    assert window.playback_slider.accessibleName() == "Playback position"
+    assert window.volume_slider.accessibleName() == "Volume"
+    assert window.feedback_log.accessibleName() == "Status updates and errors"
+
+
 def test_main_window_file_cache_menu_action_emits_request(qapp) -> None:
     window = MainWindow()
     emissions: list[bool] = []
@@ -1012,11 +1063,22 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
     )
     window.artist_image_label.mousePressEvent(event)
 
-    assert requested_pages == ["https://www.last.fm/music/Artist"]
+    assert window.artist_image_label.focusPolicy() == Qt.FocusPolicy.StrongFocus
+    assert window.artist_image_label.accessibleName() == "Artist image"
+    window.show()
+    window.artist_image_label.setFocus()
+    qapp.processEvents()
+    QTest.keyClick(window.artist_image_label, Qt.Key.Key_Return)
+
+    assert requested_pages == [
+        "https://www.last.fm/music/Artist",
+        "https://www.last.fm/music/Artist",
+    ]
 
     window.set_artist_image(None, None)
 
     assert window.artist_image_label.isHidden()
+    assert window.artist_image_label.focusPolicy() == Qt.FocusPolicy.NoFocus
     assert window.artist_image_group.isHidden()
     assert window.artist_image_group.title() == "Artist"
 

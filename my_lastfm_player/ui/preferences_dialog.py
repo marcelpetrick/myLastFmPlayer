@@ -107,6 +107,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         browser_row = QHBoxLayout()
         self.browser_label = QLabel(self)
         self.browser_combo = QComboBox(self)
+        self.browser_label.setBuddy(self.browser_combo)
         self._browser_values = YTDLP_BROWSER_CHOICES
         browser_row.addWidget(self.browser_label)
         browser_row.addWidget(self.browser_combo)
@@ -114,6 +115,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         concurrency_row = QHBoxLayout()
         self.concurrency_label = QLabel(self)
         self.concurrency_input = QSpinBox(self)
+        self.concurrency_label.setBuddy(self.concurrency_input)
         self.concurrency_input.setRange(MIN_DOWNLOAD_CONCURRENCY, MAX_DOWNLOAD_CONCURRENCY)
         concurrency_row.addWidget(self.concurrency_label)
         concurrency_row.addWidget(self.concurrency_input)
@@ -187,6 +189,10 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         self.youtube_group.setTitle(self.tr("YouTube Downloads"))
         self.browser_label.setText(self.tr("Browser cookies:"))
         self.concurrency_label.setText(self.tr("Parallel YouTube checks and downloads:"))
+        self.browser_combo.setAccessibleName(self.tr("Browser cookies:"))
+        self.concurrency_input.setAccessibleName(
+            self.tr("Parallel YouTube checks and downloads:")
+        )
         self.youtube_hint.setText(
             self.tr(
                 "Select the browser whose YouTube login cookies yt-dlp should use. "

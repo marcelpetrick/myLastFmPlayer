@@ -413,3 +413,20 @@ def test_preferences_dialog_keeps_sections_fixed_when_expanded(qapp) -> None:
     assert dialog.scrobbling_group.sizePolicy().verticalPolicy() == fixed_policy
     assert dialog.youtube_group.sizePolicy().verticalPolicy() == fixed_policy
     assert dialog.privacy_group.sizePolicy().verticalPolicy() == fixed_policy
+
+
+def test_preferences_dialog_exposes_buddies_and_closes_with_escape(qapp) -> None:
+    dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
+    dialog.show()
+    qapp.processEvents()
+
+    assert dialog.browser_label.buddy() is dialog.browser_combo
+    assert dialog.concurrency_label.buddy() is dialog.concurrency_input
+    assert dialog.browser_combo.accessibleName() == "Browser cookies:"
+    assert dialog.concurrency_input.accessibleName() == (
+        "Parallel YouTube checks and downloads:"
+    )
+
+    QTest.keyClick(dialog, Qt.Key.Key_Escape)
+
+    assert not dialog.isVisible()

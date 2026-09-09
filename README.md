@@ -16,7 +16,7 @@ locally from one PyQt6 interface.
 
 ## Product Status
 
-Current version: `0.0.173` — fully usable and actively maintained
+Current version: `0.0.174` — fully usable and actively maintained
 
 The complete intended workflow is implemented and used in practice. Its major features
 are covered by the automated test suite, packaging and installed-application checks,
@@ -46,6 +46,8 @@ extensions rather than completion of missing core features.
 - Supports optional authenticated Last.fm scrobbling.
 - Includes light, dark, lilac, and mint themes plus English, Croatian, German, Mandarin,
   and Ukrainian interfaces.
+- Supports keyboard-first operation with filter, playback, preferences, quit, seeking,
+  retry, and artist-link access plus explicit accessible control names and label buddies.
 
 ## Interface
 
@@ -102,7 +104,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.173-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.174-py3-none-any.whl
 my-lastfm-player
 ```
 
