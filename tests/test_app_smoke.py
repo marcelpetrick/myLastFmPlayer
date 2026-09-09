@@ -32,6 +32,7 @@ from my_lastfm_player.ui import main_window as main_window_module
 from my_lastfm_player.ui.main_window import (
     ERROR_TEXT_COLOR,
     ArtistImageLabel,
+    ElidedLabel,
     MainWindow,
     TrackFilterProxyModel,
     application_title,
@@ -54,8 +55,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.172"
-    assert __display_version__ == "0.0.172"
+    assert __version__ == "0.0.173"
+    assert __display_version__ == "0.0.173"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -814,6 +815,26 @@ def test_main_window_does_not_retranslate_active_now_playing_label(qapp) -> None
 
     assert window.now_playing_label.text() == "Artist — Title"
     translation_manager.set_language("en")
+
+
+def test_main_window_elides_long_now_playing_text_without_expanding_window(qapp) -> None:
+    window = MainWindow()
+    window.resize(720, 620)
+    window.show()
+    qapp.processEvents()
+    original_width = window.width()
+    artist = "Very Long Artist " * 20
+    title = "Very Long Title " * 20
+
+    window.set_now_playing(Track(artist=artist, title=title))
+    qapp.processEvents()
+
+    assert isinstance(window.now_playing_label, ElidedLabel)
+    assert window.width() == original_width
+    assert window.minimumSizeHint().width() <= original_width
+    assert window.now_playing_label.text().endswith("…")
+    assert window.now_playing_label.toolTip() == f"{artist} — {title}"
+    assert window.now_playing_label.full_text() == f"{artist} — {title}"
 
 
 def test_main_window_help_actions_open_dialogs(qapp, monkeypatch) -> None:

@@ -371,11 +371,37 @@ def test_preferences_dialog_keep_data_toggle_persists(qapp, monkeypatch) -> None
     assert not settings.keep_data
 
 
-def test_preferences_dialog_uses_content_minimum_height(qapp) -> None:
+def test_preferences_dialog_bounds_content_and_keeps_close_button_outside_scroll(qapp) -> None:
     dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
+    available = dialog.screen().availableGeometry()
 
     assert dialog.minimumWidth() >= preferences_module.PREFERENCES_MINIMUM_WIDTH
-    assert dialog.minimumHeight() >= dialog.minimumSizeHint().height()
+    assert dialog.maximumWidth() <= int(
+        available.width() * preferences_module.PREFERENCES_SCREEN_FRACTION
+    )
+    assert dialog.maximumHeight() <= int(
+        available.height() * preferences_module.PREFERENCES_SCREEN_FRACTION
+    )
+    assert dialog.scroll_area.widget() is dialog.scroll_content
+    assert dialog.buttons.parentWidget() is dialog
+
+
+def test_preferences_dialog_scrolls_at_large_font_with_close_reachable(qapp) -> None:
+    dialog = PreferencesDialog(None, None)  # type: ignore[arg-type]
+    font = dialog.font()
+    font.setPointSize(16)
+    dialog.setFont(font)
+    dialog.retranslate_ui()
+    dialog.show()
+    qapp.processEvents()
+    available = dialog.screen().availableGeometry()
+
+    assert dialog.height() <= int(
+        available.height() * preferences_module.PREFERENCES_SCREEN_FRACTION
+    )
+    assert dialog.scroll_area.verticalScrollBar().maximum() > 0
+    assert dialog.buttons.isVisible()
+    assert dialog.buttons.geometry().bottom() <= dialog.contentsRect().bottom()
 
 
 def test_preferences_dialog_keeps_sections_fixed_when_expanded(qapp) -> None:

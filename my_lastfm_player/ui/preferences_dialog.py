@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QVBoxLayout,
@@ -32,6 +33,8 @@ from my_lastfm_player.settings import (
 from my_lastfm_player.workers import BackgroundCallWorker
 
 PREFERENCES_MINIMUM_WIDTH = 520
+PREFERENCES_MINIMUM_HEIGHT = 360
+PREFERENCES_SCREEN_FRACTION = 0.9
 
 
 class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attributes
@@ -53,12 +56,23 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         layout.setSpacing(12)
         layout.setContentsMargins(16, 16, 16, 16)
 
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+        self.scroll_content = QWidget(self.scroll_area)
+        content_layout = QVBoxLayout(self.scroll_content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(12)
+        self.scroll_area.setWidget(self.scroll_content)
+        layout.addWidget(self.scroll_area, stretch=1)
+
         # ── Authentication group ────────────────────────────────────────
         self.auth_group = QGroupBox(self)
         self.auth_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         auth_layout = QVBoxLayout(self.auth_group)
 
         self.status_label = QLabel(self)
+        self.status_label.setWordWrap(True)
 
         btn_row = QHBoxLayout()
         self.authenticate_button = QPushButton(self)
@@ -71,7 +85,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
 
         auth_layout.addWidget(self.status_label)
         auth_layout.addLayout(btn_row)
-        layout.addWidget(self.auth_group)
+        content_layout.addWidget(self.auth_group)
 
         # ── Scrobbling group ────────────────────────────────────────────
         self.scrobbling_group = QGroupBox(self)
@@ -84,7 +98,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         self.scrobbling_hint.setWordWrap(True)
         scrobbling_layout.addWidget(self.scrobbling_checkbox)
         scrobbling_layout.addWidget(self.scrobbling_hint)
-        layout.addWidget(self.scrobbling_group)
+        content_layout.addWidget(self.scrobbling_group)
 
         # ── YouTube group ───────────────────────────────────────────────
         self.youtube_group = QGroupBox(self)
@@ -109,7 +123,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         youtube_layout.addLayout(browser_row)
         youtube_layout.addLayout(concurrency_row)
         youtube_layout.addWidget(self.youtube_hint)
-        layout.addWidget(self.youtube_group)
+        content_layout.addWidget(self.youtube_group)
 
         # ── Privacy group ───────────────────────────────────────────────
         self.privacy_group = QGroupBox(self)
@@ -120,13 +134,13 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         self.keep_data_hint.setWordWrap(True)
         privacy_layout.addWidget(self.keep_data_checkbox)
         privacy_layout.addWidget(self.keep_data_hint)
-        layout.addWidget(self.privacy_group)
-        layout.addStretch(1)
+        content_layout.addWidget(self.privacy_group)
+        content_layout.addStretch(1)
 
         # ── Close button ────────────────────────────────────────────────
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, self)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, self)
+        self.buttons.rejected.connect(self.reject)
+        layout.addWidget(self.buttons)
 
         # Connections
         self.authenticate_button.clicked.connect(self._on_authenticate)
@@ -242,12 +256,34 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
 
     def _fit_to_content(self) -> None:
         self.layout().activate()
-        minimum_size = self.minimumSizeHint()
-        self.setMinimumSize(
-            max(PREFERENCES_MINIMUM_WIDTH, minimum_size.width()),
-            minimum_size.height(),
+        self.scroll_content.adjustSize()
+        available = self.screen().availableGeometry()
+        maximum_width = max(320, int(available.width() * PREFERENCES_SCREEN_FRACTION))
+        maximum_height = max(320, int(available.height() * PREFERENCES_SCREEN_FRACTION))
+        margins = self.layout().contentsMargins()
+        frame_width = self.scroll_area.frameWidth() * 2
+        content_hint = self.scroll_content.sizeHint()
+        target_width = min(
+            maximum_width,
+            max(
+                PREFERENCES_MINIMUM_WIDTH,
+                content_hint.width() + margins.left() + margins.right() + frame_width,
+            ),
         )
-        self.resize(max(self.width(), self.minimumWidth()), self.minimumHeight())
+        target_height = min(
+            maximum_height,
+            content_hint.height()
+            + self.buttons.sizeHint().height()
+            + margins.top()
+            + margins.bottom()
+            + self.layout().spacing(),
+        )
+        self.setMinimumSize(
+            min(PREFERENCES_MINIMUM_WIDTH, maximum_width),
+            min(PREFERENCES_MINIMUM_HEIGHT, maximum_height),
+        )
+        self.setMaximumSize(maximum_width, maximum_height)
+        self.resize(target_width, max(self.minimumHeight(), target_height))
 
     def _on_authenticate(self) -> None:
         if self._service is None:

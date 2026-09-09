@@ -1,7 +1,7 @@
 # Runtime Architecture
 
 This document is the concise, implementation-facing architecture description for
-`myLastFmPlayer` 0.0.172. The rendered C4 diagrams and class reference are in
+`myLastFmPlayer` 0.0.173. The rendered C4 diagrams and class reference are in
 [`docs/architecture.rst`](../docs/architecture.rst) and
 [`docs/api.rst`](../docs/api.rst).
 
@@ -195,6 +195,12 @@ Selecting an unavailable track and pressing Play starts a one-track priority loo
 download without losing the background queue. When the local file becomes ready, the
 controller starts playback. Normal controls provide pause, stop, seek, volume, mute,
 next-track, and randomized continuation.
+
+The now-playing field is a horizontally ignored, single-line `ElidedLabel`: it retains
+the complete artist/title value for its tooltip while its visible form follows the
+available playback width. Preferences uses a resizable scroll viewport for setting
+groups, bounds the dialog to 90% of the active screen, and leaves Close in the fixed
+outer layout so it remains reachable when content overflows.
 
 Artist artwork loads on a separate worker. The preview stays at a bounded size and is
 hidden when no valid image is available, so it cannot consume vertical space from the

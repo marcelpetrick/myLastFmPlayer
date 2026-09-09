@@ -3,7 +3,7 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.172; all three original HIGH findings and seven MEDIUM
+Fix status refreshed through v0.0.173; all three original HIGH findings and eight MEDIUM
 findings are resolved.
 
 ## Method and priorities
@@ -236,7 +236,7 @@ username and workflow generation, routes every update to that stage, and marks o
 originating stage on failure. Interleaved regression tests verify that lookup progress or
 failure cannot replace concurrently displayed download progress.
 
-### 10. MEDIUM — Long content and larger fonts can force windows beyond useful dimensions
+### 10. MEDIUM — Long content and larger fonts can force windows beyond useful dimensions — Fixed in v0.0.173
 
 Evidence: `my_lastfm_player/ui/main_window.py:444`, `:459`, and `:746`;
 `my_lastfm_player/ui/preferences_dialog.py:224`.
@@ -251,6 +251,12 @@ Avoid treating a fixed pixel dimension as a complete solution to finding 1.
 
 Acceptance: long artist/title strings and translated labels remain usable on a 1366×768
 desktop with larger fonts; Close and essential playback controls remain reachable.
+
+Fixed in v0.0.173: now-playing text uses a width-independent, single-line eliding label
+whose tooltip retains the complete artist and title. Preferences places its setting groups
+in a resizable scroll viewport, remains within 90% of the active screen, and keeps Close
+in the non-scrolling outer layout. Geometry tests cover long synthetic metadata and a
+16-point Preferences font with actual overflow and a reachable Close button.
 
 ### 11. MEDIUM — Keyboard and accessible labelling support is incomplete
 

@@ -5,7 +5,7 @@ import logging
 from collections.abc import Callable
 from html import escape
 
-from PyQt6.QtCore import QEvent, QPoint, QSortFilterProxyModel, Qt, QTime, pyqtSignal
+from PyQt6.QtCore import QEvent, QPoint, QSize, QSortFilterProxyModel, Qt, QTime, pyqtSignal
 from PyQt6.QtGui import (
     QAction,
     QActionGroup,
@@ -103,6 +103,42 @@ class TrackFilterProxyModel(QSortFilterProxyModel):
             or self._filter_text in translated_track_status(track.status).casefold()
             or self._filter_text in (track.error or "").casefold()
         )
+
+
+class ElidedLabel(QLabel):
+    """Single-line label that retains full text without imposing its full width."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._full_text = ""
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+
+    def setText(self, text: str) -> None:  # noqa: N802
+        self._full_text = text
+        self._update_elided_text()
+
+    def full_text(self) -> str:
+        """Return the unabridged label content."""
+
+        return self._full_text
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        return QSize(0, super().minimumSizeHint().height())
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._update_elided_text()
+
+    def _update_elided_text(self) -> None:
+        available_width = max(0, self.contentsRect().width())
+        visible_text = self.fontMetrics().elidedText(
+            self._full_text,
+            Qt.TextElideMode.ElideRight,
+            available_width,
+        )
+        super().setText(visible_text)
+        self.setToolTip(self._full_text if visible_text != self._full_text else "")
 
 
 class ArtistImageLabel(QLabel):
@@ -520,7 +556,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         playback_timeline_layout.addWidget(self.current_time_label)
         playback_timeline_layout.addWidget(self.time_separator_label)
         playback_timeline_layout.addWidget(self.total_time_label)
-        self.now_playing_label = QLabel()
+        self.now_playing_label = ElidedLabel()
         self.now_playing_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         volume_layout = QHBoxLayout()
