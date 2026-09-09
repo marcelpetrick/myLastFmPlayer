@@ -276,6 +276,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._update_track_count_label()
         self.statusBar().showMessage(self.tr("Ready"))
         self.retranslate_ui()
+        self._stabilize_controls_panel_height()
 
     def set_application_title(self, version: str) -> None:
         """Set the window title using the current application ``version``."""
@@ -657,6 +658,14 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.error_indicator_label.setStyleSheet(f"color: {ERROR_TEXT_COLOR};")
         self.error_indicator_label.hide()
         self.statusBar().addPermanentWidget(self.error_indicator_label)
+
+    def _stabilize_controls_panel_height(self) -> None:
+        controls_height = max(
+            self.playback_group.sizeHint().height(),
+            self.artist_image_group.sizeHint().height(),
+        )
+        self.playback_group.setFixedHeight(controls_height)
+        self.artist_image_group.setFixedHeight(controls_height)
 
     def _build_feedback_panel(self) -> QWidget:
         panel = QWidget()
