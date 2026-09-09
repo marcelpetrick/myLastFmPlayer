@@ -3,7 +3,7 @@
 Scrobbling is implemented and optional. This checklist describes the current desktop
 authentication flow rather than unfinished work.
 
-## Developer side (one-time)
+## Developer Setup
 
 1. Register the app at <https://www.last.fm/api/account/create> — fill in app
    name, description, and a callback URL (any value works for desktop).
@@ -14,7 +14,7 @@ authentication flow rather than unfinished work.
 3. `LASTFM_API_KEY` and `LASTFM_API_SECRET` remain available as overrides for
    developers, packagers, or users who want to use their own Last.fm API account.
 
-## User side (per-device, one-time)
+## User Setup
 
 1. Open the app -> **Main -> Preferences**.
 2. Click **Authenticate with Last.fm**. The browser opens.

@@ -4,7 +4,7 @@ Rules and repository notes for every automated coding assistant working on this
 project. [`../docs/agents.md`](../docs/agents.md) is the authoritative contribution
 policy; this file provides the expanded command and architecture reference.
 
-## Common commands
+## Common Commands
 
 All commands assume the project's `.venv` is active or that binaries are invoked
 through `.venv/bin/`.
@@ -19,7 +19,7 @@ through `.venv/bin/`.
   `MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 python -m pytest tests/test_lastfm_e2e.py`
 - Documentation gate: `python tools/check_docs.py`
 - Sphinx docs:
-  `python -m sphinx -W --keep-going -b html docs build/sphinx/html`
+  `python -m sphinx -W --keep-going -b html docs docs/_build/html`
 - Regenerate Qt translation source files after changing user-visible strings:
   `tools/update_translations.sh`
 - Compile Qt translation files after regeneration:
@@ -27,7 +27,7 @@ through `.venv/bin/`.
 
 `./localPipeline.sh --noRun` is the canonical check before every commit.
 
-## Commit messages
+## Commit Messages
 
 Use Conventional Commits format for every commit subject:
 
@@ -67,7 +67,7 @@ stages pass. A red pipeline means no commit.
 Stages that must be green: Ruff lint, docs check, Sphinx, tests, and coverage.
 The configured coverage gate is the source of truth for the required minimum.
 
-## Architecture notes
+## Architecture Notes
 
 This is a PyQt6 desktop app that fetches a user's Last.fm loved tracks, resolves
 them to YouTube via `yt-dlp`, downloads audio, and plays it locally. The codebase
@@ -129,7 +129,7 @@ can overlap while each track remains independent.
 Every Markdown file must have a top-level `# ` heading, avoid trailing
 whitespace, and end with a newline.
 
-## Quality checklist
+## Quality Checklist
 
 1. `./localPipeline.sh --noRun` passes.
 2. New modules are added to `docs/api.rst`.

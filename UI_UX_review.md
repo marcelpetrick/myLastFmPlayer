@@ -1,10 +1,10 @@
-# UI/UX review
+# UI/UX Review
 
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.175; all three original HIGH findings and all nine MEDIUM
-findings are resolved.
+Fix status refreshed through v0.0.176; all three original HIGH findings and all nine MEDIUM
+findings are resolved. The remaining three LOW findings are documented improvement ideas.
 
 ## Method and priorities
 

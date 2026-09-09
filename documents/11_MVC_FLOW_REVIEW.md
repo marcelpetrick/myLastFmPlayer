@@ -1,6 +1,9 @@
-# MVC and Workflow Review
+# Historical MVC and Workflow Review
 
-This document is a long-form design review of `myLastFmPlayer` as of `v0.0.81`. It captures the open questions and concerns about the current implementation, walks through the actual data flow in text and diagrams, and proposes how the public interfaces could evolve. **No source code is changed by this document.** It lives in `documents/` purely as a reference and as a prompt for later discussion.
+> **Historical snapshot:** This long-form design review describes `myLastFmPlayer`
+> v0.0.81. Its open questions and proposals are preserved for context; they do not
+> describe the current backlog. See [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md) for the
+> maintained runtime design.
 
 ---
 

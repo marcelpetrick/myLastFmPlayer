@@ -1,4 +1,4 @@
-# MVP Development Plan
+# Historical MVP Development Plan
 
 > **Historical record:** This was the short execution plan for the original product
 > milestone. The work is complete; it is not the current backlog. See

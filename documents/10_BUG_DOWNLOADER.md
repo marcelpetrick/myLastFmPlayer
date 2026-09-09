@@ -1,93 +1,104 @@
-# Bug: Background download does not start for cached tracks
+# Resolved Bug: Background Download Did Not Start for Cached Tracks
 
 > **Historical fixed-bug record:** This investigation describes an earlier downloader
 > implementation. The current overlapping, bounded workflow is documented in
 > [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md).
 
-Plan: Fix background auto-download for cached and freshly-fetched tracks
+## Original Fix Plan
 
-Context
+Fix background auto-download for cached and freshly fetched tracks.
 
-Bug 22 was declared fixed ("immediately start downloads when a playlist is available, don't wait for user input"). However, downloads do
-not actually start automatically in the common case where a user's tracks are already cached on disk. Additionally, the fresh-fetch code
-path has a race condition where two lookup workers can both trigger a download worker, causing concurrent downloads that overwrite each
-other.
+## Context
 
-Root Cause Analysis
+Bug 22 was declared fixed ("immediately start downloads when a playlist is available;
+do not wait for user input"). Downloads did not start automatically in the common case
+where a user's tracks were already cached on disk. The fresh-fetch path also had a race
+in which two lookup workers could trigger concurrent downloads of the same files.
 
-Bug A — No auto-download on cache-path (primary bug)
+## Root Cause Analysis
 
-File: controller.py:363–401 (fetch_loved_tracks)
+### Bug A — No Automatic Download on the Cache Path
 
- if self.load_cached_tracks_for_entered_username(verify_online_count=True):
-     self.window.set_fetch_control_state(active=False, paused=False)
-     self.window.set_progress(100, ...)
-     return   # <— no worker started; QUEUED tracks silently sit idle
+Original location: `controller.py:363–401` (`fetch_loved_tracks`)
 
-When cached tracks exist (the normal case after the first run), the method returns after populating the UI.
-load_cached_tracks_for_entered_username applies both mark_cached_lookups (sets QUEUED for tracks with a known YouTube URL) and
-mark_cached_downloads (marks DOWNLOADED for files that exist on disk). Tracks that are QUEUED — youtube_url known, file not yet on disk —
-are never downloaded automatically.
+```python
+if self.load_cached_tracks_for_entered_username(verify_online_count=True):
+    self.window.set_fetch_control_state(active=False, paused=False)
+    self.window.set_progress(100, ...)
+    return  # No worker started; queued tracks stayed idle.
+```
 
-Bug B — Double lookup → potential double download (secondary bug)
+When cached tracks existed, the method returned after populating the UI.
+`load_cached_tracks_for_entered_username` applied both `mark_cached_lookups` and
+`mark_cached_downloads`, but queued tracks whose files were absent never started
+downloading.
 
-File: controller.py:712–748 (_handle_tracks_updated) and controller.py:655–685 (_handle_tracks_loaded)
+### Bug B — Double Lookup Could Start Two Downloads
 
-_handle_tracks_updated starts an incremental lookup (one-time, guarded by _started_incremental_lookup_for_fetch). Then
-_handle_tracks_loaded always starts a second full lookup (the flag is reset before the check, so it is never effective here). Both
-lookups call _handle_tracks_resolved, and both can call _start_automatic_download, spawning two concurrent DownloadTracksWorker instances
-that both load the same QUEUED tracks from disk and race to write the same output files.
+Original locations: `controller.py:712–748` (`_handle_tracks_updated`) and
+`controller.py:655–685` (`_handle_tracks_loaded`)
 
-Proposed Changes (controller.py only)
+`_handle_tracks_updated` started an incremental lookup. `_handle_tracks_loaded` then
+started a second full lookup because its guard flag was reset too early. Both completion
+paths could create a `DownloadTracksWorker`, load the same queued tracks, and write the
+same output files.
 
-Change 1 — Auto-start lookup after cache load
+## Proposed Changes
 
-In fetch_loved_tracks, after the early-return path succeeds, call _start_automatic_lookup. The lookup worker calls
-resolve_and_store_tracks, which:
-- Skips already-resolved tracks (QUEUED) with no yt-dlp calls — O(n) in-memory pass
+### Change 1 — Start Lookup After Loading the Cache
 
-    if self.load_cached_tracks_for_entered_username(verify_online_count=True):
-        self.window.set_fetch_control_state(active=False, paused=False)
-        self.window.set_progress(100, translate("ApplicationController", "Loaded cached tracks"))
-        tracks = self.window.tracks()
-        if tracks:
-            self._start_automatic_lookup(username, len(tracks))
-        return
+After the early cache path succeeded, `fetch_loved_tracks` would call
+`_start_automatic_lookup`. The lookup worker's `resolve_and_store_tracks` path skipped
+already resolved tracks without running `yt-dlp`.
 
-Change 2 — Guard against concurrent download workers
+```python
+if self.load_cached_tracks_for_entered_username(verify_online_count=True):
+    self.window.set_fetch_control_state(active=False, paused=False)
+    self.window.set_progress(100, translate("ApplicationController", "Loaded cached tracks"))
+    tracks = self.window.tracks()
+    if tracks:
+        self._start_automatic_lookup(username, len(tracks))
+    return
+```
 
-Add _download_worker_active: bool = False to __init__.
+### Change 2 — Guard Against Concurrent Download Workers
 
-In _start_automatic_download (which calls download_tracks): set _download_worker_active = True.
+Add `_download_worker_active: bool = False` to `__init__`.
 
-In _handle_tracks_downloaded: reset _download_worker_active = False, then re-check whether the completed download run left any QUEUED
-candidates (from a second lookup that resolved new tracks concurrently) and start a follow-up download if so.
+Set `_download_worker_active = True` in `_start_automatic_download`.
 
-In _handle_tracks_resolved: only call _start_automatic_download when _download_worker_active is False.
+In `_handle_tracks_downloaded`, reset the flag, check whether the completed run left
+queued candidates, and start a follow-up download when needed.
+
+In `_handle_tracks_resolved`, call `_start_automatic_download` only when no download
+worker is active.
 
 This turns the "two downloads fire and race" pattern into a clean "chain": first download runs, finishes, sees any remaining
 candidates, starts a second pass if needed.
 
-Change 3 — Fix _handle_tracks_loaded double-lookup
+### Change 3 — Prevent the Second Lookup
 
-Save the _started_incremental_lookup_for_fetch flag before resetting it, and skip the redundant automatic lookup when the incremental
-lookup was already started:
+Save `_started_incremental_lookup_for_fetch` before resetting it, then skip the
+redundant lookup when incremental work already started:
 
-    already_started = self._started_incremental_lookup_for_fetch
-    self._active_fetch_worker = None
-    self._fetch_paused = False
-    self._started_incremental_lookup_for_fetch = False
-    ...
-    if tracks and not already_started:
-        self._start_automatic_lookup(username, len(tracks))
+```python
+already_started = self._started_incremental_lookup_for_fetch
+self._active_fetch_worker = None
+self._fetch_paused = False
+self._started_incremental_lookup_for_fetch = False
+# ...
+if tracks and not already_started:
+    self._start_automatic_lookup(username, len(tracks))
+```
 
-The incremental lookup starts from _handle_tracks_updated and calls load_tracks(username) at worker start — by that point the fetch is
-typically far enough along (or complete) that the repository snapshot is sufficient. Any tracks missed by the incremental lookup
-because they arrived after the snapshot will be picked up in the next session's cache-path (Change 1).
+The incremental lookup started from `_handle_tracks_updated` and loaded the repository
+snapshot when the worker started. Tracks arriving after that snapshot would be picked up
+through the cache path in the next session.
 
-Files changed
+## Original Files Changed
 
-- my_lastfm_player/controller.py: __init__ (+1 flag), fetch_loved_tracks, _handle_tracks_loaded,
-  _start_automatic_download, _handle_tracks_resolved, _handle_tracks_downloaded
+- `my_lastfm_player/controller.py`: `__init__`, `fetch_loved_tracks`,
+  `_handle_tracks_loaded`, `_start_automatic_download`, `_handle_tracks_resolved`, and
+  `_handle_tracks_downloaded`.
 
-No changes to download.py, workers.py, storage.py, or youtube.py.
+No changes were proposed for `download.py`, `workers.py`, `storage.py`, or `youtube.py`.

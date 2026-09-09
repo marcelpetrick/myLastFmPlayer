@@ -1,4 +1,4 @@
-# Agentic AI contribution rules
+# Agentic AI Contribution Rules
 
 Practices that apply whenever an AI agent contributes to this repository.
 
@@ -22,16 +22,18 @@ Practices that apply whenever an AI agent contributes to this repository.
   - Tests + Coverage — 99 % minimum
 - Never commit on a red pipeline. Fix the failure first.
 
-## Code changes
+## Code Changes
 
 - Do not add features, refactors, or abstractions beyond what the task requires.
 - Do not add comments that explain *what* code does — only *why* when non-obvious.
 - Verify behavior before changing it; the app is production-usable.
 - Write tests for every new code path. Aim to keep or improve the coverage gate.
 
-## Dependency updates
+## Dependency Updates
 
-- Runtime deps: `pylast`, `PyQt6`, `requests` — bump the `>=` floor in `pyproject.toml` to the latest stable release.
-- Dev deps: `pytest`, `pylint`, `ruff`, `sphinx`, `build`, `pytest-cov` — same rule.
+- Runtime dependencies (`pylast`, `PyQt6`, and `requests`) are pinned to exact versions
+  in `pyproject.toml`; review and update each pin deliberately.
+- Development dependencies (`pytest`, `pylint`, `ruff`, `sphinx`, `build`, and
+  `pytest-cov`) follow the same exact-pin policy.
 - Check PyPI with `pip index versions <package>` before claiming a version is current.
 - Run the full pipeline after any dependency change.

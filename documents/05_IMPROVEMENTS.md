@@ -1,4 +1,4 @@
-# Improvements
+# Historical Improvements Log
 
 > **Historical record:** This is the original running improvement log. It mixes fixed
 > items with ideas captured during development and is not the current backlog. The core
@@ -26,7 +26,8 @@
 ## Pipeline
 
 - `localPipeline.sh` installs dependencies on every run. This is simple and reliable, but it will become slow as dependencies grow. A future pipeline could skip reinstalling when `pyproject.toml` has not changed.
-- The project still uses dependency ranges instead of a lock file. A lock or constraints file would make CI and local builds more reproducible.
+- The project pins dependencies exactly in `pyproject.toml`. A generated lock or
+  constraints file could also capture transitive versions for fully repeatable installs.
 
 ## Architecture
 
