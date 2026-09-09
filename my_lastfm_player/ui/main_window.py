@@ -70,14 +70,14 @@ PLAYBACK_SEEK_PAGE_MS = 30_000
 
 
 class TrackFilterProxyModel(QSortFilterProxyModel):
-    """Sort/filter proxy that matches filter text against artist or title."""
+    """Sort/filter proxy that matches track identity, status, and failure details."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._filter_text = ""
 
     def set_track_filter_text(self, text: str) -> None:
-        """Apply a case-insensitive artist/title substring filter."""
+        """Apply a case-insensitive track-details substring filter."""
 
         normalized_text = text.casefold().strip()
         if normalized_text == self._filter_text:
@@ -100,6 +100,8 @@ class TrackFilterProxyModel(QSortFilterProxyModel):
         return (
             self._filter_text in track.artist.casefold()
             or self._filter_text in track.title.casefold()
+            or self._filter_text in translated_track_status(track.status).casefold()
+            or self._filter_text in (track.error or "").casefold()
         )
 
 
@@ -351,7 +353,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         return frame
 
-    def _build_table(self) -> QWidget:
+    def _build_table(self) -> QWidget:  # pylint: disable=too-many-statements
         panel = QWidget()
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -363,11 +365,15 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.track_filter_input = QLineEdit()
         self.track_filter_input.setClearButtonEnabled(True)
         self.track_filter_reset_button = QPushButton()
+        self.retry_selected_button = QPushButton()
         self.track_filter_input.textChanged.connect(self._set_track_filter_text)
         self.track_filter_reset_button.clicked.connect(self.track_filter_input.clear)
+        self.retry_selected_button.clicked.connect(self._retry_selected_track)
+        self.retry_selected_button.setEnabled(False)
         filter_layout.addWidget(self.track_filter_label)
         filter_layout.addWidget(self.track_filter_input, stretch=1)
         filter_layout.addWidget(self.track_filter_reset_button)
+        filter_layout.addWidget(self.retry_selected_button)
 
         self.empty_state_label = QLabel()
         self.empty_state_label.setWordWrap(True)
@@ -380,6 +386,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
         self.track_table = QTableView()
         self.track_table.setModel(self.track_sort_model)
+        self.track_table.selectionModel().selectionChanged.connect(self._update_retry_action_state)
         self.track_table.setAlternatingRowColors(True)
         self.track_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.track_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -415,11 +422,47 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         cache_key = self.track_model.data(source_index, Qt.ItemDataRole.UserRole)
         if not isinstance(cache_key, str):
             return
+        track = self.track_model.track_at(source_index.row())
+        retry_action_details = self._retry_action_details(track)
+        if retry_action_details is None:
+            return
         menu = QMenu(self)
-        retry_action = QAction(self.tr("Retry Download"), menu)
+        retry_action = QAction(retry_action_details[0], menu)
+        retry_action.setToolTip(retry_action_details[1])
         menu.addAction(retry_action)
         if menu.exec(self.track_table.viewport().mapToGlobal(pos)) == retry_action:
             self.retry_download_requested.emit(cache_key)
+
+    def _retry_selected_track(self) -> None:
+        track = self.selected_track()
+        if track is not None and self._retry_action_details(track) is not None:
+            self.retry_download_requested.emit(track.cache_key)
+
+    def _update_retry_action_state(self, *_args) -> None:
+        track = self.selected_track()
+        details = self._retry_action_details(track) if track is not None else None
+        self.retry_selected_button.setEnabled(details is not None)
+        self.retry_selected_button.setText(details[0] if details else self.tr("Retry"))
+        self.retry_selected_button.setToolTip(
+            details[1] if details else self.tr("Select a failed track to retry")
+        )
+
+    def _retry_action_details(self, track: Track) -> tuple[str, str] | None:
+        if track.status not in {
+            TrackStatus.NOT_FOUND,
+            TrackStatus.LOOKUP_FAILED,
+            TrackStatus.FAILED,
+        }:
+            return None
+        if track.status is not TrackStatus.FAILED or not track.youtube_url:
+            return (
+                self.tr("Retry YouTube Check"),
+                self.tr("Search YouTube again for the selected track"),
+            )
+        return (
+            self.tr("Retry Download"),
+            self.tr("Download the selected YouTube result again"),
+        )
 
     def _build_controls_panel(self) -> QWidget:  # pylint: disable=too-many-statements
         panel = QWidget()
@@ -556,6 +599,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         if selected_key is not None:
             self._restore_track_selection(selected_key, current_column)
         self.track_table.verticalScrollBar().setValue(scroll_value)
+        self._update_retry_action_state()
         self._track_count = len(tracks)
         self._update_track_count_label()
         LOGGER.info("Table now contains %d tracks", len(tracks))
@@ -640,16 +684,12 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         else:
             text = self.tr("Stop YouTube")
         self.youtube_work_button.setText(text)
-        self.youtube_work_button.setToolTip(
-            self.tr("Stop or resume YouTube checks and downloads")
-        )
+        self.youtube_work_button.setToolTip(self.tr("Stop or resume YouTube checks and downloads"))
 
     def _update_fetch_button_text(self) -> None:
         self.fetch_button.setText(self.tr("Fetch"))
         self.fetch_button.setToolTip(
-            self.tr(
-                "Fetch loved tracks, then automatically check and download them from YouTube"
-            )
+            self.tr("Fetch loved tracks, then automatically check and download them from YouTube")
         )
 
     def set_workflow_enabled(self, enabled: bool) -> None:
@@ -806,6 +846,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         """Replace one visible row with ``track`` and update the status bar."""
 
         self.track_model.update_track(row, track)
+        self._update_retry_action_state()
         status = translated_track_status(track.status)
         self.show_status(
             self.tr("Updated {artist} - {title}: {status}").format(
@@ -920,7 +961,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         paragraphs = [
             _bold_text(self.tr("myLastFmPlayer {version}").format(version=__display_version__)),
             self.tr(
-                "Author: Marcel Petrick <a href=\"mailto:mail@marcelpetrick.it\">"
+                'Author: Marcel Petrick <a href="mailto:mail@marcelpetrick.it">'
                 "mail@marcelpetrick.it</a>"
             ),
             self.tr("License: GNU GPLv3 or later."),
@@ -1014,11 +1055,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             (
                 "Python - "
                 + self.tr("Python Software Foundation License; runtime for the application."),
-                "PyQt6 - "
-                + self.tr("GNU GPL v3; Python bindings for the Qt desktop interface."),
+                "PyQt6 - " + self.tr("GNU GPL v3; Python bindings for the Qt desktop interface."),
                 "Qt 6 - " + self.tr("GNU LGPL v3 / GPL v3; cross-platform UI toolkit."),
-                "requests - "
-                + self.tr("Apache License 2.0; HTTP client for Last.fm API calls."),
+                "requests - " + self.tr("Apache License 2.0; HTTP client for Last.fm API calls."),
                 "pylast - " + self.tr("Apache License 2.0; Last.fm scrobbling integration."),
                 "yt-dlp - " + self.tr("Unlicense; media lookup and download helper."),
                 "FFmpeg - "
@@ -1162,8 +1201,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._update_fetch_button_text()
         self._update_youtube_work_button_text()
         self.track_filter_label.setText(self.tr("Filter"))
-        self.track_filter_input.setPlaceholderText(self.tr("Artist or track title"))
+        self.track_filter_input.setPlaceholderText(self.tr("Artist, title, status, or error"))
         self.track_filter_reset_button.setText(self.tr("Reset"))
+        self._update_retry_action_state()
         self.empty_state_label.setText(
             self.tr("Enter your Last.fm username and press Fetch to load your loved tracks.")
         )
@@ -1182,9 +1222,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.playback_slider.setToolTip(self.tr("Playback position"))
         self.clear_feedback_button.setText(self.tr("Clear log"))
         self.clear_feedback_button.setToolTip(self.tr("Clear status updates and errors"))
-        self.feedback_log.setPlaceholderText(
-            self.tr("Status updates and errors will appear here.")
-        )
+        self.feedback_log.setPlaceholderText(self.tr("Status updates and errors will appear here."))
         self._update_track_count_label()
         if not self.dependency_label.text():
             self.dependency_label.setText(

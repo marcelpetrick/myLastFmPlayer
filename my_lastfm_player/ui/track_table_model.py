@@ -21,9 +21,7 @@ class ElidedTextDelegate(QStyledItemDelegate):
         text_rect = style.subElementRect(
             QStyle.SubElement.SE_ItemViewItemText, option, option.widget
         )
-        elided = option.fontMetrics.elidedText(
-            text, Qt.TextElideMode.ElideRight, text_rect.width()
-        )
+        elided = option.fontMetrics.elidedText(text, Qt.TextElideMode.ElideRight, text_rect.width())
 
         painter.save()
         painter.setFont(option.font)
@@ -74,6 +72,8 @@ class TrackTableModel(QAbstractTableModel):
             return self._display_value(track, index.column())
         if role == Qt.ItemDataRole.UserRole:
             return track.cache_key
+        if role == Qt.ItemDataRole.ToolTipRole:
+            return self._failure_tooltip(track)
         if role == Qt.ItemDataRole.FontRole and self._is_playing_row(track):
             font = QFont()
             font.setBold(True)
@@ -124,7 +124,11 @@ class TrackTableModel(QAbstractTableModel):
         self._tracks[row] = track
         top_left = self.index(row, 0)
         bottom_right = self.index(row, self.columnCount() - 1)
-        self.dataChanged.emit(top_left, bottom_right, [Qt.ItemDataRole.DisplayRole])
+        self.dataChanged.emit(
+            top_left,
+            bottom_right,
+            [int(Qt.ItemDataRole.DisplayRole), int(Qt.ItemDataRole.ToolTipRole)],
+        )
 
     def track_at(self, row: int) -> Track:
         """Return the track at ``row``."""
@@ -171,6 +175,16 @@ class TrackTableModel(QAbstractTableModel):
                 return _download_file_details(track)
             case _:
                 return None
+
+    def _failure_tooltip(self, track: Track) -> str | None:
+        if track.error:
+            return self.tr("{status}: {error}").format(
+                status=translated_track_status(track.status),
+                error=track.error,
+            )
+        if track.status is TrackStatus.NOT_FOUND:
+            return self.tr("No matching YouTube result was found.")
+        return None
 
     def retranslate(self) -> None:
         """Notify views that translated headers and status labels changed."""

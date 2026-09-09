@@ -1,7 +1,7 @@
 # Runtime Architecture
 
 This document is the concise, implementation-facing architecture description for
-`myLastFmPlayer` 0.0.170. The rendered C4 diagrams and class reference are in
+`myLastFmPlayer` 0.0.171. The rendered C4 diagrams and class reference are in
 [`docs/architecture.rst`](../docs/architecture.rst) and
 [`docs/api.rst`](../docs/api.rst).
 
@@ -80,7 +80,8 @@ flowchart TB
 The main roles are:
 
 - `MainWindow` owns widgets, user-facing signals, presentation state, and table
-  interaction. `TrackTableModel` adapts immutable `Track` values to Qt's model API.
+  interaction. `TrackTableModel` adapts immutable `Track` values to Qt's model API,
+  including durable failure details exposed as row tooltips.
 - `ApplicationController` coordinates workflows, scopes worker results by username
   and generation, and translates service outcomes into UI state.
 - Worker `QObject`s run on owned `QThread`s and bridge Qt signals to blocking service
@@ -192,6 +193,12 @@ next-track, and randomized continuation.
 Artist artwork loads on a separate worker. The preview stays at a bounded size and is
 hidden when no valid image is available, so it cannot consume vertical space from the
 track table or stretch the playback controls.
+
+The library filter matches artist, title, translated status, and stored error details.
+Selection drives a visible retry action: lookup failures and missing results restart a
+priority YouTube check, while download failures with a retained URL restart only the
+download. Completed rows expose neither retry action, and the controller validates the
+durable state again before resetting it.
 
 ## Track State Model
 

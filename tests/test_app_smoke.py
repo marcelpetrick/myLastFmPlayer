@@ -54,8 +54,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.170"
-    assert __display_version__ == "0.0.170"
+    assert __version__ == "0.0.171"
+    assert __display_version__ == "0.0.171"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -279,9 +279,7 @@ def test_main_prints_version_at_startup(monkeypatch, capsys) -> None:
 
 
 def test_main_session_helpers_round_trip_username_and_geometry(qapp, tmp_path) -> None:
-    settings = AppSettings(
-        QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
-    )
+    settings = AppSettings(QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat))
     saved_window = MainWindow()
     saved_window.set_username("  marcel  ")
     saved_window.resize(900, 640)
@@ -300,9 +298,7 @@ def test_main_session_helpers_round_trip_username_and_geometry(qapp, tmp_path) -
 
 
 def test_main_restore_session_keeps_default_geometry_when_unset(qapp, tmp_path) -> None:
-    settings = AppSettings(
-        QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
-    )
+    settings = AppSettings(QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat))
     window = MainWindow()
     default_size = window.size()
 
@@ -342,10 +338,7 @@ def test_main_window_binds_track_data_and_selection(qapp) -> None:
 
 def test_main_window_preserves_selection_and_scroll_across_track_refresh(qapp) -> None:
     window = MainWindow()
-    tracks = [
-        Track(artist=f"Keep {index:03}", title=f"Track {index}")
-        for index in range(80)
-    ]
+    tracks = [Track(artist=f"Keep {index:03}", title=f"Track {index}") for index in range(80)]
     window.resize(800, 600)
     window.show()
     window.set_tracks(tracks)
@@ -359,13 +352,9 @@ def test_main_window_preserves_selection_and_scroll_across_track_refresh(qapp) -
     scrollbar.setValue(min(15, scrollbar.maximum()))
     scroll_value = scrollbar.value()
 
-    window.set_tracks(
-        [replace(track, status=TrackStatus.SEARCHING) for track in tracks]
-    )
+    window.set_tracks([replace(track, status=TrackStatus.SEARCHING) for track in tracks])
 
-    assert window.selected_track() == replace(
-        tracks[30], status=TrackStatus.SEARCHING
-    )
+    assert window.selected_track() == replace(tracks[30], status=TrackStatus.SEARCHING)
     assert window.track_table.currentIndex().column() == 2
     assert scrollbar.value() == scroll_value
 
@@ -415,7 +404,7 @@ def test_main_window_finds_next_track_in_current_sort_order(qapp) -> None:
     assert window.selected_track() == tracks[2]
 
 
-def test_main_window_filters_tracks_by_artist_or_title_while_preserving_sort(qapp) -> None:
+def test_main_window_filters_track_details_while_preserving_sort(qapp) -> None:
     window = MainWindow()
     tracks = [
         Track(artist="Zed", title="Last", status=TrackStatus.DOWNLOADED),
@@ -442,6 +431,21 @@ def test_main_window_filters_tracks_by_artist_or_title_while_preserving_sort(qap
 
     assert window.track_filter_input.text() == ""
     assert window.track_sort_model.rowCount() == 4
+
+    failed = Track(
+        artist="Other",
+        title="Unrelated",
+        status=TrackStatus.LOOKUP_FAILED,
+        error="HTTP 429 quota exceeded",
+    )
+    window.set_tracks([*tracks, failed])
+    window.track_filter_input.setText("429")
+    assert window.track_sort_model.rowCount() == 1
+    assert window.track_sort_model.data(window.track_sort_model.index(0, 0)) == "Other"
+
+    window.track_filter_input.setText("lookup failed")
+    assert window.track_sort_model.rowCount() == 1
+    assert window.track_sort_model.data(window.track_sort_model.index(0, 0)) == "Other"
 
 
 def test_main_window_filter_is_case_insensitive_and_hard_filters(qapp) -> None:
@@ -472,8 +476,7 @@ def test_main_window_filter_handles_empty_visible_set_and_hidden_selection(qapp)
     assert window.track_sort_model.rowCount() == 0
     assert window.next_track_after(tracks[0].cache_key) is None
     assert (
-        window.random_track_excluding(tracks[0].cache_key, lambda candidates: candidates[0])
-        is None
+        window.random_track_excluding(tracks[0].cache_key, lambda candidates: candidates[0]) is None
     )
 
     window.track_filter_input.setText("visible")
@@ -656,9 +659,7 @@ def test_error_indicator_text_is_collapsed_and_truncated() -> None:
 
 
 def test_feedback_messages_include_timestamp_prefix() -> None:
-    assert format_feedback_message("Network error", QTime(9, 8, 7)) == (
-        "09:08:07: Network error"
-    )
+    assert format_feedback_message("Network error", QTime(9, 8, 7)) == ("09:08:07: Network error")
 
 
 def test_main_window_clear_feedback_button_clears_log_and_resets_scrollbars(qapp) -> None:
@@ -721,9 +722,7 @@ def test_main_window_has_main_menu_actions_in_requested_order(qapp) -> None:
     window = MainWindow()
 
     assert window.main_menu.title() == "Main"
-    assert [
-        action.text() for action in window.main_menu.actions() if not action.isSeparator()
-    ] == [
+    assert [action.text() for action in window.main_menu.actions() if not action.isSeparator()] == [
         "Fetch loved tracks",
         "Theme",
         "Preferences",
@@ -966,16 +965,10 @@ def test_main_window_artist_image_is_clickable(qapp) -> None:
     assert controls_layout.stretch(0) == 1
     assert controls_layout.stretch(1) == 0
     assert window.artist_image_group.title() == "Artist: Artist"
-    assert (
-        window.artist_image_group.sizePolicy().horizontalPolicy()
-        == QSizePolicy.Policy.Fixed
-    )
+    assert window.artist_image_group.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Fixed
     assert window.playback_group.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Expanding
     assert window.artist_image_label.parentWidget() is window.artist_image_group
-    assert (
-        window.artist_image_label.sizePolicy().horizontalPolicy()
-        == QSizePolicy.Policy.Fixed
-    )
+    assert window.artist_image_label.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Fixed
     assert not window.artist_image_group.isHidden()
     assert not window.artist_image_label.isHidden()
     assert window.artist_image_label.pixmap() is not None
@@ -1010,10 +1003,7 @@ def test_artist_image_does_not_expand_controls_or_collapse_library(qapp) -> None
     qapp.processEvents()
 
     assert window.playback_group.height() == controls_height
-    assert (
-        window.artist_image_group.sizePolicy().verticalPolicy()
-        == QSizePolicy.Policy.Fixed
-    )
+    assert window.artist_image_group.sizePolicy().verticalPolicy() == QSizePolicy.Policy.Fixed
     assert window.playback_group.sizePolicy().verticalPolicy() == QSizePolicy.Policy.Fixed
     assert window.artist_image_group.width() == main_window_module.ARTIST_IMAGE_PANEL_WIDTH
     assert window.track_table.height() == table_height
@@ -1281,6 +1271,72 @@ def test_main_window_context_menu_emits_retry_for_track(qapp, monkeypatch) -> No
     window._show_track_context_menu(pos)
 
     assert retries == [window.track_model.track_at(0).cache_key]
+
+
+@pytest.mark.parametrize(
+    ("track", "button_text"),
+    [
+        (
+            Track(artist="Artist", title="Missing", status=TrackStatus.NOT_FOUND),
+            "Retry YouTube Check",
+        ),
+        (
+            Track(
+                artist="Artist",
+                title="Lookup",
+                status=TrackStatus.LOOKUP_FAILED,
+                error="service unavailable",
+            ),
+            "Retry YouTube Check",
+        ),
+        (
+            Track(
+                artist="Artist",
+                title="Download",
+                status=TrackStatus.FAILED,
+                youtube_url="https://youtu.be/example",
+                error="disk full",
+            ),
+            "Retry Download",
+        ),
+    ],
+)
+def test_main_window_exposes_keyboard_reachable_retry_for_failed_track(
+    qapp, track, button_text
+) -> None:
+    window = MainWindow()
+    window.set_tracks([track])
+    retries: list[str] = []
+    window.retry_download_requested.connect(retries.append)
+
+    window.select_track_row(0)
+
+    assert window.retry_selected_button.isEnabled()
+    assert window.retry_selected_button.text() == button_text
+    window.retry_selected_button.setFocus()
+    QTest.keyClick(window.retry_selected_button, Qt.Key.Key_Space)
+    assert retries == [track.cache_key]
+
+
+def test_main_window_hides_retry_for_successful_track(qapp, monkeypatch) -> None:
+    window = MainWindow()
+    track = Track(artist="Artist", title="Ready", status=TrackStatus.DOWNLOADED)
+    window.set_tracks([track])
+    window.select_track_row(0)
+    menu_calls: list[bool] = []
+    monkeypatch.setattr(
+        main_window_module.QMenu,
+        "exec",
+        lambda *_args: menu_calls.append(True),
+    )
+
+    window._show_track_context_menu(
+        window.track_table.visualRect(window.track_sort_model.index(0, 0)).center()
+    )
+
+    assert not window.retry_selected_button.isEnabled()
+    assert window.retry_selected_button.text() == "Retry"
+    assert menu_calls == []
 
 
 def test_main_window_context_menu_ignores_clicks_outside_any_row(qapp, monkeypatch) -> None:

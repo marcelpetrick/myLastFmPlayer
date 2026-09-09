@@ -16,7 +16,7 @@ locally from one PyQt6 interface.
 
 ## Product Status
 
-Current version: `0.0.170` — fully usable and actively maintained
+Current version: `0.0.171` — fully usable and actively maintained
 
 The complete intended workflow is implemented and used in practice. Its major features
 are covered by the automated test suite, packaging and installed-application checks,
@@ -38,6 +38,7 @@ extensions rather than completion of missing core features.
 - Plays local tracks with seek, volume, mute, next-track, and randomized continuation controls.
 - Shows artist artwork with a link to the artist's Last.fm page.
 - Retries transient lookup and download failures and rechecks unfinished work after startup.
+- Explains per-track failures in tooltips and provides status-aware retry actions and filtering.
 - Stores per-user libraries and caches locally and retains them across restarts by default.
 - Supports optional authenticated Last.fm scrobbling.
 - Includes light, dark, lilac, and mint themes plus English, Croatian, German, Mandarin,
@@ -98,7 +99,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.170-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.171-py3-none-any.whl
 my-lastfm-player
 ```
 

@@ -3,7 +3,7 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.170; all three original HIGH findings and five MEDIUM
+Fix status refreshed through v0.0.171; all three original HIGH findings and six MEDIUM
 findings are resolved.
 
 ## Method and priorities
@@ -191,7 +191,7 @@ Pausing changes the action and tooltip to Resume and enables Play as a second co
 resume action; either returns the controls to playing state. Retranslation derives labels
 from the retained state, and controller tests cover pause, Play-to-resume, and failures.
 
-### 8. MEDIUM — Track failures lack an accessible explanation and clear recovery action
+### 8. MEDIUM — Track failures lack an accessible explanation and clear recovery action — Fixed in v0.0.171
 
 Evidence: `my_lastfm_player/ui/track_table_model.py:65`;
 `my_lastfm_player/ui/main_window.py:398`;
@@ -207,6 +207,12 @@ Keep details attached to their track even after routine log messages have scroll
 
 Acceptance: lookup failure, no match, and download failure each explain their cause and
 appropriate next action; successful rows do not suggest a misleading retry.
+
+Fixed in v0.0.171: failure causes remain attached to rows as tooltips, and filtering
+matches translated status labels and error text. A visible, keyboard-reachable action
+retries the selected row's failed stage: lookup/no-match rows repeat the YouTube check,
+while a download failure with a resolved URL repeats only the download. Successful rows
+have no retry action, and the controller rejects stale retry requests for successful state.
 
 ### 9. MEDIUM — One progress bar mixes unrelated concurrent stages
 

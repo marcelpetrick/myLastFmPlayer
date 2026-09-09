@@ -71,10 +71,9 @@ def test_track_table_model_displays_all_known_statuses() -> None:
         [Track(artist="Artist", title=status.value, status=status) for status in statuses]
     )
 
-    assert [
-        model.data(model.index(row, 3))
-        for row in range(model.rowCount())
-    ] == list(statuses.values())
+    assert [model.data(model.index(row, 3)) for row in range(model.rowCount())] == list(
+        statuses.values()
+    )
 
 
 def test_track_table_model_displays_downloaded_file_details_only() -> None:
@@ -120,11 +119,39 @@ def test_track_table_model_replaces_and_returns_tracks() -> None:
 def test_track_table_model_updates_existing_row() -> None:
     model = TrackTableModel([Track(artist="Artist", title="Title")])
     updated_track = Track(artist="Artist", title="Title", status=TrackStatus.DOWNLOADED)
+    changed_roles: list[list[int]] = []
+    model.dataChanged.connect(
+        lambda _top_left, _bottom_right, roles: changed_roles.append(list(roles))
+    )
 
     model.update_track(0, updated_track)
 
     assert model.track_at(0) == updated_track
     assert model.data(model.index(0, 3)) == "Downloaded"
+    assert changed_roles == [[int(Qt.ItemDataRole.DisplayRole), int(Qt.ItemDataRole.ToolTipRole)]]
+
+
+def test_track_table_model_exposes_failure_details_as_tooltips() -> None:
+    model = TrackTableModel(
+        [
+            Track(
+                artist="Failed",
+                title="Lookup",
+                status=TrackStatus.LOOKUP_FAILED,
+                error="HTTP 429 quota exceeded",
+            ),
+            Track(artist="Missing", title="Result", status=TrackStatus.NOT_FOUND),
+            Track(artist="Ready", title="Track", status=TrackStatus.DOWNLOADED),
+        ]
+    )
+
+    assert model.data(model.index(0, 0), Qt.ItemDataRole.ToolTipRole) == (
+        "Lookup failed: HTTP 429 quota exceeded"
+    )
+    assert model.data(model.index(1, 1), Qt.ItemDataRole.ToolTipRole) == (
+        "No matching YouTube result was found."
+    )
+    assert model.data(model.index(2, 3), Qt.ItemDataRole.ToolTipRole) is None
 
 
 def test_track_table_model_rejects_out_of_range_updates() -> None:
@@ -203,9 +230,7 @@ def test_track_table_model_retranslate_emits_header_and_data_changes() -> None:
     model = TrackTableModel([Track(artist="Artist", title="Title")])
     headers: list[tuple[int, int]] = []
     data_roles: list[list[int]] = []
-    model.headerDataChanged.connect(
-        lambda _orientation, first, last: headers.append((first, last))
-    )
+    model.headerDataChanged.connect(lambda _orientation, first, last: headers.append((first, last)))
     model.dataChanged.connect(
         lambda _top_left, _bottom_right, roles: data_roles.append(list(roles))
     )
@@ -220,9 +245,7 @@ def test_track_table_model_retranslate_on_empty_model_emits_only_headers() -> No
     model = TrackTableModel()
     headers: list[tuple[int, int]] = []
     data_changes: list[object] = []
-    model.headerDataChanged.connect(
-        lambda _orientation, first, last: headers.append((first, last))
-    )
+    model.headerDataChanged.connect(lambda _orientation, first, last: headers.append((first, last)))
     model.dataChanged.connect(lambda *_args: data_changes.append(True))
 
     model.retranslate()

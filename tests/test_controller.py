@@ -399,9 +399,7 @@ def test_controller_initializes_scrobbling_with_bundled_credentials(qapp, tmp_pa
     assert controller._scrobbling_service.has_api_credentials
 
 
-def test_controller_loads_scrobbling_enabled_from_settings(
-    qapp, tmp_path, monkeypatch
-) -> None:
+def test_controller_loads_scrobbling_enabled_from_settings(qapp, tmp_path, monkeypatch) -> None:
     from my_lastfm_player import settings as settings_module
 
     monkeypatch.setattr(
@@ -718,8 +716,7 @@ def test_controller_rejects_empty_username_for_download(qapp) -> None:
     controller.download_tracks()
 
     assert (
-        "Enter a Last.fm username before downloading tracks."
-        in window.feedback_log.toPlainText()
+        "Enter a Last.fm username before downloading tracks." in window.feedback_log.toPlainText()
     )
 
 
@@ -1399,6 +1396,7 @@ def run_continuation_case(case: ContinuationCase, tmp_path, randomize: bool):
     )
     offered_candidates: list[list[tuple[int, Track]]] = []
     if randomize:
+
         def choose(candidates: list[tuple[int, Track]]) -> tuple[int, Track]:
             offered_candidates.append(candidates)
             return candidates[-1]
@@ -1514,9 +1512,7 @@ def test_controller_continues_playback_randomly(case: ContinuationCase, qapp, tm
     tracks, offered_candidates = run_continuation_case(case, tmp_path, randomize=True)
 
     assert case.expected_candidates is not None
-    assert offered_candidates == [
-        [(row, tracks[index]) for row, index in case.expected_candidates]
-    ]
+    assert offered_candidates == [[(row, tracks[index]) for row, index in case.expected_candidates]]
 
 
 def test_controller_pause_and_stop_playback(qapp, tmp_path) -> None:
@@ -1644,9 +1640,7 @@ def test_controller_reports_no_selection_and_no_active_playback(qapp) -> None:
     assert feedback.count("No track is currently playing.") == 2
 
 
-def test_controller_plays_first_downloaded_track_when_nothing_is_selected(
-    qapp, tmp_path
-) -> None:
+def test_controller_plays_first_downloaded_track_when_nothing_is_selected(qapp, tmp_path) -> None:
     window = MainWindow()
     fetched_path = tmp_path / "one.mp3"
     fetched_path.write_bytes(b"fake mp3")
@@ -1775,9 +1769,7 @@ def test_controller_handles_downloaded_tracks_and_pending_play(qapp, tmp_path) -
     )
 
 
-def test_controller_starts_fetch_lookup_and_download_workers(
-    qapp, tmp_path, monkeypatch
-) -> None:
+def test_controller_starts_fetch_lookup_and_download_workers(qapp, tmp_path, monkeypatch) -> None:
     from my_lastfm_player import settings as settings_module
 
     window = MainWindow()
@@ -1931,8 +1923,7 @@ def test_controller_prepare_and_play_prepared_edge_cases(qapp) -> None:
     controller._play_prepared_track(track.cache_key)
 
     assert (
-        "Enter a Last.fm username before preparing playback."
-        in window.feedback_log.toPlainText()
+        "Enter a Last.fm username before preparing playback." in window.feedback_log.toPlainText()
     )
     assert controller._pending_play_cache_key is None
 
@@ -2185,9 +2176,7 @@ def test_controller_init_scrobbling_reports_session_key_not_verified(
     monkeypatch.setattr(
         controller_module,
         "ScrobblingService",
-        lambda **kw: ScrobblingService(
-            **{**kw, "network_factory": lambda **_: FailNetwork()}
-        ),
+        lambda **kw: ScrobblingService(**{**kw, "network_factory": lambda **_: FailNetwork()}),
     )
     controller = ApplicationController(window, repository=repository)
     run_background_workers_inline(controller)
@@ -2280,9 +2269,7 @@ def test_controller_show_preferences_opens_dialog_and_saves(qapp, tmp_path, monk
     assert "Opening preferences." in window.feedback_log.toPlainText()
 
 
-def test_controller_download_tracks_sets_active_flag_for_non_priority_run(
-    qapp, tmp_path
-) -> None:
+def test_controller_download_tracks_sets_active_flag_for_non_priority_run(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("user")
     controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
@@ -2312,9 +2299,7 @@ def test_controller_pause_playback_reports_resume_failure(qapp) -> None:
     assert "resume failed" in window.feedback_log.toPlainText()
 
 
-def test_controller_handle_tracks_loaded_starts_lookup_after_complete_fetch(
-    qapp, tmp_path
-) -> None:
+def test_controller_handle_tracks_loaded_starts_lookup_after_complete_fetch(qapp, tmp_path) -> None:
     window = MainWindow()
     window.set_username("user")
     controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
@@ -2349,9 +2334,7 @@ def test_username_change_cancels_old_work_and_ignores_late_updates(qapp, tmp_pat
     assert window.tracks() == []
     assert window.username_input.isEnabled()
 
-    controller._handle_track_updated(
-        "old-user", replace(old_track, status=TrackStatus.NOT_FOUND)
-    )
+    controller._handle_track_updated("old-user", replace(old_track, status=TrackStatus.NOT_FOUND))
     assert window.tracks() == []
 
 
@@ -2413,9 +2396,7 @@ def test_username_can_be_replaced_through_qt_while_work_is_active(qapp, tmp_path
     assert lookup._stop_event.is_set()
     assert download._stop_event.is_set()
     assert controller._workflow_username is None
-    assert sorted(path.name for path in repository.tracks_dir.glob("*.json")) == [
-        "old-user.json"
-    ]
+    assert sorted(path.name for path in repository.tracks_dir.glob("*.json")) == ["old-user.json"]
 
     QTest.keyClick(window.username_input, Qt.Key.Key_Return)
     qapp.processEvents()
@@ -2630,12 +2611,10 @@ def test_controller_retry_track_download_requires_username(qapp) -> None:
 
     controller.retry_track_download("some_key")
 
-    assert "Enter a Last.fm username before retrying" in window.feedback_log.toPlainText()
+    assert "Enter a Last.fm username before retrying a track" in (window.feedback_log.toPlainText())
 
 
-def test_controller_retry_track_download_does_nothing_for_unknown_track(
-    qapp, tmp_path
-) -> None:
+def test_controller_retry_track_download_does_nothing_for_unknown_track(qapp, tmp_path) -> None:
     window = MainWindow()
     window.username_input.setText("user")
     repository = JsonTrackRepository(data_dir=tmp_path)
@@ -2673,6 +2652,7 @@ def test_controller_retry_track_download_resets_lookup_state_and_starts_lookup(
     assert lookup_calls == [{"username": "user", "key": track.cache_key, "n": 1}]
     reloaded = repository.load_tracks("user")
     assert reloaded[0].status == TrackStatus.FETCHED
+    assert "Retrying YouTube check for A - T." in window.feedback_log.toPlainText()
 
 
 def test_controller_retry_track_download_starts_priority_download_when_url_known(
@@ -2692,6 +2672,7 @@ def test_controller_retry_track_download_starts_priority_download_when_url_known
     window.set_tracks([track])
     controller = ApplicationController(window, repository=repository)
     download_calls: list[tuple] = []
+
     def fake_priority_download(username, key):
         download_calls.append((username, key))
 
@@ -2704,6 +2685,29 @@ def test_controller_retry_track_download_starts_priority_download_when_url_known
     reloaded = repository.load_tracks("user")[0]
     assert reloaded.status is TrackStatus.QUEUED
     assert reloaded.youtube_url == "https://youtu.be/x"
+    assert "Retrying download for A - T." in window.feedback_log.toPlainText()
+
+
+def test_controller_retry_track_download_ignores_successful_track(qapp, tmp_path) -> None:
+    window = MainWindow()
+    window.username_input.setText("user")
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    audio_path = tmp_path / "ready.mp3"
+    audio_path.write_bytes(b"audio")
+    track = Track(
+        artist="A",
+        title="T",
+        local_path=str(audio_path),
+        status=TrackStatus.DOWNLOADED,
+    )
+    repository.save_tracks("user", [track])
+    controller = ApplicationController(window, repository=repository)
+
+    controller.retry_track_download(track.cache_key)
+
+    assert controller._pending_retry_cache_key is None
+    assert repository.load_tracks("user") == [track]
+    assert window.feedback_log.toPlainText() == ""
 
 
 def test_controller_play_prepared_track_key_not_in_visible_tracks(qapp) -> None:
@@ -2829,9 +2833,7 @@ def test_controller_track_ready_starts_auto_download_when_no_lookup_active(
     assert auto_calls == ["user"]
 
 
-def test_controller_queues_next_lookup_wave_until_current_worker_retires(
-    qapp, tmp_path
-) -> None:
+def test_controller_queues_next_lookup_wave_until_current_worker_retires(qapp, tmp_path) -> None:
     window = MainWindow()
     window.set_username("user")
     repository = JsonTrackRepository(data_dir=tmp_path)
@@ -2854,9 +2856,7 @@ def test_controller_queues_next_lookup_wave_until_current_worker_retires(
     assert starts == [("user", 1)]
 
 
-def test_controller_retires_download_worker_and_starts_remaining_queue(
-    qapp, tmp_path
-) -> None:
+def test_controller_retires_download_worker_and_starts_remaining_queue(qapp, tmp_path) -> None:
     window = MainWindow()
     window.set_username("user")
     repository = JsonTrackRepository(data_dir=tmp_path)
@@ -3014,9 +3014,7 @@ def test_controller_explicit_stop_blocks_youtube_followup_work(qapp, tmp_path) -
 
 def test_controller_does_not_auto_download_after_explicit_stop(qapp, tmp_path) -> None:
     window = MainWindow()
-    controller = ApplicationController(
-        window, repository=JsonTrackRepository(data_dir=tmp_path)
-    )
+    controller = ApplicationController(window, repository=JsonTrackRepository(data_dir=tmp_path))
     controller._youtube_stop_requested = True
     starts: list[str] = []
     controller._start_automatic_download = lambda username: starts.append(username)  # type: ignore[method-assign]
@@ -3045,6 +3043,7 @@ def test_controller_maybe_scrobble_does_nothing_when_no_current_track(qapp) -> N
             class U:
                 def get_name(self, properly_capitalized=False):
                     return "user"
+
             return U()
 
         def scrobble(self, **kwargs):
@@ -3054,7 +3053,10 @@ def test_controller_maybe_scrobble_does_nothing_when_no_current_track(qapp) -> N
             pass
 
     svc = ScrobblingService(
-        api_key="k", api_secret="s", session_key="sess", username="user",
+        api_key="k",
+        api_secret="s",
+        session_key="sess",
+        username="user",
         network_factory=lambda **kw: FakeNetwork(),
     )
     svc.try_connect()

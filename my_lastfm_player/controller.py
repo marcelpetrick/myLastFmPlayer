@@ -192,9 +192,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         tracks = self.repository.load_tracks(username)
         missing_count = sum(1 for track in tracks if track.status is TrackStatus.NOT_FOUND)
         failed_count = sum(
-            1
-            for track in tracks
-            if track.status in {TrackStatus.FAILED, TrackStatus.LOOKUP_FAILED}
+            1 for track in tracks if track.status in {TrackStatus.FAILED, TrackStatus.LOOKUP_FAILED}
         )
         if not missing_count and not failed_count:
             return
@@ -273,10 +271,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         """Cooperatively cancel queued work belonging to ``username``."""
 
         cancelled = False
-        if (
-            self._active_fetch_preflight is not None
-            and self._fetch_preflight_username == username
-        ):
+        if self._active_fetch_preflight is not None and self._fetch_preflight_username == username:
             self._active_fetch_preflight.cancel()
             self._active_fetch_preflight = None
             self._fetch_preflight_username = None
@@ -313,8 +308,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
 
     def _has_active_worker_for_username(self, username: str) -> bool:
         return (
-            self._active_fetch_preflight is not None
-            and self._fetch_preflight_username == username
+            self._active_fetch_preflight is not None and self._fetch_preflight_username == username
         ) or any(
             getattr(worker, "username", None) == username
             and self._worker_generations.get(worker, self._workflow_generation)
@@ -354,9 +348,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         if not tracks:
             return False
 
-        tracks = self.repository.mark_cached_downloads(
-            self.repository.mark_cached_lookups(tracks)
-        )
+        tracks = self.repository.mark_cached_downloads(self.repository.mark_cached_lookups(tracks))
         tracks = self.repository.merge_tracks(username, tracks)
         self.window.set_tracks(tracks)
         self._report_user_action(
@@ -577,9 +569,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.window.set_fetch_control_state(True, can_pause=False)
         self.window.set_progress(0, translate("ApplicationController", "Starting fetch"))
         generation = self._workflow_generation
-        worker = BackgroundCallWorker(
-            lambda: self.scraper.fetch_loved_track_count(username)
-        )
+        worker = BackgroundCallWorker(lambda: self.scraper.fetch_loved_track_count(username))
         self._active_fetch_preflight = worker
         self._fetch_preflight_username = username
         self._start_background_worker(
@@ -702,9 +692,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         return False
 
     def _load_cached_tracks(self, username: str, tracks: list[Track]) -> None:
-        tracks = self.repository.mark_cached_downloads(
-            self.repository.mark_cached_lookups(tracks)
-        )
+        tracks = self.repository.mark_cached_downloads(self.repository.mark_cached_lookups(tracks))
         tracks = self.repository.merge_tracks(username, tracks)
         self.window.set_tracks(tracks)
         self._report_user_action(
@@ -756,9 +744,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._active_fetch_worker.resume_fetch()
             self._fetch_paused = False
             self.window.set_fetch_control_state(active=True, paused=False)
-            self._report_user_action(
-                translate("ApplicationController", "Fetch resumed.")
-            )
+            self._report_user_action(translate("ApplicationController", "Fetch resumed."))
             return
         self._active_fetch_worker.pause_fetch()
         self._fetch_paused = True
@@ -806,11 +792,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._report_user_action(
             translate(
                 "ApplicationController",
-                "Starting YouTube lookup for {username}; "
-                "priority={priority}, limit={limit}.",
+                "Starting YouTube lookup for {username}; priority={priority}, limit={limit}.",
                 username=username,
-                priority=priority_cache_key
-                or translate("ApplicationController", "none"),
+                priority=priority_cache_key or translate("ApplicationController", "none"),
                 limit=(
                     max_tracks
                     if max_tracks is not None
@@ -865,8 +849,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 "priority={priority}, limit={limit}.",
                 username=username,
                 concurrency=concurrency,
-                priority=priority_cache_key
-                or translate("ApplicationController", "none"),
+                priority=priority_cache_key or translate("ApplicationController", "none"),
                 limit=(
                     max_downloads
                     if max_downloads is not None
@@ -917,9 +900,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             except PlaybackError as error:
                 self.window.append_error(str(error))
                 return
-            self._report_user_action(
-                translate("ApplicationController", "Playback resumed.")
-            )
+            self._report_user_action(translate("ApplicationController", "Playback resumed."))
             self.window.set_playback_controls(active=True, paused=False)
         else:
             try:
@@ -927,9 +908,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             except PlaybackError as error:
                 self.window.append_error(str(error))
                 return
-            self._report_user_action(
-                translate("ApplicationController", "Playback paused.")
-            )
+            self._report_user_action(translate("ApplicationController", "Playback paused."))
             self.window.set_playback_controls(active=True, paused=True)
 
     def stop_playback(self) -> None:
@@ -1146,16 +1125,12 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             daemon=True,
         ).start()
 
-    def _handle_background_result(
-        self, worker: BackgroundCallWorker, result: object
-    ) -> None:
+    def _handle_background_result(self, worker: BackgroundCallWorker, result: object) -> None:
         callbacks = self._background_callbacks.get(worker)
         if callbacks is not None and callbacks[0] is not None and not worker.is_cancelled:
             callbacks[0](result)
 
-    def _handle_background_error(
-        self, worker: BackgroundCallWorker, error: Exception
-    ) -> None:
+    def _handle_background_error(self, worker: BackgroundCallWorker, error: Exception) -> None:
         callbacks = self._background_callbacks.get(worker)
         if callbacks is not None and callbacks[1] is not None and not worker.is_cancelled:
             callbacks[1](error)
@@ -1306,9 +1281,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         current_tracks = self.repository.load_tracks(username)
         self.window.set_tracks(current_tracks)
         resolved_count = sum(1 for t in current_tracks if t.youtube_url)
-        not_found_count = sum(
-            1 for t in current_tracks if t.status is TrackStatus.NOT_FOUND
-        )
+        not_found_count = sum(1 for t in current_tracks if t.status is TrackStatus.NOT_FOUND)
         if self._youtube_stop_requested:
             self._report_user_action(
                 translate(
@@ -1369,12 +1342,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         # the fetch was still running when this worker was spawned).
         current_tracks = self.repository.load_tracks(username)
         self.window.set_tracks(current_tracks)
-        downloaded_count = sum(
-            1 for t in current_tracks if t.status is TrackStatus.DOWNLOADED
-        )
-        failed_count = sum(
-            1 for t in current_tracks if t.status is TrackStatus.FAILED
-        )
+        downloaded_count = sum(1 for t in current_tracks if t.status is TrackStatus.DOWNLOADED)
+        failed_count = sum(1 for t in current_tracks if t.status is TrackStatus.FAILED)
         if stop_was_requested:
             self._report_user_action(
                 translate(
@@ -1401,11 +1370,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         if self._pending_retry_cache_key:
             self._pending_retry_cache_key = None
             return
-        if (
-            was_bulk
-            and not stop_was_requested
-            and self._has_download_candidates(current_tracks)
-        ):
+        if was_bulk and not stop_was_requested and self._has_download_candidates(current_tracks):
             self._ensure_automatic_download(username)
 
     def _handle_worker_error(self, message: str) -> None:
@@ -1611,9 +1576,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._youtube_stop_requested = False
         self.window.set_youtube_work_state(active=False)
         tracks = self.repository.load_tracks(username)
-        self._report_user_action(
-            translate("ApplicationController", "Resuming YouTube work.")
-        )
+        self._report_user_action(translate("ApplicationController", "Resuming YouTube work."))
         if self._has_lookup_candidates(tracks):
             self._ensure_automatic_lookup(username, len(tracks))
         elif self._has_download_candidates(tracks):
@@ -1627,14 +1590,14 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
 
     def retry_track_download(self, cache_key: str) -> None:
-        """Reset a track's state and trigger priority lookup + download for it."""
+        """Retry the failed stage for one track with priority."""
 
         username = self.window.username()
         if not username:
             self.window.append_feedback(
                 translate(
                     "ApplicationController",
-                    "Enter a Last.fm username before retrying a download.",
+                    "Enter a Last.fm username before retrying a track.",
                 )
             )
             return
@@ -1642,32 +1605,43 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         track = next((t for t in tracks if t.cache_key == cache_key), None)
         if track is None:
             return
-        self._youtube_stop_requested = False
-        if track.status in {
+        if track.status not in {
             TrackStatus.NOT_FOUND,
             TrackStatus.LOOKUP_FAILED,
             TrackStatus.FAILED,
         }:
-            needs_lookup = track.status is not TrackStatus.FAILED or not track.youtube_url
-            reset_track = replace(
-                track,
-                status=TrackStatus.FETCHED if needs_lookup else TrackStatus.QUEUED,
-                youtube_url=None if needs_lookup else track.youtube_url,
-                error=None,
-            )
-            updated = [reset_track if t.cache_key == cache_key else t for t in tracks]
-            self.repository.save_tracks(username, updated)
-            self.window.set_tracks(updated)
-            track = reset_track
-        self._pending_retry_cache_key = cache_key
-        self._report_user_action(
-            translate(
-                "ApplicationController",
-                "Retrying download for {artist} - {title}.",
-                artist=track.artist,
-                title=track.title,
-            )
+            return
+        self._youtube_stop_requested = False
+        needs_lookup = track.status is not TrackStatus.FAILED or not track.youtube_url
+        reset_track = replace(
+            track,
+            status=TrackStatus.FETCHED if needs_lookup else TrackStatus.QUEUED,
+            youtube_url=None if needs_lookup else track.youtube_url,
+            error=None,
         )
+        updated = [reset_track if t.cache_key == cache_key else t for t in tracks]
+        self.repository.save_tracks(username, updated)
+        self.window.set_tracks(updated)
+        track = reset_track
+        self._pending_retry_cache_key = cache_key
+        if needs_lookup:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Retrying YouTube check for {artist} - {title}.",
+                    artist=track.artist,
+                    title=track.title,
+                )
+            )
+        else:
+            self._report_user_action(
+                translate(
+                    "ApplicationController",
+                    "Retrying download for {artist} - {title}.",
+                    artist=track.artist,
+                    title=track.title,
+                )
+            )
         if track.youtube_url:
             self._start_priority_download(username, cache_key)
         else:
@@ -1830,9 +1804,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
     def _continue_playback_from(self, cache_key: str) -> None:
         next_track = self._next_playback_track(cache_key)
         if next_track is None:
-            self._report_user_action(
-                translate("ApplicationController", "Playback finished.")
-            )
+            self._report_user_action(translate("ApplicationController", "Playback finished."))
             return
 
         self._continue_playback_with(next_track)
@@ -1885,9 +1857,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         LOGGER.info("Thread finished; active_threads=%d", len(self._active_threads))
 
     def _forget_worker(self, worker: WorkflowWorker) -> None:
-        worker_generation = self._worker_generations.pop(
-            worker, self._workflow_generation
-        )
+        worker_generation = self._worker_generations.pop(worker, self._workflow_generation)
         if worker is self._active_fetch_worker:
             self._active_fetch_worker = None
             self._fetch_paused = False
