@@ -1033,6 +1033,16 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._last_progress_label = label
         self.show_status(label)
 
+    def reset_workflow_progress(self) -> None:
+        """Return all workflow stages to their idle presentation."""
+
+        idle_label = self.tr("Idle")
+        for stage, progress_bar in self._progress_bars.items():
+            progress_bar.setValue(0)
+            progress_bar.setFormat(format_progress_text(idle_label))
+            self._stage_progress_labels[stage] = "Idle"
+        self._last_progress_label = "Idle"
+
     def append_feedback(self, message: str) -> None:
         """Append ``message`` to the feedback log and status bar."""
 

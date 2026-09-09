@@ -3,7 +3,7 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.174; all three original HIGH findings and all nine MEDIUM
+Fix status refreshed through v0.0.175; all three original HIGH findings and all nine MEDIUM
 findings are resolved.
 
 ## Method and priorities
@@ -234,7 +234,9 @@ Fixed in v0.0.172: the feedback panel has independent Last.fm discovery, YouTube
 and download progress bars. The controller captures a worker's stage together with its
 username and workflow generation, routes every update to that stage, and marks only the
 originating stage on failure. Interleaved regression tests verify that lookup progress or
-failure cannot replace concurrently displayed download progress.
+failure cannot replace concurrently displayed download progress. The v0.0.175 review
+also resets all stage displays on username changes and before a new fetch, preventing
+completed progress from the retired workflow from being presented for its replacement.
 
 ### 10. MEDIUM — Long content and larger fonts can force windows beyond useful dimensions — Fixed in v0.0.173
 

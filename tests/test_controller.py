@@ -2324,6 +2324,8 @@ def test_username_change_cancels_old_work_and_ignores_late_updates(qapp, tmp_pat
     lookup = LookupTracksWorker("old-user", controller.youtube_resolver, repository)
     download = DownloadTracksWorker("old-user", controller.download_manager, repository)
     controller._active_workers.extend([lookup, download])
+    window.set_stage_progress("lookup", 80, "old lookup")
+    window.set_stage_progress("download", 40, "old download")
 
     window.set_username("new-user")
     controller._handle_username_text_edited("new-user")
@@ -2333,6 +2335,10 @@ def test_username_change_cancels_old_work_and_ignores_late_updates(qapp, tmp_pat
     assert repository.load_tracks("old-user") == [old_track]
     assert window.tracks() == []
     assert window.username_input.isEnabled()
+    assert window.lookup_progress_bar.value() == 0
+    assert window.lookup_progress_bar.format() == "Idle — %p%"
+    assert window.download_progress_bar.value() == 0
+    assert window.download_progress_bar.format() == "Idle — %p%"
 
     controller._handle_track_updated("old-user", replace(old_track, status=TrackStatus.NOT_FOUND))
     assert window.tracks() == []

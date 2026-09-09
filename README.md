@@ -16,7 +16,7 @@ locally from one PyQt6 interface.
 
 ## Product Status
 
-Current version: `0.0.174` — fully usable and actively maintained
+Current version: `0.0.175` — fully usable and actively maintained
 
 The complete intended workflow is implemented and used in practice. Its major features
 are covered by the automated test suite, packaging and installed-application checks,
@@ -34,7 +34,7 @@ extensions rather than completion of missing core features.
 - Shows independent Last.fm discovery, YouTube-check, and download progress.
 - Lets the user stop active YouTube work, keep completed items, and resume the remaining queue.
 - Lets the user switch Last.fm usernames while work is active, with clean cancellation and
-  isolation from late background updates.
+  isolation from late background updates and stale progress.
 - Prioritizes a selected track for lookup and download when Play is pressed before it is local.
 - Plays local tracks with seek, volume, mute, next-track, and randomized continuation controls.
 - Keeps long now-playing details available without widening the window and scrolls
@@ -104,7 +104,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.174-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.175-py3-none-any.whl
 my-lastfm-player
 ```
 

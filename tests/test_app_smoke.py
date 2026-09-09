@@ -55,8 +55,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.174"
-    assert __display_version__ == "0.0.174"
+    assert __version__ == "0.0.175"
+    assert __display_version__ == "0.0.175"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -565,6 +565,16 @@ def test_main_window_updates_progress_and_feedback(qapp) -> None:
     assert window.lookup_progress_label.text() == "YouTube checks"
     assert window.download_progress_label.text() == "Downloads"
     assert "Network error" in window.feedback_log.toPlainText()
+
+    window.reset_workflow_progress()
+
+    for progress_bar in (
+        window.discovery_progress_bar,
+        window.lookup_progress_bar,
+        window.download_progress_bar,
+    ):
+        assert progress_bar.value() == 0
+        assert progress_bar.format() == "Idle — %p%"
 
 
 def test_main_window_volume_and_mute_emit_changes(qapp) -> None:

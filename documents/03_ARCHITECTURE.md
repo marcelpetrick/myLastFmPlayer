@@ -1,7 +1,7 @@
 # Runtime Architecture
 
 This document is the concise, implementation-facing architecture description for
-`myLastFmPlayer` 0.0.174. The rendered C4 diagrams and class reference are in
+`myLastFmPlayer` 0.0.175. The rendered C4 diagrams and class reference are in
 [`docs/architecture.rst`](../docs/architecture.rst) and
 [`docs/api.rst`](../docs/api.rst).
 
@@ -188,6 +188,8 @@ The feedback panel retains separate Last.fm discovery, YouTube-check, and downlo
 progress values. `_run_worker` derives a stable presentation stage from the concrete
 worker type and captures it with the worker's username and generation, so concurrent
 signals cannot overwrite another stage and a failure marks only its originating stage.
+The stage presentation resets atomically when username editing retires an identity,
+when a programmatic identity switch is committed, and before a fresh fetch starts.
 
 ### Priority Playback Preparation
 

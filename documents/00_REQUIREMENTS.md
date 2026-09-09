@@ -1,6 +1,6 @@
 # Software Requirements Specification
 
-This is the current product requirements baseline for `myLastFmPlayer` 0.0.174.
+This is the current product requirements baseline for `myLastFmPlayer` 0.0.175.
 It describes the implemented and vetted application rather than an unfinished MVP.
 Runtime design details are in [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md).
 
@@ -82,6 +82,8 @@ The supported runtime is Linux x86_64 with Python 3.14 or newer and PyQt6.
 - The username field shall remain editable during fetch, lookup, and download.
 - Changing the username shall cancel the previous user's active workflow and isolate
   the new table from late callbacks belonging to the old username or generation.
+- Starting a new fetch or changing workflow identity shall reset all three progress
+  displays before new work can report progress.
 
 ### 2.6 Library and Playback
 

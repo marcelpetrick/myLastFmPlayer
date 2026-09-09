@@ -256,6 +256,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         if not self._username_edit_active:
             self._workflow_generation += 1
             self._username_edit_active = True
+            self.window.reset_workflow_progress()
         if previous_username:
             self._cancel_work_for_username(previous_username)
         # Typed text is not a committed identity. Ignore all stale worker signals until
@@ -328,6 +329,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         previous_username = self._workflow_username
         if not self._username_edit_active and previous_username != username:
             self._workflow_generation += 1
+            self.window.reset_workflow_progress()
             if previous_username:
                 self._cancel_work_for_username(previous_username)
         self._workflow_username = username
@@ -553,6 +555,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 )
             )
             return
+        self.window.reset_workflow_progress()
         self._youtube_stop_requested = False
         cached_tracks = self.repository.load_tracks(username)
         if cached_tracks:

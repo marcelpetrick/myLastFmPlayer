@@ -30,7 +30,7 @@ instead of replacing a release.
 1. Open the repository's **Actions** page.
 2. Select **Manual Release**.
 3. Choose **Run workflow** and select the branch containing the release commit.
-4. Enter the version without a leading `v`, for example `0.0.174`.
+4. Enter the version without a leading `v`, for example `0.0.175`.
 5. Enable **publish_release**.
 6. Choose whether the release is a draft or prerelease.
 7. Start the workflow and wait for both build and publish jobs to succeed.
@@ -45,7 +45,7 @@ To publish a normal, non-draft release:
 ```sh
 gh workflow run "Manual Release" \
   --ref master \
-  -f version=0.0.174 \
+  -f version=0.0.175 \
   -f publish_release=true \
   -f draft=false \
   -f prerelease=false
@@ -61,7 +61,7 @@ gh run watch RUN_ID --exit-status
 Verify the finished release and its assets:
 
 ```sh
-gh release view v0.0.174
+gh release view v0.0.175
 ```
 
 ## Published Assets
