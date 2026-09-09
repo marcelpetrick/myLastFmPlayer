@@ -2,6 +2,11 @@
 
 [![Local Pipeline](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/local-pipeline.yml/badge.svg?branch=master)](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/local-pipeline.yml)
 [![Manual Release](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/manual-release.yml/badge.svg)](https://github.com/marcelpetrick/myLastFmPlayer/actions/workflows/manual-release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/marcelpetrick/myLastFmPlayer?sort=semver)](https://github.com/marcelpetrick/myLastFmPlayer/releases/latest)
+[![License: GPL v3 or later](https://img.shields.io/badge/license-GPLv3%20or%20later-blue.svg)](LICENSE)
+[![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-3776ab.svg)](https://www.python.org/)
+[![PyQt 6.11.0](https://img.shields.io/badge/PyQt-6.11.0-41cd52.svg)](https://www.riverbankcomputing.com/software/pyqt/)
+[![Coverage: 99%](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)](pyproject.toml)
 
 `myLastFmPlayer` is a fully functional, actively maintained Linux desktop product that
 turns a Last.fm loved-track history into a local, playable music library. It discovers
@@ -16,7 +21,7 @@ plays them locally from one PyQt6 interface.
 
 ## Product Status
 
-Current version: `0.0.177` — fully functional and actively maintained
+Current version: `0.0.178` — fully functional and actively maintained
 
 The complete intended workflow is implemented and used in practice. Its major features
 are covered by the automated test suite, packaging and installed-application checks,
@@ -110,7 +115,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.177-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.178-py3-none-any.whl
 my-lastfm-player
 ```
 
