@@ -194,6 +194,11 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._youtube_work_stopped = False
         self._youtube_work_stopping = False
         self._last_progress_label = "Idle"
+        self._stage_progress_labels = {
+            "discovery": "Idle",
+            "lookup": "Idle",
+            "download": "Idle",
+        }
         self._last_status_message = "Ready"
         self._playback_duration_ms = 0
         self._playback_paused = False
@@ -566,13 +571,23 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        feedback_header_layout = QHBoxLayout()
-        feedback_header_layout.setContentsMargins(0, 0, 0, 0)
+        progress_layout = QGridLayout()
+        progress_layout.setContentsMargins(0, 0, 0, 0)
+        progress_layout.setHorizontalSpacing(8)
+        progress_layout.setVerticalSpacing(4)
 
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
-        self.progress_bar.setFormat(format_progress_text(self.tr("Idle")))
+        self.discovery_progress_label = QLabel()
+        self.lookup_progress_label = QLabel()
+        self.download_progress_label = QLabel()
+        self.discovery_progress_bar = self._new_progress_bar()
+        self.lookup_progress_bar = self._new_progress_bar()
+        self.download_progress_bar = self._new_progress_bar()
+        self.progress_bar = self.discovery_progress_bar
+        self._progress_bars = {
+            "discovery": self.discovery_progress_bar,
+            "lookup": self.lookup_progress_bar,
+            "download": self.download_progress_bar,
+        }
 
         self.clear_feedback_button = QPushButton()
         self.clear_feedback_button.clicked.connect(self.clear_feedback_log)
@@ -581,12 +596,25 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.feedback_log.setReadOnly(True)
         self.feedback_log.setMaximumBlockCount(500)
 
-        feedback_header_layout.addWidget(self.progress_bar, stretch=1)
-        feedback_header_layout.addWidget(self.clear_feedback_button)
-        layout.addLayout(feedback_header_layout)
+        progress_layout.addWidget(self.discovery_progress_label, 0, 0)
+        progress_layout.addWidget(self.discovery_progress_bar, 0, 1)
+        progress_layout.addWidget(self.lookup_progress_label, 1, 0)
+        progress_layout.addWidget(self.lookup_progress_bar, 1, 1)
+        progress_layout.addWidget(self.download_progress_label, 2, 0)
+        progress_layout.addWidget(self.download_progress_bar, 2, 1)
+        progress_layout.addWidget(self.clear_feedback_button, 0, 2, 3, 1)
+        progress_layout.setColumnStretch(1, 1)
+        layout.addLayout(progress_layout)
         layout.addWidget(self.feedback_log)
 
         return panel
+
+    def _new_progress_bar(self) -> QProgressBar:
+        progress_bar = QProgressBar()
+        progress_bar.setRange(0, 100)
+        progress_bar.setValue(0)
+        progress_bar.setFormat(format_progress_text(self.tr("Idle")))
+        return progress_bar
 
     def set_tracks(self, tracks: list[Track]) -> None:
         """Replace the visible table contents with ``tracks``."""
@@ -897,11 +925,18 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         return self.track_model.tracks()
 
     def set_progress(self, value: int, label: str) -> None:
-        """Update the progress bar and status bar with bounded ``value``."""
+        """Update discovery progress for compatibility with existing callers."""
+
+        self.set_stage_progress("discovery", value, label)
+
+    def set_stage_progress(self, stage: str, value: int, label: str) -> None:
+        """Update one workflow stage without replacing progress from peer stages."""
 
         bounded_value = max(0, min(100, value))
-        self.progress_bar.setValue(bounded_value)
-        self.progress_bar.setFormat(format_progress_text(label))
+        progress_bar = self._progress_bars[stage]
+        progress_bar.setValue(bounded_value)
+        progress_bar.setFormat(format_progress_text(label))
+        self._stage_progress_labels[stage] = label
         self._last_progress_label = label
         self.show_status(label)
 
@@ -1179,7 +1214,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.retranslate_ui()
         self.language_changed.emit()
 
-    def retranslate_ui(self) -> None:
+    def retranslate_ui(self) -> None:  # pylint: disable=too-many-statements
         """Apply current translations to all static widgets."""
 
         self.refresh_action.setText(self.tr("Fetch loved tracks"))
@@ -1220,6 +1255,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._set_artist_title(self._artist_title_name)
         self.artist_image_label.setToolTip(self.tr("Open artist page on Last.fm"))
         self.playback_slider.setToolTip(self.tr("Playback position"))
+        self.discovery_progress_label.setText(self.tr("Last.fm discovery"))
+        self.lookup_progress_label.setText(self.tr("YouTube checks"))
+        self.download_progress_label.setText(self.tr("Downloads"))
         self.clear_feedback_button.setText(self.tr("Clear log"))
         self.clear_feedback_button.setToolTip(self.tr("Clear status updates and errors"))
         self.feedback_log.setPlaceholderText(self.tr("Status updates and errors will appear here."))
@@ -1228,8 +1266,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             self.dependency_label.setText(
                 self.tr("Dependencies: yt-dlp, ffmpeg, and ffprobe not checked yet")
             )
-        if self._last_progress_label == "Idle":
-            self.progress_bar.setFormat(format_progress_text(self.tr("Idle")))
+        for stage, label in self._stage_progress_labels.items():
+            if label == "Idle":
+                self._progress_bars[stage].setFormat(format_progress_text(self.tr("Idle")))
         self.set_fetch_control_state(
             active=self.fetch_pause_button.isEnabled(),
             paused=self._fetch_paused,

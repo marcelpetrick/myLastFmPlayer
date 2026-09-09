@@ -2496,10 +2496,14 @@ def test_current_worker_progress_and_error_reach_ui(qapp) -> None:
     controller = ApplicationController(window)
     controller._workflow_username = "user"
 
-    controller._handle_worker_progress("user", 50, "halfway")
-    controller._handle_worker_error_for("user", "failed item")
+    controller._handle_worker_progress("user", 80, "checked 4/5", "lookup")
+    controller._handle_worker_progress("user", 10, "downloaded 1/10", "download")
+    controller._handle_worker_error_for("user", "failed item", "lookup")
 
-    assert window.progress_bar.value() == 0
+    assert window.lookup_progress_bar.value() == 0
+    assert window.lookup_progress_bar.format() == "Failed — %p%"
+    assert window.download_progress_bar.value() == 10
+    assert window.download_progress_bar.format() == "downloaded 1/10 — %p%"
     assert "failed item" in window.feedback_log.toPlainText()
 
 

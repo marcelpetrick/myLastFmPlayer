@@ -1,6 +1,6 @@
 # Software Requirements Specification
 
-This is the current product requirements baseline for `myLastFmPlayer` 0.0.171.
+This is the current product requirements baseline for `myLastFmPlayer` 0.0.172.
 It describes the implemented and vetted application rather than an unfinished MVP.
 Runtime design details are in [`03_ARCHITECTURE.md`](03_ARCHITECTURE.md).
 
@@ -42,6 +42,8 @@ The supported runtime is Linux x86_64 with Python 3.14 or newer and PyQt6.
   remaining queue.
 - One shared parallel-work limit shall cover lookup and download together.
 - The limit shall default to five and be configurable in Preferences from one to five.
+- Discovery, lookup, and download shall have independent progress displays so an
+  interleaved update or stage failure cannot replace the state of another active stage.
 - A selected unavailable track shall be prioritized for lookup and download when the
   user requests playback.
 

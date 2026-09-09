@@ -802,7 +802,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 ),
             )
         )
-        self.window.set_progress(
+        self.window.set_stage_progress(
+            "lookup",
             0,
             translate("ApplicationController", "Starting YouTube lookup"),
         )
@@ -858,7 +859,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             )
         )
         self._youtube_work_limiter.configure(concurrency)
-        self.window.set_progress(0, translate("ApplicationController", "Starting downloads"))
+        self.window.set_stage_progress(
+            "download",
+            0,
+            translate("ApplicationController", "Starting downloads"),
+        )
         worker = self.download_worker_factory(
             username,
             self.download_manager,
@@ -989,19 +994,20 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.window.set_workflow_enabled(False)
         worker_username = getattr(worker, "username", self._workflow_username) or ""
         worker_generation = self._workflow_generation
+        progress_stage = self._worker_progress_stage(worker)
         self._worker_generations[worker] = worker_generation
 
         thread.started.connect(worker.run)
         worker.progress.connect(
             lambda value, label, username=worker_username, generation=worker_generation: (
-                self._handle_worker_progress(username, value, label)
+                self._handle_worker_progress(username, value, label, progress_stage)
                 if self._is_current_worker_context(username, generation)
                 else None
             )
         )
         worker.error.connect(
             lambda message, username=worker_username, generation=worker_generation: (
-                self._handle_worker_error_for(username, message)
+                self._handle_worker_error_for(username, message, progress_stage)
                 if self._is_current_worker_context(username, generation)
                 else None
             )
@@ -1373,18 +1379,34 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         if was_bulk and not stop_was_requested and self._has_download_candidates(current_tracks):
             self._ensure_automatic_download(username)
 
-    def _handle_worker_error(self, message: str) -> None:
+    @staticmethod
+    def _worker_progress_stage(worker: WorkflowWorker) -> str:
+        if isinstance(worker, LookupTracksWorker):
+            return "lookup"
+        if isinstance(worker, DownloadTracksWorker):
+            return "download"
+        return "discovery"
+
+    def _handle_worker_error(self, message: str, stage: str = "discovery") -> None:
         LOGGER.error("Worker error: %s", message)
         self.window.append_error(message)
-        self.window.set_progress(0, translate("ApplicationController", "Failed"))
+        self.window.set_stage_progress(
+            stage,
+            0,
+            translate("ApplicationController", "Failed"),
+        )
 
-    def _handle_worker_error_for(self, username: str, message: str) -> None:
+    def _handle_worker_error_for(
+        self, username: str, message: str, stage: str = "discovery"
+    ) -> None:
         if self._is_current_workflow_username(username):
-            self._handle_worker_error(message)
+            self._handle_worker_error(message, stage)
 
-    def _handle_worker_progress(self, username: str, value: int, label: str) -> None:
+    def _handle_worker_progress(
+        self, username: str, value: int, label: str, stage: str = "discovery"
+    ) -> None:
         if self._is_current_workflow_username(username):
-            self.window.set_progress(value, label)
+            self.window.set_stage_progress(stage, value, label)
 
     def _update_track_by_cache_key(self, track: Track) -> None:
         for row, visible_track in enumerate(self.window.tracks()):

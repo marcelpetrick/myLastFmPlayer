@@ -3,7 +3,7 @@
 Reviewed: 2026-09-07. Application: v0.0.160, commit `2a4c1fd`.
 Scope: the whole current desktop interface and its controller-driven interactions,
 not a branch diff. This report is published with the documentation version bump to v0.0.161.
-Fix status refreshed through v0.0.171; all three original HIGH findings and six MEDIUM
+Fix status refreshed through v0.0.172; all three original HIGH findings and seven MEDIUM
 findings are resolved.
 
 ## Method and priorities
@@ -214,7 +214,7 @@ retries the selected row's failed stage: lookup/no-match rows repeat the YouTube
 while a download failure with a resolved URL repeats only the download. Successful rows
 have no retry action, and the controller rejects stale retry requests for successful state.
 
-### 9. MEDIUM — One progress bar mixes unrelated concurrent stages
+### 9. MEDIUM — One progress bar mixes unrelated concurrent stages — Fixed in v0.0.172
 
 Evidence: `my_lastfm_player/controller.py:911`, `:1244`, and `:1253`;
 `my_lastfm_player/ui/main_window.py:780`.
@@ -229,6 +229,12 @@ partial failures from a stopped workflow. Keep diagnostic messages in the expand
 
 Acceptance: interleaved progress and failure signals cannot falsely indicate overall
 completion or failure; active work and remaining items stay understandable.
+
+Fixed in v0.0.172: the feedback panel has independent Last.fm discovery, YouTube-check,
+and download progress bars. The controller captures a worker's stage together with its
+username and workflow generation, routes every update to that stage, and marks only the
+originating stage on failure. Interleaved regression tests verify that lookup progress or
+failure cannot replace concurrently displayed download progress.
 
 ### 10. MEDIUM — Long content and larger fonts can force windows beyond useful dimensions
 

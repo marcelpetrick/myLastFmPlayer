@@ -16,7 +16,7 @@ locally from one PyQt6 interface.
 
 ## Product Status
 
-Current version: `0.0.171` — fully usable and actively maintained
+Current version: `0.0.172` — fully usable and actively maintained
 
 The complete intended workflow is implemented and used in practice. Its major features
 are covered by the automated test suite, packaging and installed-application checks,
@@ -31,6 +31,7 @@ extensions rather than completion of missing core features.
 - Searches YouTube and downloads resolved tracks automatically through `yt-dlp`.
 - Runs up to five YouTube checks and downloads concurrently, configurable from one to five.
 - Keeps each track independent, so one failed lookup or download does not stop the queue.
+- Shows independent Last.fm discovery, YouTube-check, and download progress.
 - Lets the user stop active YouTube work, keep completed items, and resume the remaining queue.
 - Lets the user switch Last.fm usernames while work is active, with clean cancellation and
   isolation from late background updates.
@@ -99,7 +100,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.171-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.172-py3-none-any.whl
 my-lastfm-player
 ```
 

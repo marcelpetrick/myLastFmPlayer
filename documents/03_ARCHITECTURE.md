@@ -1,7 +1,7 @@
 # Runtime Architecture
 
 This document is the concise, implementation-facing architecture description for
-`myLastFmPlayer` 0.0.171. The rendered C4 diagrams and class reference are in
+`myLastFmPlayer` 0.0.172. The rendered C4 diagrams and class reference are in
 [`docs/architecture.rst`](../docs/architecture.rst) and
 [`docs/api.rst`](../docs/api.rst).
 
@@ -83,7 +83,8 @@ The main roles are:
   interaction. `TrackTableModel` adapts immutable `Track` values to Qt's model API,
   including durable failure details exposed as row tooltips.
 - `ApplicationController` coordinates workflows, scopes worker results by username
-  and generation, and translates service outcomes into UI state.
+  and generation, translates service outcomes into UI state, and routes each worker's
+  progress to its discovery, lookup, or download presentation channel.
 - Worker `QObject`s run on owned `QThread`s and bridge Qt signals to blocking service
   operations.
 - `LastFmLovedTracksScraper`, `YouTubeResolver`, `DownloadManager`,
@@ -182,6 +183,11 @@ it advances the controller's workflow generation and cancels work for the previo
 username. Completed journal entries stay saved, while late Qt signals are rejected
 unless their username and generation still match the current workflow. This makes
 entries and user libraries independent even when cancellation completes asynchronously.
+
+The feedback panel retains separate Last.fm discovery, YouTube-check, and download
+progress values. `_run_worker` derives a stable presentation stage from the concrete
+worker type and captures it with the worker's username and generation, so concurrent
+signals cannot overwrite another stage and a failure marks only its originating stage.
 
 ### Priority Playback Preparation
 

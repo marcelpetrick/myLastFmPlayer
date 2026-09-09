@@ -54,8 +54,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.171"
-    assert __display_version__ == "0.0.171"
+    assert __version__ == "0.0.172"
+    assert __display_version__ == "0.0.172"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -550,10 +550,19 @@ def test_main_window_updates_progress_and_feedback(qapp) -> None:
     window = MainWindow()
 
     window.set_progress(140, "Downloading")
+    window.set_stage_progress("lookup", 80, "Checked 4/5")
+    window.set_stage_progress("download", 10, "Downloaded 1/10")
     window.append_feedback("Network error")
 
     assert window.progress_bar.value() == 100
     assert window.progress_bar.format() == "Downloading — %p%"
+    assert window.lookup_progress_bar.value() == 80
+    assert window.lookup_progress_bar.format() == "Checked 4/5 — %p%"
+    assert window.download_progress_bar.value() == 10
+    assert window.download_progress_bar.format() == "Downloaded 1/10 — %p%"
+    assert window.discovery_progress_label.text() == "Last.fm discovery"
+    assert window.lookup_progress_label.text() == "YouTube checks"
+    assert window.download_progress_label.text() == "Downloads"
     assert "Network error" in window.feedback_log.toPlainText()
 
 
