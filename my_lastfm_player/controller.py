@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QProcess, QThread, QUrl
+from PyQt6.QtCore import QObject, QProcess, QUrl
 from PyQt6.QtGui import QDesktopServices
 
 from my_lastfm_player.app_credentials import (
@@ -30,6 +30,7 @@ from my_lastfm_player.scrobbling import SCROBBLE_THRESHOLD, ScrobblingService
 from my_lastfm_player.settings import AppSettings
 from my_lastfm_player.storage import JsonTrackRepository, merge_track_updates
 from my_lastfm_player.ui.main_window import MainWindow
+from my_lastfm_player.worker_threads import WorkerThreadPool
 from my_lastfm_player.workers import (
     ArtistImageWorker,
     BackgroundCallWorker,
@@ -41,10 +42,6 @@ from my_lastfm_player.youtube import YouTubeResolver
 from my_lastfm_player.youtube_work import YouTubeWorkLimiter
 
 LOGGER = logging.getLogger(__name__)
-# A cancelled yt-dlp call ends within one poll interval; a Last.fm page request can
-# still be inside its 20s HTTP timeout, so quitting does not wait for that.
-SHUTDOWN_WAIT_MS = 3000
-SHUTDOWN_TERMINATE_WAIT_MS = 1000
 
 DependencyChecker = Callable[[], DependencyCheckResult]
 FetchWorkerFactory = Callable[
@@ -105,7 +102,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.lookup_worker_factory = lookup_worker_factory
         self.download_worker_factory = download_worker_factory
         self.artist_image_worker_factory = artist_image_worker_factory
-        self._active_threads: list[QThread] = []
+        self._threads = WorkerThreadPool(self)
         self._active_workers: list[WorkflowWorker] = []
         self._active_artist_image_workers: list[ArtistImageWorker] = []
         self._active_background_workers: list[BackgroundCallWorker] = []
@@ -256,8 +253,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._request_worker_stop(worker)
         for background_worker in tuple(self._active_background_workers):
             background_worker.cancel()
-        for thread in tuple(self._active_threads):
-            self._join_thread(thread)
+        self._threads.shutdown()
 
     @staticmethod
     def _request_worker_stop(worker: WorkflowWorker) -> None:
@@ -267,19 +263,6 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             worker.stop_lookup()
         elif isinstance(worker, DownloadTracksWorker):
             worker.stop_download()
-
-    @staticmethod
-    def _join_thread(thread: QThread) -> None:
-        """Ask ``thread`` to leave its event loop and wait for it within a bounded time."""
-
-        thread.quit()
-        if thread.wait(SHUTDOWN_WAIT_MS):
-            return
-        LOGGER.warning(
-            "Background thread did not stop within %sms; terminating it", SHUTDOWN_WAIT_MS
-        )
-        thread.terminate()
-        thread.wait(SHUTDOWN_TERMINATE_WAIT_MS)
 
     def _report_user_action(self, message: str) -> None:
         LOGGER.info("User action: %s", message)
@@ -1028,10 +1011,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         )
 
     def _run_worker(self, worker: WorkflowWorker) -> None:
-        thread = QThread(self)
         worker_name = worker.__class__.__name__
         LOGGER.info("Preparing %s on background thread", worker_name)
-        worker.moveToThread(thread)
         self._running_worker_count += 1
         self.window.set_workflow_enabled(False)
         worker_username = getattr(worker, "username", self._workflow_username) or ""
@@ -1039,7 +1020,6 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         progress_stage = self._worker_progress_stage(worker)
         self._worker_generations[worker] = worker_generation
 
-        thread.started.connect(worker.run)
         worker.progress.connect(
             lambda value, label, username=worker_username, generation=worker_generation: (
                 self._handle_worker_progress(username, value, label, progress_stage)
@@ -1107,40 +1087,20 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                 )
             )
         worker.finished.connect(self._complete_worker_run)
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(lambda: self._forget_thread(thread))
-        thread.finished.connect(lambda worker=worker: self._forget_worker(worker))
 
-        self._active_threads.append(thread)
         self._active_workers.append(worker)
         if isinstance(worker, (LookupTracksWorker, DownloadTracksWorker)):
             self.window.set_youtube_work_state(active=True)
-        LOGGER.info(
-            "Starting thread for %s; active_threads=%d active_workers=%d",
-            worker_name,
-            len(self._active_threads),
-            len(self._active_workers),
-        )
-        thread.start()
+        self._threads.start(worker, lambda worker=worker: self._forget_worker(worker))
 
     def _run_artist_image_worker(self, worker: ArtistImageWorker) -> None:
-        thread = QThread(self)
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
         worker.artist_image_loaded.connect(self._handle_artist_image_loaded)
         worker.error.connect(self._handle_artist_image_error)
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(lambda: self._forget_thread(thread))
-        thread.finished.connect(lambda worker=worker: self._forget_artist_image_worker(worker))
-
-        self._active_threads.append(thread)
         self._active_artist_image_workers.append(worker)
         LOGGER.info("Starting artist image worker for %s", worker.artist)
-        thread.start()
+        self._threads.start(
+            worker, lambda worker=worker: self._forget_artist_image_worker(worker)
+        )
 
     def _submit_background_call(
         self,
@@ -1167,16 +1127,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         worker.failed.connect(self._handle_background_error)
         worker.finished.connect(self._forget_background_worker)
         self._active_background_workers.append(worker)
-
-        thread = QThread(self)
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(lambda: self._forget_thread(thread))
-        self._active_threads.append(thread)
-        thread.start()
+        self._threads.start(worker)
 
     def _handle_background_result(self, worker: BackgroundCallWorker, result: object) -> None:
         callbacks = self._background_callbacks.get(worker)
@@ -1919,11 +1870,6 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                     "All background work is finished; controls are enabled again.",
                 )
             )
-
-    def _forget_thread(self, thread: QThread) -> None:
-        if thread in self._active_threads:
-            self._active_threads.remove(thread)
-        LOGGER.info("Thread finished; active_threads=%d", len(self._active_threads))
 
     def _forget_worker(self, worker: WorkflowWorker) -> None:
         worker_generation = self._worker_generations.pop(worker, self._workflow_generation)

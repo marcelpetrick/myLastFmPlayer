@@ -111,6 +111,12 @@ UI
 .. automodule:: my_lastfm_player.ui.track_table_model
    :members:
 
+Worker Threads
+--------------
+
+.. automodule:: my_lastfm_player.worker_threads
+   :members:
+
 Workers
 -------
 

@@ -12,6 +12,7 @@ from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtTest import QTest
 
 from my_lastfm_player import controller as controller_module
+from my_lastfm_player import worker_threads as worker_threads_module
 from my_lastfm_player.app_credentials import LastFmApiCredentials
 from my_lastfm_player.controller import ApplicationController
 from my_lastfm_player.dependencies import DependencyCheckResult
@@ -978,7 +979,7 @@ def test_controller_reenables_workflow_after_last_worker(qapp) -> None:
 
 
 def test_controller_run_worker_tracks_thread_lifecycle(qapp, monkeypatch) -> None:
-    from my_lastfm_player import controller as controller_module
+    from my_lastfm_player import worker_threads as worker_threads_module
 
     window = MainWindow()
     controller = ApplicationController(window)
@@ -990,14 +991,14 @@ def test_controller_run_worker_tracks_thread_lifecycle(qapp, monkeypatch) -> Non
         created_threads.append(thread)
         return thread
 
-    monkeypatch.setattr(controller_module, "QThread", fake_thread_factory)
+    monkeypatch.setattr(worker_threads_module, "QThread", fake_thread_factory)
 
     controller._run_worker(worker)  # type: ignore[arg-type]
     thread = created_threads[0]
 
     assert worker.moved_to_thread is thread
     assert thread.started_flag
-    assert controller._active_threads == [thread]
+    assert controller._threads._threads == [thread]
     assert controller._active_workers == [worker]
     assert not window.fetch_button.isEnabled()
     assert worker.run in thread.started.callbacks
@@ -1008,6 +1009,7 @@ def test_controller_run_worker_tracks_thread_lifecycle(qapp, monkeypatch) -> Non
 
 def test_controller_run_worker_connects_typed_worker_signals(qapp, monkeypatch) -> None:
     from my_lastfm_player import controller as controller_module
+    from my_lastfm_player import worker_threads as worker_threads_module
 
     class FakeFetchWorker(GenericWorker):
         def __init__(self) -> None:
@@ -1035,7 +1037,7 @@ def test_controller_run_worker_connects_typed_worker_signals(qapp, monkeypatch) 
         created_threads.append(thread)
         return thread
 
-    monkeypatch.setattr(controller_module, "QThread", fake_thread_factory)
+    monkeypatch.setattr(worker_threads_module, "QThread", fake_thread_factory)
     monkeypatch.setattr(controller_module, "FetchLovedTracksWorker", FakeFetchWorker)
     monkeypatch.setattr(controller_module, "LookupTracksWorker", FakeLookupWorker)
     monkeypatch.setattr(controller_module, "DownloadTracksWorker", FakeDownloadWorker)
@@ -1067,7 +1069,7 @@ def test_controller_run_artist_image_worker_tracks_lifecycle(qapp, monkeypatch) 
         created_threads.append(thread)
         return thread
 
-    monkeypatch.setattr(controller_module, "QThread", fake_thread_factory)
+    monkeypatch.setattr(worker_threads_module, "QThread", fake_thread_factory)
     window = MainWindow()
     controller = ApplicationController(window)
     worker = FakeArtistImageWorker("Artist", object())
@@ -1077,7 +1079,7 @@ def test_controller_run_artist_image_worker_tracks_lifecycle(qapp, monkeypatch) 
 
     assert worker.moved_to_thread is thread
     assert thread.started_flag
-    assert controller._active_threads == [thread]
+    assert controller._threads._threads == [thread]
     assert controller._active_artist_image_workers == [worker]
     assert worker.run in thread.started.callbacks
     assert controller._handle_artist_image_loaded in worker.artist_image_loaded.callbacks
@@ -2100,15 +2102,15 @@ def test_controller_forgets_threads_and_workers(qapp) -> None:
     controller = ApplicationController(window)
     thread = object()
     worker = GenericWorker()
-    controller._active_threads.append(thread)  # type: ignore[arg-type]
+    controller._threads._threads.append(thread)  # type: ignore[arg-type]
     controller._active_workers.append(worker)  # type: ignore[arg-type]
     controller._active_fetch_worker = worker  # type: ignore[assignment]
     controller._fetch_paused = True
 
-    controller._forget_thread(thread)  # type: ignore[arg-type]
+    controller._threads._forget(thread)  # type: ignore[arg-type]
     controller._forget_worker(worker)  # type: ignore[arg-type]
 
-    assert controller._active_threads == []
+    assert controller._threads._threads == []
     assert controller._active_workers == []
     assert controller._active_fetch_worker is None
     assert not controller._fetch_paused
@@ -2120,10 +2122,10 @@ def test_controller_forget_thread_and_worker_when_not_registered(qapp) -> None:
     unregistered_thread = object()
     unregistered_worker = GenericWorker()
 
-    controller._forget_thread(unregistered_thread)  # type: ignore[arg-type]
+    controller._threads._forget(unregistered_thread)  # type: ignore[arg-type]
     controller._forget_worker(unregistered_worker)  # type: ignore[arg-type]
 
-    assert controller._active_threads == []
+    assert controller._threads._threads == []
     assert controller._active_workers == []
 
 
@@ -3256,6 +3258,7 @@ def test_controller_applies_audio_settings_when_playback_starts(qapp, tmp_path) 
 
 def test_controller_quit_stops_workers_and_joins_threads(qapp, monkeypatch, tmp_path) -> None:
     from my_lastfm_player import controller as controller_module
+    from my_lastfm_player import worker_threads as worker_threads_module
 
     class FakeFetchWorker(GenericWorker):
         def __init__(self) -> None:
@@ -3287,7 +3290,7 @@ def test_controller_quit_stops_workers_and_joins_threads(qapp, monkeypatch, tmp_
         created_threads.append(thread)
         return thread
 
-    monkeypatch.setattr(controller_module, "QThread", fake_thread_factory)
+    monkeypatch.setattr(worker_threads_module, "QThread", fake_thread_factory)
     monkeypatch.setattr(controller_module, "FetchLovedTracksWorker", FakeFetchWorker)
     monkeypatch.setattr(controller_module, "DownloadTracksWorker", FakeDownloadWorker)
 
@@ -3309,7 +3312,7 @@ def test_controller_quit_stops_workers_and_joins_threads(qapp, monkeypatch, tmp_
     assert len(created_threads) == 2
     assert all(thread.quit_called for thread in created_threads)
     assert all(
-        thread.waited_ms == controller_module.SHUTDOWN_WAIT_MS for thread in created_threads
+        thread.waited_ms == worker_threads_module.SHUTDOWN_WAIT_MS for thread in created_threads
     )
     assert not any(thread.terminated for thread in created_threads)
 
@@ -3317,7 +3320,7 @@ def test_controller_quit_stops_workers_and_joins_threads(qapp, monkeypatch, tmp_
 def test_controller_quit_terminates_a_thread_that_will_not_stop(
     qapp, monkeypatch, tmp_path
 ) -> None:
-    from my_lastfm_player import controller as controller_module
+    from my_lastfm_player import worker_threads as worker_threads_module
 
     created_threads: list[FakeThread] = []
 
@@ -3327,7 +3330,7 @@ def test_controller_quit_terminates_a_thread_that_will_not_stop(
         created_threads.append(thread)
         return thread
 
-    monkeypatch.setattr(controller_module, "QThread", fake_thread_factory)
+    monkeypatch.setattr(worker_threads_module, "QThread", fake_thread_factory)
 
     window = MainWindow()
     controller = ApplicationController(window, repository=JsonTrackRepository(tmp_path))
@@ -3364,6 +3367,6 @@ def test_controller_runs_service_calls_on_a_tracked_qt_thread(qapp, tmp_path) ->
     assert results == ["value"]
     assert worker not in controller._active_background_workers
     # The service call owns a real QThread, so quitting can join it like any other.
-    while controller._active_threads and time.monotonic() < deadline:
+    while controller._threads._threads and time.monotonic() < deadline:
         qapp.processEvents()
-    assert controller._active_threads == []
+    assert controller._threads._threads == []
