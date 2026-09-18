@@ -1335,11 +1335,43 @@ def test_controller_shows_artist_image_only_for_the_current_track(qapp) -> None:
     assert controller._artist_image_cache["Previous"] is stale
 
 
+class FakeDesktopServices:
+    opened: list[str] = []
+    result = True
+
+    @staticmethod
+    def openUrl(url) -> bool:  # noqa: N802 - mirrors the Qt API being replaced.
+        FakeDesktopServices.opened.append(url.toString())
+        return FakeDesktopServices.result
+
+
+def test_controller_opens_the_artist_page_in_the_default_browser_without_firefox(
+    qapp, monkeypatch
+) -> None:
+    def fail_start_detached(_program: str, _arguments: list[str]) -> tuple[bool, int]:
+        return False, -1
+
+    FakeDesktopServices.opened = []
+    FakeDesktopServices.result = True
+    monkeypatch.setattr(controller_module.QProcess, "startDetached", fail_start_detached)
+    monkeypatch.setattr(controller_module, "QDesktopServices", FakeDesktopServices)
+    window = MainWindow()
+    controller = ApplicationController(window)
+
+    controller.open_artist_page("https://www.last.fm/music/Artist")
+
+    assert FakeDesktopServices.opened == ["https://www.last.fm/music/Artist"]
+    assert "Could not open artist page:" not in window.feedback_log.toPlainText()
+
+
 def test_controller_handles_artist_image_edge_cases(qapp, monkeypatch) -> None:
     def fail_start_detached(_program: str, _arguments: list[str]) -> tuple[bool, int]:
         return False, -1
 
+    FakeDesktopServices.opened = []
+    FakeDesktopServices.result = False
     monkeypatch.setattr(controller_module.QProcess, "startDetached", fail_start_detached)
+    monkeypatch.setattr(controller_module, "QDesktopServices", FakeDesktopServices)
     window = MainWindow()
     image_calls: list[tuple[bytes | None, str | None]] = []
     window.set_artist_image = (  # type: ignore[method-assign]

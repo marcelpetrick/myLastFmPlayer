@@ -464,9 +464,9 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         )
 
     def open_artist_page(self, url: str) -> None:
-        """Open an artist Last.fm page in a Firefox private window."""
+        """Open an artist Last.fm page, preferring a Firefox private window."""
 
-        if not _open_firefox_private_window(url):
+        if not _open_artist_page(url):
             self.window.append_error(
                 translate(
                     "ApplicationController",
@@ -1993,9 +1993,16 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         )
 
 
-def _open_firefox_private_window(url: str) -> bool:
+def _open_artist_page(url: str) -> bool:
+    """Open ``url`` in a Firefox private window, or in the configured default browser.
+
+    A private window keeps artist browsing out of the user's history, but Firefox is not
+    installed everywhere; without the fallback the artist link simply failed on any
+    machine using another browser.
+    """
+
     started, _pid = QProcess.startDetached("firefox", ["--private-window", url])
-    if not started:
-        LOGGER.error("Could not open artist page in Firefox private window: %s", url)
-        return False
-    return True
+    if started:
+        return True
+    LOGGER.info("Firefox is unavailable; opening artist page in the default browser: %s", url)
+    return QDesktopServices.openUrl(QUrl(url))
