@@ -52,33 +52,42 @@ class YouTubeWorkLimiter:
         stop_event: Event | None = None,
         work_key: Hashable | None = None,
     ) -> Iterator[bool]:
-        """Acquire global capacity and serialize operations targeting one track."""
+        """Acquire global capacity and serialize operations targeting one work key.
 
-        acquired = False
+        Control is always handed to the caller with the limiter lock released, including
+        on the cancelled path, so a body that queries or acquires the limiter cannot
+        deadlock against the slot it is running in.
+        """
+
+        if not self._acquire(stop_event, work_key):
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            self._release(work_key)
+
+    def _acquire(self, stop_event: Event | None, work_key: Hashable | None) -> bool:
         with self._condition:
             while self._active >= self._limit or (
                 work_key is not None and work_key in self._active_keys
             ):
                 if stop_event is not None and stop_event.is_set():
-                    yield False
-                    return
+                    return False
                 self._condition.wait(PROCESS_POLL_SECONDS)
             if stop_event is not None and stop_event.is_set():
-                yield False
-                return
+                return False
             self._active += 1
             if work_key is not None:
                 self._active_keys.add(work_key)
-            acquired = True
-        try:
-            yield True
-        finally:
-            if acquired:
-                with self._condition:
-                    self._active -= 1
-                    if work_key is not None:
-                        self._active_keys.remove(work_key)
-                    self._condition.notify_all()
+            return True
+
+    def _release(self, work_key: Hashable | None) -> None:
+        with self._condition:
+            self._active -= 1
+            if work_key is not None:
+                self._active_keys.discard(work_key)
+            self._condition.notify_all()
 
 
 def run_cancellable_command(

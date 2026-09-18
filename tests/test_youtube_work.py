@@ -134,3 +134,33 @@ def test_process_group_is_killed_if_terminate_does_not_finish(monkeypatch) -> No
     youtube_work._terminate_process(FakeProcess())  # type: ignore[arg-type]
 
     assert calls == [youtube_work.signal.SIGTERM, youtube_work.signal.SIGKILL]
+
+
+def test_slot_releases_the_lock_before_running_a_cancelled_body() -> None:
+    limiter = YouTubeWorkLimiter(limit=1)
+    stop_event = threading.Event()
+    stop_event.set()
+    observed: list[int] = []
+
+    with limiter.slot(stop_event, "track") as acquired:
+        assert not acquired
+        # A foreign thread proves the lock is free; the same thread would re-enter it.
+        reader = threading.Thread(target=lambda: observed.append(limiter.active))
+        reader.start()
+        reader.join(2)
+
+    assert observed == [0]
+
+
+def test_slot_releases_the_lock_while_the_body_runs() -> None:
+    limiter = YouTubeWorkLimiter(limit=2)
+    observed: list[int] = []
+
+    with limiter.slot(None, "track") as acquired:
+        assert acquired
+        reader = threading.Thread(target=lambda: observed.append(limiter.active))
+        reader.start()
+        reader.join(2)
+
+    assert observed == [1]
+    assert limiter.active == 0
