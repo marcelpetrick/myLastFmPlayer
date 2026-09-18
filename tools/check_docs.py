@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +44,32 @@ REQUIRED_README_SNIPPETS = [
     "python3 -m venv .venv",
     "python -m pip install -e .",
 ]
+
+
+# These describe HEAD by definition, so any release number in them is a claim that
+# goes stale on the next commit. They carry none, and this check keeps it that way.
+CURRENT_DOCUMENTS = [
+    Path("documents/00_REQUIREMENTS.md"),
+    Path("documents/03_ARCHITECTURE.md"),
+]
+
+VERSION_PATTERN = re.compile(r"\b\d+\.\d+\.\d+\b")
+
+
+def check_current_document_versions(repo_root: Path) -> list[str]:
+    errors: list[str] = []
+    for relative_path in CURRENT_DOCUMENTS:
+        path = repo_root / relative_path
+        if not path.is_file():
+            continue
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            errors.extend(
+                f"{relative_path}:{line_number}: version {found} will go stale; "
+                f"the project version is {PROJECT_VERSION}"
+                for found in VERSION_PATTERN.findall(line)
+                if found != PROJECT_VERSION
+            )
+    return errors
 
 
 def _has_trailing_whitespace(line: str) -> bool:
@@ -98,6 +125,7 @@ def main() -> int:
         *check_required_files(repo_root),
         *check_markdown(repo_root),
         *check_readme(repo_root),
+        *check_current_document_versions(repo_root),
     ]
 
     if errors:
