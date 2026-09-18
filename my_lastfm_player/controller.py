@@ -83,6 +83,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         lookup_worker_factory: LookupWorkerFactory = LookupTracksWorker,
         download_worker_factory: DownloadWorkerFactory = DownloadTracksWorker,
         artist_image_worker_factory: ArtistImageWorkerFactory = ArtistImageWorker,
+        artist_images_enabled: bool = True,
     ) -> None:
         super().__init__(window)
         self.window = window
@@ -99,11 +100,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.download_manager.work_limiter = self._youtube_work_limiter
         self._playback_service = playback_service
         self.artist_info_client = artist_info_client or LastFmArtistInfoClient()
-        self._artist_images_enabled = (
-            playback_service is None
-            or artist_info_client is not None
-            or artist_image_worker_factory is not ArtistImageWorker
-        )
+        self._artist_images_enabled = artist_images_enabled
         self.dependency_checker = dependency_checker
         self.fetch_worker_factory = fetch_worker_factory
         self.lookup_worker_factory = lookup_worker_factory
