@@ -42,6 +42,10 @@ from my_lastfm_player.youtube import YouTubeResolver
 from my_lastfm_player.youtube_work import YouTubeWorkLimiter
 
 LOGGER = logging.getLogger(__name__)
+# A cancelled yt-dlp call ends within one poll interval; a Last.fm page request can
+# still be inside its 20s HTTP timeout, so quitting does not wait for that.
+SHUTDOWN_WAIT_MS = 3000
+SHUTDOWN_TERMINATE_WAIT_MS = 1000
 
 DependencyChecker = Callable[[], DependencyCheckResult]
 FetchWorkerFactory = Callable[
@@ -239,8 +243,47 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self.download_tracks(username)
 
     def _handle_quit(self) -> None:
+        self._shutdown_background_work()
         if not AppSettings().keep_data_on_quit():
             self.repository.wipe()
+
+    def _shutdown_background_work(self) -> None:
+        """Cancel active work and join its threads before Qt destroys them.
+
+        The window is destroyed as soon as the close event is accepted, taking its
+        child QThreads with it. A QThread deleted while still running aborts the
+        process, and an abandoned yt-dlp process group keeps downloading after the
+        window is gone, so quitting has to wait for cancellation to land.
+        """
+
+        for worker in tuple(self._active_workers):
+            self._request_worker_stop(worker)
+        for background_worker in tuple(self._active_background_workers):
+            background_worker.cancel()
+        for thread in tuple(self._active_threads):
+            self._join_thread(thread)
+
+    @staticmethod
+    def _request_worker_stop(worker: WorkflowWorker) -> None:
+        if isinstance(worker, FetchLovedTracksWorker):
+            worker.stop_fetch()
+        elif isinstance(worker, LookupTracksWorker):
+            worker.stop_lookup()
+        elif isinstance(worker, DownloadTracksWorker):
+            worker.stop_download()
+
+    @staticmethod
+    def _join_thread(thread: QThread) -> None:
+        """Ask ``thread`` to leave its event loop and wait for it within a bounded time."""
+
+        thread.quit()
+        if thread.wait(SHUTDOWN_WAIT_MS):
+            return
+        LOGGER.warning(
+            "Background thread did not stop within %sms; terminating it", SHUTDOWN_WAIT_MS
+        )
+        thread.terminate()
+        thread.wait(SHUTDOWN_TERMINATE_WAIT_MS)
 
     def _report_user_action(self, message: str) -> None:
         LOGGER.info("User action: %s", message)

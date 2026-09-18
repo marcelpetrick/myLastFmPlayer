@@ -151,12 +151,22 @@ class FakeThread:
         self.started_flag = False
         self.quit_called = False
         self.deleted = False
+        self.terminated = False
+        self.wait_result = True
+        self.waited_ms = 0
 
     def start(self) -> None:
         self.started_flag = True
 
     def quit(self) -> None:
         self.quit_called = True
+
+    def wait(self, timeout_ms: int = 0) -> bool:
+        self.waited_ms = timeout_ms
+        return self.wait_result
+
+    def terminate(self) -> None:
+        self.terminated = True
 
     def deleteLater(self) -> None:
         self.deleted = True
@@ -3146,3 +3156,86 @@ def test_controller_applies_audio_settings_when_playback_starts(qapp, tmp_path) 
 
     assert playback.volume_percent == 70
     assert playback.muted is True
+
+
+def test_controller_quit_stops_workers_and_joins_threads(qapp, monkeypatch, tmp_path) -> None:
+    from my_lastfm_player import controller as controller_module
+
+    class FakeFetchWorker(GenericWorker):
+        def __init__(self) -> None:
+            super().__init__()
+            self.username = "user"
+            self.tracks_updated = FakeSignal()
+            self.tracks_loaded = FakeSignal()
+            self.fetch_stopped = FakeSignal()
+            self.stopped = False
+
+        def stop_fetch(self) -> None:
+            self.stopped = True
+
+    class FakeDownloadWorker(GenericWorker):
+        def __init__(self) -> None:
+            super().__init__()
+            self.username = "user"
+            self.track_updated = FakeSignal()
+            self.tracks_downloaded = FakeSignal()
+            self.stopped = False
+
+        def stop_download(self) -> None:
+            self.stopped = True
+
+    created_threads: list[FakeThread] = []
+
+    def fake_thread_factory(parent: object) -> FakeThread:
+        thread = FakeThread(parent)
+        created_threads.append(thread)
+        return thread
+
+    monkeypatch.setattr(controller_module, "QThread", fake_thread_factory)
+    monkeypatch.setattr(controller_module, "FetchLovedTracksWorker", FakeFetchWorker)
+    monkeypatch.setattr(controller_module, "DownloadTracksWorker", FakeDownloadWorker)
+
+    window = MainWindow()
+    controller = ApplicationController(window, repository=JsonTrackRepository(tmp_path))
+    fetch_worker = FakeFetchWorker()
+    download_worker = FakeDownloadWorker()
+    controller._run_worker(fetch_worker)  # type: ignore[arg-type]
+    controller._run_worker(download_worker)  # type: ignore[arg-type]
+    background_worker = controller._submit_background_call(lambda: None)
+
+    controller._handle_quit()
+
+    assert fetch_worker.stopped
+    assert download_worker.stopped
+    assert background_worker.is_cancelled
+    assert [thread.quit_called for thread in created_threads] == [True, True]
+    assert [thread.waited_ms for thread in created_threads] == [
+        controller_module.SHUTDOWN_WAIT_MS,
+        controller_module.SHUTDOWN_WAIT_MS,
+    ]
+    assert not any(thread.terminated for thread in created_threads)
+
+
+def test_controller_quit_terminates_a_thread_that_will_not_stop(
+    qapp, monkeypatch, tmp_path
+) -> None:
+    from my_lastfm_player import controller as controller_module
+
+    created_threads: list[FakeThread] = []
+
+    def fake_thread_factory(parent: object) -> FakeThread:
+        thread = FakeThread(parent)
+        thread.wait_result = False
+        created_threads.append(thread)
+        return thread
+
+    monkeypatch.setattr(controller_module, "QThread", fake_thread_factory)
+
+    window = MainWindow()
+    controller = ApplicationController(window, repository=JsonTrackRepository(tmp_path))
+    controller._run_worker(GenericWorker())  # type: ignore[arg-type]
+
+    controller._handle_quit()
+
+    assert created_threads[0].quit_called
+    assert created_threads[0].terminated
