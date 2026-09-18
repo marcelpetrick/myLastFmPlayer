@@ -18,7 +18,14 @@ from PyQt6.QtCore import (
     Qt,
     QTime,
 )
-from PyQt6.QtGui import QColor, QKeySequence, QMouseEvent, QPixmap, QStandardItemModel
+from PyQt6.QtGui import (
+    QColor,
+    QKeySequence,
+    QMouseEvent,
+    QPixmap,
+    QStandardItemModel,
+    QTextDocument,
+)
 from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QSizePolicy, QStyle, QStyleOptionSlider
 
@@ -55,8 +62,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.193"
-    assert __display_version__ == "0.0.193"
+    assert __version__ == "0.0.194"
+    assert __display_version__ == "0.0.194"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -981,19 +988,47 @@ def test_rich_text_dialog_height_follows_measured_content(qapp, monkeypatch) -> 
 
     short_dialog, tall_dialog = dialogs
     assert tall_dialog.height() > short_dialog.height()
-    for dialog in dialogs:
-        text_browser = dialog.findChild(main_window_module.QTextBrowser)
-        wanted = (
-            text_browser.document().size().height() + _rich_text_dialog_chrome_height(dialog)
-        )
-        available = main_window_module._available_screen_height(dialog)
-        assert dialog.height() >= min(
-            wanted,
-            max(
-                main_window_module.RICH_TEXT_DIALOG_MINIMUM_HEIGHT,
-                int(available * main_window_module.RICH_TEXT_DIALOG_SCREEN_FRACTION),
-            ),
-        )
+
+
+def test_rich_text_dialog_leaves_the_document_room_to_avoid_a_scrollbar(
+    qapp, monkeypatch
+) -> None:
+    dialogs: list[main_window_module.QDialog] = []
+
+    def fake_exec(self) -> int:
+        dialogs.append(self)
+        return 0
+
+    monkeypatch.setattr(main_window_module.QDialog, "exec", fake_exec)
+    window = MainWindow()
+
+    main_window_module._show_rich_text_dialog(window, "About", window.about_dialog_text())
+
+    dialog = dialogs[0]
+    dialog.layout().activate()
+    text_browser = dialog.findChild(main_window_module.QTextBrowser)
+    # Measure independently: re-setting the width on the browser's own laid-out document
+    # reports the previous layout, which is what made the dialog too short.
+    document = QTextDocument()
+    document.setDefaultFont(text_browser.font())
+    document.setDocumentMargin(0)
+    document.setHtml(window.about_dialog_text())
+    document.setTextWidth(text_browser.width())
+
+    assert text_browser.height() > document.size().height()
+
+
+def test_rich_text_content_height_measures_at_the_requested_width(qapp) -> None:
+    window = MainWindow()
+    text = window.about_dialog_text()
+    text_browser = main_window_module.QTextBrowser()
+    text_browser.setHtml(text)
+
+    narrow = main_window_module._rich_text_content_height(text_browser, text, 360, 14)
+    wide = main_window_module._rich_text_content_height(text_browser, text, 900, 14)
+
+    # A stale measurement returns the same height for both widths.
+    assert narrow > wide
 
 
 def test_fitted_dialog_height_prefers_content_and_respects_the_screen() -> None:

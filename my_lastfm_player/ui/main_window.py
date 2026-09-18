@@ -17,6 +17,7 @@ from PyQt6.QtGui import (
     QPixmap,
     QResizeEvent,
     QShortcut,
+    QTextDocument,
 )
 from PyQt6.QtWidgets import (
     QAbstractButton,
@@ -78,6 +79,9 @@ RICH_TEXT_DIALOG_WIDTH = 560
 RICH_TEXT_DIALOG_WIDE_WIDTH = 680
 RICH_TEXT_DIALOG_WIDE_THRESHOLD = 900
 RICH_TEXT_DIALOG_MINIMUM_HEIGHT = 320
+# Never hand the viewport exactly the document height: a zero-slack fit turns any
+# rounding into a scrollbar, and a scrollbar reflows the text taller still.
+RICH_TEXT_DIALOG_CONTENT_PADDING = 4
 RICH_TEXT_DIALOG_SCREEN_FRACTION = 0.9
 RICH_TEXT_DIALOG_FALLBACK_SCREEN_HEIGHT = 768
 
@@ -1502,7 +1506,7 @@ def _show_rich_text_dialog(parent: QWidget, title: str, text: str) -> None:
     dialog.resize(
         width,
         _fitted_dialog_height(
-            _rich_text_content_height(text_browser, width),
+            _rich_text_content_height(text_browser, text, width, _scrollbar_extent(dialog)),
             2 * RICH_TEXT_DIALOG_MARGIN
             + RICH_TEXT_DIALOG_SPACING
             + button_box.sizeHint().height(),
@@ -1520,12 +1524,31 @@ def _rich_text_dialog_width(text: str) -> int:
     return RICH_TEXT_DIALOG_WIDTH
 
 
-def _rich_text_content_height(text_browser: QTextBrowser, dialog_width: int) -> int:
-    """Return the laid-out document height for the viewport width the dialog will give it."""
+def _rich_text_content_height(
+    text_browser: QTextBrowser, text: str, dialog_width: int, scrollbar_extent: int
+) -> int:
+    """Return the document height for the narrowest viewport the dialog can give it.
 
-    document = text_browser.document()
-    document.setTextWidth(dialog_width - 2 * RICH_TEXT_DIALOG_MARGIN)
-    return ceil(document.size().height())
+    The measurement uses a standalone document rather than the browser's own. Re-setting
+    the text width on a laid-out document leaves ``size()`` reporting the previous layout
+    until Qt relays it, which silently returned the height for the browser's default width.
+
+    The width also reserves room for a vertical scrollbar the finished dialog should not
+    need. Measuring at the full width produces an exact fit, and an exact fit is unstable:
+    one pixel of rounding shows the scrollbar, the scrollbar narrows the viewport, the
+    narrower viewport reflows the text taller, and the scrollbar is then there to stay.
+    """
+
+    document = QTextDocument()
+    document.setDefaultFont(text_browser.font())
+    document.setDocumentMargin(0)
+    document.setHtml(text)
+    document.setTextWidth(dialog_width - 2 * RICH_TEXT_DIALOG_MARGIN - scrollbar_extent)
+    return ceil(document.size().height()) + RICH_TEXT_DIALOG_CONTENT_PADDING
+
+
+def _scrollbar_extent(widget: QWidget) -> int:
+    return widget.style().pixelMetric(QStyle.PixelMetric.PM_ScrollBarExtent)
 
 
 def _fitted_dialog_height(
