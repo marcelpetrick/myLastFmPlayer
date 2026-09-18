@@ -32,7 +32,8 @@ def test_track_serializes_to_json_ready_dict() -> None:
         youtube_url="https://youtube.example/watch?v=abc",
         local_path="/music/Artist - Title.mp3",
         status=TrackStatus.DOWNLOADED,
-        retry_count=2,
+        lookup_attempts=1,
+        download_attempts=2,
         error=None,
         file_type="MP3",
         bitrate_kbps=192,
@@ -46,7 +47,8 @@ def test_track_serializes_to_json_ready_dict() -> None:
         "youtube_url": "https://youtube.example/watch?v=abc",
         "local_path": "/music/Artist - Title.mp3",
         "status": "Downloaded",
-        "retry_count": 2,
+        "lookup_attempts": 1,
+        "download_attempts": 2,
         "error": None,
         "file_type": "MP3",
         "bitrate_kbps": 192,
@@ -62,7 +64,8 @@ def test_track_deserializes_from_json_ready_dict() -> None:
             "youtube_url": None,
             "local_path": None,
             "status": "Searching",
-            "retry_count": 1,
+            "lookup_attempts": 1,
+            "download_attempts": 0,
             "error": "temporary failure",
             "file_type": "WEBM",
             "bitrate_kbps": 128,
@@ -73,18 +76,19 @@ def test_track_deserializes_from_json_ready_dict() -> None:
         artist="Artist",
         title="Title",
         status=TrackStatus.SEARCHING,
-        retry_count=1,
+        lookup_attempts=1,
         error="temporary failure",
         file_type="WEBM",
         bitrate_kbps=128,
     )
 
 
-def test_track_deserialization_defaults_status_and_retry_count() -> None:
+def test_track_deserialization_defaults_status_and_attempt_counts() -> None:
     track = Track.from_dict({"artist": "Artist", "title": "Title"})
 
     assert track.status == TrackStatus.FETCHED
-    assert track.retry_count == 0
+    assert track.lookup_attempts == 0
+    assert track.download_attempts == 0
     assert track.file_type is None
     assert track.bitrate_kbps is None
 
@@ -110,8 +114,11 @@ def test_track_constructor_rejects_invalid_core_values() -> None:
     with pytest.raises(ValueError, match="title"):
         Track(artist="Artist", title="")
 
-    with pytest.raises(ValueError, match="retry_count"):
-        Track(artist="Artist", title="Title", retry_count=-1)
+    with pytest.raises(ValueError, match="lookup_attempts"):
+        Track(artist="Artist", title="Title", lookup_attempts=-1)
+
+    with pytest.raises(ValueError, match="download_attempts"):
+        Track(artist="Artist", title="Title", download_attempts=-1)
 
     with pytest.raises(ValueError, match="bitrate_kbps"):
         Track(artist="Artist", title="Title", bitrate_kbps=-1)
@@ -128,14 +135,17 @@ def test_track_status_transition_returns_updated_copy() -> None:
     assert failed.error == "network failure"
 
 
-def test_retry_increment_returns_updated_copy() -> None:
+def test_attempt_increments_return_updated_copies() -> None:
     track = Track(artist="Artist", title="Title")
 
-    retried = track.increment_retry(error="timeout")
+    searched = track.increment_lookup_attempt(error="timeout")
+    downloaded = track.increment_download_attempt(error="403")
 
-    assert track.retry_count == 0
-    assert retried.retry_count == 1
-    assert retried.error == "timeout"
+    assert (track.lookup_attempts, track.download_attempts) == (0, 0)
+    assert (searched.lookup_attempts, searched.download_attempts) == (1, 0)
+    assert (downloaded.lookup_attempts, downloaded.download_attempts) == (0, 1)
+    assert searched.error == "timeout"
+    assert downloaded.error == "403"
 
 
 def test_cache_key_uses_exact_artist_and_title() -> None:
@@ -290,13 +300,14 @@ def test_merge_preserving_clears_error_when_new_error_is_none() -> None:
     assert result.error is None
 
 
-def test_merge_preserving_takes_max_retry_count() -> None:
-    old = _track(retry_count=3)
-    new = _track(retry_count=1)
+def test_merge_preserving_takes_max_of_each_attempt_count() -> None:
+    old = _track(lookup_attempts=3, download_attempts=1)
+    new = _track(lookup_attempts=1, download_attempts=2)
 
     result = Track.merge_preserving(old, new)
 
-    assert result.retry_count == 3
+    assert result.lookup_attempts == 3
+    assert result.download_attempts == 2
 
 
 def test_merge_preserving_preserves_file_type_and_bitrate_when_new_is_none() -> None:
@@ -359,3 +370,28 @@ def test_merge_preserving_lookup_failure_can_recover_with_resolved_url() -> None
 
     assert result.status is TrackStatus.QUEUED
     assert result.youtube_url == "https://yt/recovered"
+
+
+def test_legacy_retry_count_becomes_the_download_budget() -> None:
+    track = Track.from_dict(
+        {"artist": "Artist", "title": "Title", "status": "Failed", "retry_count": 3}
+    )
+
+    assert track.download_attempts == 3
+    # The lookup budget restarts, so a stuck track gets one more YouTube check.
+    assert track.lookup_attempts == 0
+    assert "retry_count" not in track.to_dict()
+
+
+def test_new_attempt_counts_win_over_a_legacy_retry_count() -> None:
+    track = Track.from_dict(
+        {
+            "artist": "Artist",
+            "title": "Title",
+            "retry_count": 9,
+            "lookup_attempts": 1,
+            "download_attempts": 2,
+        }
+    )
+
+    assert (track.lookup_attempts, track.download_attempts) == (1, 2)

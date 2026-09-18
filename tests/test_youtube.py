@@ -251,7 +251,7 @@ def test_resolve_tracks_keeps_lookup_error_distinct_from_no_result() -> None:
 
     assert tracks[0].status == TrackStatus.LOOKUP_FAILED
     assert tracks[0].error is not None
-    assert tracks[0].retry_count == 1
+    assert tracks[0].lookup_attempts == 1
     assert tracks[1].status == TrackStatus.QUEUED
     assert tracks[1].youtube_url == "https://youtube.example/watch?v=ok"
 
@@ -349,7 +349,7 @@ def test_resolve_tracks_skips_not_found_tracks_that_exhausted_their_retries() ->
         artist="Artist",
         title="Title",
         status=TrackStatus.NOT_FOUND,
-        retry_count=MAX_LOOKUP_ATTEMPTS,
+        lookup_attempts=MAX_LOOKUP_ATTEMPTS,
     )
 
     assert resolver.resolve_tracks([missing]) == [missing]
@@ -363,7 +363,7 @@ def test_resolve_tracks_retries_not_found_tracks_below_the_attempt_bound() -> No
         artist="Artist",
         title="Title",
         status=TrackStatus.NOT_FOUND,
-        retry_count=MAX_LOOKUP_ATTEMPTS - 1,
+        lookup_attempts=MAX_LOOKUP_ATTEMPTS - 1,
     )
 
     tracks = resolver.resolve_tracks([missing])
@@ -423,12 +423,12 @@ def test_resolve_track_uses_a_later_query_when_the_exact_one_finds_nothing() -> 
 def test_resolve_track_counts_an_exhausted_query_ladder_as_one_attempt() -> None:
     runner = FakeRunner(stdout=json.dumps({"entries": []}))
     resolver = YouTubeResolver(command_runner=runner)
-    track = Track(artist="Artist", title="Title", retry_count=1)
+    track = Track(artist="Artist", title="Title", lookup_attempts=1)
 
     resolved = resolver.resolve_track(track)
 
     assert resolved.status == TrackStatus.NOT_FOUND
-    assert resolved.retry_count == 2
+    assert resolved.lookup_attempts == 2
     assert len(runner.commands) == 2
 
 

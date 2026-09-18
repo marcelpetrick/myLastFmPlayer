@@ -189,7 +189,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
                         results[index] = replace(
                             failed_track,
                             status=TrackStatus.FAILED,
-                            retry_count=failed_track.retry_count + 1,
+                            download_attempts=failed_track.download_attempts + 1,
                             error=str(error),
                         )
                     _report_track_update(track_update_callback, results[index])
@@ -236,7 +236,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
                 )
             except DownloadError as error:
                 last_error = str(error)
-                current_track = current_track.increment_retry(last_error)
+                current_track = current_track.increment_download_attempt(last_error)
                 LOGGER.warning(
                     "Download attempt %s/%s failed for %s - %s: %s",
                     attempt,

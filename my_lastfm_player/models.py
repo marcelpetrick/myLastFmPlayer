@@ -47,7 +47,8 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
     youtube_url: str | None = None
     local_path: str | None = None
     status: TrackStatus = TrackStatus.FETCHED
-    retry_count: int = 0
+    lookup_attempts: int = 0
+    download_attempts: int = 0
     error: str | None = None
     file_type: str | None = None
     bitrate_kbps: int | None = None
@@ -57,8 +58,10 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
             raise ValueError("Track artist must not be empty")
         if not self.title:
             raise ValueError("Track title must not be empty")
-        if self.retry_count < 0:
-            raise ValueError("Track retry_count must not be negative")
+        if self.lookup_attempts < 0:
+            raise ValueError("Track lookup_attempts must not be negative")
+        if self.download_attempts < 0:
+            raise ValueError("Track download_attempts must not be negative")
         if self.bitrate_kbps is not None and self.bitrate_kbps < 0:
             raise ValueError("Track bitrate_kbps must not be negative")
 
@@ -79,10 +82,15 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
 
         return replace(self, status=status, error=error)
 
-    def increment_retry(self, error: str | None = None) -> Track:
-        """Return a copy with the retry count increased by one."""
+    def increment_lookup_attempt(self, error: str | None = None) -> Track:
+        """Return a copy with the YouTube-lookup attempt count increased by one."""
 
-        return replace(self, retry_count=self.retry_count + 1, error=error)
+        return replace(self, lookup_attempts=self.lookup_attempts + 1, error=error)
+
+    def increment_download_attempt(self, error: str | None = None) -> Track:
+        """Return a copy with the download attempt count increased by one."""
+
+        return replace(self, download_attempts=self.download_attempts + 1, error=error)
 
     @classmethod
     def merge_preserving(cls, old: Track, new: Track) -> Track:
@@ -100,7 +108,8 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
             youtube_url=new.youtube_url if new.youtube_url is not None else old.youtube_url,
             local_path=new.local_path if new.local_path is not None else old.local_path,
             status=merged_status,
-            retry_count=max(old.retry_count, new.retry_count),
+            lookup_attempts=max(old.lookup_attempts, new.lookup_attempts),
+            download_attempts=max(old.download_attempts, new.download_attempts),
             error=new.error,
             file_type=new.file_type if new.file_type is not None else old.file_type,
             bitrate_kbps=new.bitrate_kbps if new.bitrate_kbps is not None else old.bitrate_kbps,
@@ -117,7 +126,8 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
             "youtube_url": self.youtube_url,
             "local_path": self.local_path,
             "status": self.status.value,
-            "retry_count": self.retry_count,
+            "lookup_attempts": self.lookup_attempts,
+            "download_attempts": self.download_attempts,
             "error": self.error,
             "file_type": self.file_type,
             "bitrate_kbps": self.bitrate_kbps,
@@ -136,11 +146,29 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
             youtube_url=_optional_string(data, "youtube_url"),
             local_path=_optional_string(data, "local_path"),
             status=status,
-            retry_count=int(data.get("retry_count", 0)),
+            lookup_attempts=_attempts(data, "lookup_attempts"),
+            download_attempts=_legacy_download_attempts(data),
             error=_optional_string(data, "error"),
             file_type=_optional_string(data, "file_type"),
             bitrate_kbps=_optional_int(data, "bitrate_kbps"),
         )
+
+
+def _attempts(data: dict[str, Any], key: str) -> int:
+    return int(data.get(key, 0))
+
+
+def _legacy_download_attempts(data: dict[str, Any]) -> int:
+    """Read the download budget, accepting libraries written before the counters split.
+
+    ``retry_count`` used to serve lookups and downloads at once. Treating it as the
+    download budget keeps failed downloads bounded across the upgrade, and the lookup
+    budget simply restarts, which only means one more YouTube check per stuck track.
+    """
+
+    if "download_attempts" in data:
+        return _attempts(data, "download_attempts")
+    return _attempts(data, "retry_count")
 
 
 def build_track_cache_key(artist: str, title: str) -> str:

@@ -167,6 +167,12 @@ Lookup checks the shared cache before invoking `yt-dlp`. On a miss it tries a bo
 query ladder: exact artist/title, a cleaned artist/title form, and title alone. A hit
 becomes `Queued`; exhausted lookup attempts become `Not found`.
 
+Each track counts its lookup and download attempts separately (`lookup_attempts` and
+`download_attempts`). Only the lookup budget gates re-checking a `Not found` track, so a
+run of failed downloads cannot consume the allowance that decides whether the track is
+searched again. Libraries written before the split are read back with their old
+`retry_count` as the download budget.
+
 Download uses `yt-dlp` to select the best available audio stream. Transient failures
 are retried with jitter and a changing YouTube player-client strategy. `ffprobe`
 records the resulting file type and bitrate. A successful file becomes `Downloaded`;

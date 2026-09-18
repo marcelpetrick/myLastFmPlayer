@@ -240,7 +240,7 @@ def test_download_manager_retries_and_marks_failed(tmp_path: Path) -> None:
 
     assert len(runner.commands) == MAX_RETRIES
     assert tracks[0].status == TrackStatus.FAILED
-    assert tracks[0].retry_count == MAX_RETRIES
+    assert tracks[0].download_attempts == MAX_RETRIES
     assert tracks[0].error == "download failed"
 
 

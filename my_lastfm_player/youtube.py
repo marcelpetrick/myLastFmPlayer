@@ -103,7 +103,7 @@ class YouTubeResolver:
             track,
             youtube_url=None,
             status=TrackStatus.NOT_FOUND,
-            retry_count=track.retry_count + 1,
+            lookup_attempts=track.lookup_attempts + 1,
         )
 
     def resolve_tracks(  # pylint: disable=too-many-arguments,too-many-locals
@@ -184,7 +184,7 @@ class YouTubeResolver:
                             searching_track,
                             youtube_url=None,
                             status=TrackStatus.LOOKUP_FAILED,
-                            retry_count=searching_track.retry_count + 1,
+                            lookup_attempts=searching_track.lookup_attempts + 1,
                             error=str(exc),
                         )
                     except Exception as exc:  # noqa: BLE001 - isolate one failed lookup.
@@ -197,7 +197,7 @@ class YouTubeResolver:
                             searching_track,
                             youtube_url=None,
                             status=TrackStatus.LOOKUP_FAILED,
-                            retry_count=searching_track.retry_count + 1,
+                            lookup_attempts=searching_track.lookup_attempts + 1,
                             error=str(exc),
                         )
                     resolved_tracks[index] = resolved_track
@@ -312,7 +312,7 @@ def _needs_lookup(track: Track) -> bool:
         return False
     if track.status is not TrackStatus.NOT_FOUND:
         return True
-    return track.retry_count < MAX_LOOKUP_ATTEMPTS
+    return track.lookup_attempts < MAX_LOOKUP_ATTEMPTS
 
 
 def _simplify_artist(artist: str) -> str:

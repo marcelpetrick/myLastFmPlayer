@@ -34,7 +34,7 @@ def test_repository_saves_and_loads_per_user_tracks(tmp_path: Path) -> None:
             youtube_url="https://youtube.example/watch?v=abc",
             local_path=str(audio_path),
             status=TrackStatus.DOWNLOADED,
-            retry_count=1,
+            download_attempts=1,
             error=None,
         )
     ]
@@ -446,7 +446,12 @@ def test_clear_not_found_lookups_drops_only_the_missing_entries(tmp_path: Path) 
         youtube_url="https://youtube.example/watch?v=abc",
         status=TrackStatus.QUEUED,
     )
-    missing = Track(artist="Missing", title="Track", status=TrackStatus.NOT_FOUND, retry_count=3)
+    missing = Track(
+        artist="Missing",
+        title="Track",
+        status=TrackStatus.NOT_FOUND,
+        lookup_attempts=3,
+    )
     repository.save_lookup_cache([resolved, missing])
 
     assert repository.clear_not_found_lookups() == 1
@@ -463,7 +468,7 @@ def test_lookup_cache_restores_the_not_found_attempt_count(tmp_path: Path) -> No
         artist="Missing",
         title="Track",
         status=TrackStatus.NOT_FOUND,
-        retry_count=2,
+        lookup_attempts=2,
     )
 
     repository.save_lookup_cache([missing])
@@ -472,7 +477,7 @@ def test_lookup_cache_restores_the_not_found_attempt_count(tmp_path: Path) -> No
     )
 
     assert marked_tracks[0].status == TrackStatus.NOT_FOUND
-    assert marked_tracks[0].retry_count == 2
+    assert marked_tracks[0].lookup_attempts == 2
 
 
 def test_lookup_cache_leaves_unresolved_cached_tracks_unchanged(tmp_path: Path) -> None:

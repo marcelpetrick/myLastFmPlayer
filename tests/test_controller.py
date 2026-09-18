@@ -296,7 +296,7 @@ def _stuck_track_controller(tmp_path, tracks: list[Track]) -> tuple:
 
 def test_start_rechecks_not_found_tracks(qapp, tmp_path) -> None:
     tracks = [
-        Track(artist="Missing", title="Track", status=TrackStatus.NOT_FOUND, retry_count=3),
+        Track(artist="Missing", title="Track", status=TrackStatus.NOT_FOUND, lookup_attempts=3),
         Track(
             artist="Done",
             title="Track",
@@ -311,7 +311,7 @@ def test_start_rechecks_not_found_tracks(qapp, tmp_path) -> None:
 
     stored = {track.artist: track for track in repository.load_tracks("user")}
     assert stored["Missing"].status is TrackStatus.FETCHED
-    assert stored["Missing"].retry_count == 0
+    assert stored["Missing"].lookup_attempts == 0
     assert stored["Done"].status is TrackStatus.DOWNLOADED
     assert repository.load_lookup_cache().get("Missing\x1fTrack") is None
     assert started["lookup"] == [(("user",), {})]

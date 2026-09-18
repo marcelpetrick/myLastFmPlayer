@@ -304,7 +304,9 @@ class JsonTrackRepository:
                         youtube_url=None,
                         status=TrackStatus.NOT_FOUND,
                         # Carry the attempt count so bounded lookup retries survive a restart.
-                        retry_count=max(track.retry_count, cached_track.retry_count),
+                        lookup_attempts=max(
+                            track.lookup_attempts, cached_track.lookup_attempts
+                        ),
                         error=cached_track.error,
                     )
                 )

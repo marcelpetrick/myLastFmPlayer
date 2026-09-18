@@ -204,7 +204,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
                     track,
                     status=TrackStatus.FETCHED,
                     youtube_url=None,
-                    retry_count=0,
+                    lookup_attempts=0,
                     error=None,
                 )
                 if track.status is TrackStatus.NOT_FOUND
