@@ -64,8 +64,85 @@ absent.
 Run `./localPipeline.sh --noRun` before every commit and ensure all mandatory
 stages pass. A red pipeline means no commit.
 
-Stages that must be green: Ruff lint, docs check, Sphinx, tests, and coverage.
-The configured coverage gate is the source of truth for the required minimum.
+Stages that must be green: Ruff lint, Pylint, translation completeness, docs
+check, Sphinx, tests, and coverage. The configured coverage gate in
+`pyproject.toml` is the source of truth for the required minimum.
+
+`localPipeline.sh` is the canonical build workflow. It records each stage as
+`PASS`, `FAIL`, `SKIP`, or `WARN` and prints the complete summary at the end.
+
+```mermaid
+flowchart TD
+    A["Start ./localPipeline.sh"] --> B{"--noRun provided?"}
+    B -->|yes| C["Set RUN_APP=false"]
+    B -->|no| D["Keep RUN_APP=true"]
+    C --> E{"Is .venv/bin/python executable?"}
+    D --> E
+    E -->|no| F["Create .venv with python3 -m venv"]
+    E -->|yes| G["Use existing .venv"]
+    F --> H["Install project in editable mode with dev dependencies"]
+    G --> H
+    H --> I["Ruff lint check"]
+    I --> J["Pylint static analysis"]
+    J --> K["Check Qt translation completeness"]
+    K --> L["Documentation check"]
+    L --> M["Build Sphinx docs with warnings as errors"]
+    M --> N["Pytest with coverage and HTML report"]
+    N --> O["Open generated HTML reports when possible"]
+    O --> P["Remove old build artifacts"]
+    P --> Q["Build source/wheel distributions"]
+    Q --> R["Find built wheel in dist/"]
+    R --> S["Force reinstall built wheel without dependencies"]
+    S --> T["Import package and print version"]
+    T --> U{"RUN_APP=true?"}
+    U -->|yes| V["Start installed my-lastfm-player once"]
+    U -->|no| W["Skip GUI startup"]
+    V --> X["Print stage summary and exit"]
+    W --> X
+```
+
+The workflow phases are:
+
+1. Argument handling accepts `--noRun` and `--report-dir PATH`.
+2. Environment preparation creates `.venv` when needed and otherwise reuses it.
+3. Dependency installation runs `python -m pip install -e ".[dev]"`.
+4. Quality gates run Ruff, Pylint, translation and documentation checks, Sphinx
+   with warnings as errors, and pytest with the configured coverage threshold.
+5. Report opening prints the Sphinx and coverage HTML paths and attempts to open
+   them; an unavailable browser is a warning rather than a build failure.
+6. Package build removes stale output before building source and wheel
+   distributions.
+7. Install verification installs the new wheel and imports `my_lastfm_player`.
+8. Runtime launch starts `my-lastfm-player` unless `--noRun` was supplied.
+9. The final summary reports every stage as `PASS`, `FAIL`, `SKIP`, or `WARN`.
+
+To preserve the machine-readable test and coverage results, stage logs,
+environment metadata, and final summary for release artifacts:
+
+```sh
+./localPipeline.sh --noRun --report-dir release-artifacts/raw
+```
+
+After a run, the HTML reports are at `htmlcov/index.html` and
+`docs/_build/html/index.html`.
+
+### Opt-in Network Tests
+
+The normal pipeline needs no internet access. The live checks are opt-in so the
+gate stays deterministic:
+
+```sh
+MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 ./localPipeline.sh --noRun
+MY_LASTFM_PLAYER_RUN_YTDLP_E2E=1 ./localPipeline.sh --noRun
+```
+
+The Last.fm test fetches every loved-track API page for the test user `first`.
+The `yt-dlp` tests check the download retry ladder against the installed
+`yt-dlp`: every forced YouTube player client must still be one `yt-dlp`
+supports, the audio format selector must still resolve, and a real download must
+complete. A client name `yt-dlp` no longer knows is only reported as a
+skipped-client warning, so without this check that rung would quietly waste a
+retry.
 
 ## Architecture Notes
 

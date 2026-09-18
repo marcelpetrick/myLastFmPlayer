@@ -21,7 +21,7 @@ plays them locally from one PyQt6 interface.
 
 ## Product Status
 
-Current version: `0.0.191` — fully functional and actively maintained
+Current version: `0.0.192` — fully functional and actively maintained
 
 The complete intended workflow is implemented and used in practice. Its major features
 are covered by the automated test suite, packaging and installed-application checks,
@@ -69,27 +69,16 @@ Click the preview to open the full recording.
 
 ## Versioning
 
-This project uses a SemVer-style base version:
-
-```text
-MAJOR.MINOR.PATCH
-```
-
-The version is written without leading zero padding. The first version was `0.0.1`.
-The single source of truth is `my_lastfm_player/version.py`; Python package metadata reads
-the same `__version__` value through `pyproject.toml`.
-
-- `MAJOR`: incompatible or breaking changes.
-- `MINOR`: backwards-compatible feature additions.
-- `PATCH`: fixes, documentation, tooling, and other incremental changes.
+The version is `MAJOR.MINOR.PATCH` without leading zero padding; the first release
+was `0.0.1`. `my_lastfm_player/version.py` is the single source of truth, and
+`pyproject.toml` reads the same `__version__`.
 
 For this project, every future commit should increase the `PATCH` number unless the
 change intentionally requires a `MINOR` or `MAJOR` bump.
 
-Built packages can show a build suffix in user-facing locations such as the startup
-line and window title. The suffix is the first six digits of the git commit hash,
-generated at package build time into `my_lastfm_player/_build_info.py`. Source-tree
-development runs show only the base version when that generated metadata is absent.
+Built packages append a build suffix - the first six digits of the git commit hash -
+to the version shown in the startup line and window title. Source-tree runs show only
+the base version. Contributor rules live in [`docs/agents.md`](docs/agents.md).
 
 ## Installation and Requirements
 
@@ -115,7 +104,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.191-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.192-py3-none-any.whl
 my-lastfm-player
 ```
 
@@ -256,203 +245,50 @@ YouTube changes its mind, so the player keeps re-checking them:
 
 ## Stored Files
 
-Saved libraries, lookup results, download metadata, and the optional Last.fm session are
-retained when the application closes. This is the safe default. Preferences can opt into
-deleting that metadata on quit; the downloaded audio files are always retained.
+Saved libraries, lookup results, download metadata, and the optional Last.fm session
+are retained when the application closes. This is the safe default; Preferences can
+opt into deleting that metadata on quit. Downloaded audio files are always kept.
 
-By default, downloaded audio files are stored here:
+Everything lives under `~/.local/share/myLastFmPlayer/`, or under
+`$XDG_DATA_HOME/myLastFmPlayer/` when that variable is set:
 
-```text
-~/.local/share/myLastFmPlayer/downloads/
-```
+| Path | Contents |
+| --- | --- |
+| `downloads/` | Downloaded audio files |
+| `tracks/` | Per-user track lists, plus the journal that protects work in progress |
+| `lookup-cache.json` | Shared artist/title-to-YouTube results |
+| `download-cache.json` | Shared artist/title-to-local-file mappings |
+| `lastfm-credentials.json` | Optional Last.fm session |
 
-Per-user track lists are stored as JSON files here:
-
-```text
-~/.local/share/myLastFmPlayer/tracks/
-```
-
-Active workflows also use a per-user `.updates.jsonl` journal in that directory so
-completed entries survive a stop or interruption before the full snapshot is compacted.
-
-The shared download cache is stored here:
-
-```text
-~/.local/share/myLastFmPlayer/download-cache.json
-```
-
-The shared YouTube lookup cache is stored here:
-
-```text
-~/.local/share/myLastFmPlayer/lookup-cache.json
-```
-
-The optional Last.fm session is stored in `lastfm-credentials.json`. Appearance and
-behavior preferences use the platform-native Qt settings store rather than this data
-directory.
-
-If `XDG_DATA_HOME` is set, the base directory changes to:
-
-```text
-$XDG_DATA_HOME/myLastFmPlayer/
-```
-
-For example, with `XDG_DATA_HOME=/tmp/app-data`, downloads are stored in:
-
-```text
-/tmp/app-data/myLastFmPlayer/downloads/
-```
+Appearance and behavior preferences use the platform-native Qt settings store rather
+than this directory. The
+[persistence section of the architecture document](documents/03_ARCHITECTURE.md#persistence)
+explains the journal, the atomic writes, and the merge rules.
 
 ## Quality and Verification
 
-Every change must pass the repository's complete local pipeline before it is committed.
-The gate requires zero Ruff violations, a 10.00/10 Pylint score, complete translations,
-warning-free documentation, the configured 99% coverage threshold, successful source and
-wheel builds, installation of the newly built wheel, an import/version check, and a launch
-of the installed application. Tests cover the UI state, controller workflows, storage,
-parallel lookup/download behavior, cancellation, playback, scrobbling, localization, and
-release artifacts.
-
-Network-dependent tests are kept opt-in so the normal gate remains deterministic. They can
-validate a full Last.fm library fetch and real `yt-dlp` client/format/download behavior
-against the live services.
-
-## Local Pipeline
-
-Install development dependencies and run the full local build, lint, documentation,
-test, coverage, package, and install-verification sequence. The default command then
-starts the installed application once:
-
-```sh
-./localPipeline.sh
-```
-
-The pipeline uses `.venv`, creates it when missing, and installs the project with
-development dependencies. It runs Ruff, Pylint (10.00/10 required), translation and
-documentation checks, Sphinx, and pytest with coverage. It then builds the package,
-installs the wheel, verifies the installed package, and starts `my-lastfm-player` unless
-`--noRun` was supplied.
-
-### Build Workflow
-
-`localPipeline.sh` is the canonical local build workflow. It records each stage as
-`PASS`, `FAIL`, `SKIP`, or `WARN` and prints the complete summary at the end.
-
-```mermaid
-flowchart TD
-    A["Start ./localPipeline.sh"] --> B{"--noRun provided?"}
-    B -->|yes| C["Set RUN_APP=false"]
-    B -->|no| D["Keep RUN_APP=true"]
-    C --> E{"Is .venv/bin/python executable?"}
-    D --> E
-    E -->|no| F["Create .venv with python3 -m venv"]
-    E -->|yes| G["Use existing .venv"]
-    F --> H["Install project in editable mode with dev dependencies"]
-    G --> H
-    H --> I["Ruff lint check"]
-    I --> J["Pylint static analysis"]
-    J --> K["Check Qt translation completeness"]
-    K --> L["Documentation check"]
-    L --> M["Build Sphinx docs with warnings as errors"]
-    M --> N["Pytest with coverage and HTML report"]
-    N --> O["Open Sphinx and coverage HTML when possible"]
-    O --> P["Remove old build artifacts"]
-    P --> Q["Build source/wheel distributions"]
-    Q --> R["Find built wheel in dist/"]
-    R --> S["Force reinstall built wheel without dependencies"]
-    S --> T["Import package and print version"]
-    T --> U{"RUN_APP=true?"}
-    U -->|yes| V["Start installed my-lastfm-player once"]
-    U -->|no| W["Skip GUI startup"]
-    V --> X["Print stage summary and exit"]
-    W --> X
-```
-
-The workflow phases are:
-
-1. Argument handling accepts `--noRun` and `--report-dir PATH`.
-2. Environment preparation creates `.venv` when needed and otherwise reuses it.
-3. Dependency installation runs `python -m pip install -e ".[dev]"`.
-4. Quality gates run Ruff, Pylint, translation and documentation checks, Sphinx with
-   warnings as errors, and pytest with the configured 99% coverage threshold.
-5. Report opening prints the Sphinx and coverage HTML paths and attempts to open them;
-   an unavailable browser is a warning rather than a build failure.
-6. Package build removes stale output before building the source and wheel distributions.
-7. Install verification installs the new wheel and imports `my_lastfm_player`.
-8. Runtime launch starts `my-lastfm-player` unless `--noRun` was supplied.
-9. The final summary reports every stage as `PASS`, `FAIL`, `SKIP`, or `WARN`.
-
-To run every check without launching the GUI at the end:
+Every change must pass the repository's complete local pipeline before it is
+committed:
 
 ```sh
 ./localPipeline.sh --noRun
 ```
 
-To preserve the machine-readable test and coverage results, stage logs,
-environment metadata, and final summary:
+The gate requires zero Ruff violations, a 10.00/10 Pylint score, complete
+translations, warning-free documentation, the configured coverage threshold,
+successful source and wheel builds, installation of the newly built wheel, and an
+import/version check. Omit `--noRun` to also launch the installed application once.
 
-```sh
-./localPipeline.sh --noRun --report-dir release-artifacts/raw
-```
+Tests cover UI state, controller workflows, storage, parallel lookup/download
+behavior, cancellation, playback, scrobbling, localization, and release artifacts.
+Network-dependent tests are opt-in so the normal gate stays deterministic and needs
+no internet access.
 
-The manual GitHub Release workflow uses these reports to publish seven
-described ZIP archives: packages, Sphinx documentation, C4 architecture,
-pytest results, coverage, static analysis, and the complete pipeline trace.
-The raw wheel and source distribution remain separate release assets for
-direct installation and packaging use.
+English is the source language; Croatian, German, Mandarin, and Ukrainian catalogs
+live in `my_lastfm_player/translations/`.
 
-After the pipeline completes, open the HTML coverage report at:
-
-```sh
-htmlcov/index.html
-```
-
-After the pipeline completes, open the Sphinx documentation at:
-
-```sh
-docs/_build/html/index.html
-```
-
-The normal pipeline does not require internet access. To include the live Last.fm
-end-to-end test for the test user `first`, run:
-
-```sh
-MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 ./localPipeline.sh --noRun
-```
-
-That test fetches all loved-track API pages from Last.fm for `first` and prints the
-tracks during the test run.
-
-To include the live yt-dlp end-to-end tests, run:
-
-```sh
-MY_LASTFM_PLAYER_RUN_YTDLP_E2E=1 ./localPipeline.sh --noRun
-```
-
-Those tests check the download retry ladder against the installed `yt-dlp`: every forced
-YouTube player client must still be one `yt-dlp` supports, the audio format selector must
-still resolve, and a real download must complete. A client name that `yt-dlp` no longer
-knows is only reported as a skipped-client warning, so without this check that rung of the
-ladder would quietly waste a retry.
-
-## Translations
-
-English is the source language. Qt Linguist `.ts` files are available for Croatian,
-German, Mandarin, and Ukrainian in:
-
-```text
-my_lastfm_player/translations/
-```
-
-Regenerate the Qt translation source files after changing user-visible strings:
-
-```sh
-tools/update_translations.sh
-```
-
-After editing the `.ts` files with Qt Linguist or another Qt-compatible translation
-tool, compile the runtime `.qm` files:
-
-```sh
-tools/compile_translations.sh
-```
+For the stage-by-stage build workflow, the opt-in live tests, the translation tooling,
+and the contribution rules, see
+[`documents/07_AGENT_GUIDELINES.md`](documents/07_AGENT_GUIDELINES.md) and
+[`docs/agents.md`](docs/agents.md). The CI and release workflows are described in
+[`documents/09_GITHUB_ACTIONS.md`](documents/09_GITHUB_ACTIONS.md).
