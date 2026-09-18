@@ -92,10 +92,9 @@ class JsonTrackRepository:
     def delete_tracks(self, username: str) -> None:
         """Delete the stored track list for ``username`` if it exists."""
 
-        path = self.user_tracks_path(username)
-        if path.exists():
-            path.unlink()
-        self.user_updates_path(username).unlink(missing_ok=True)
+        with self._lock:
+            self.user_tracks_path(username).unlink(missing_ok=True)
+            self.user_updates_path(username).unlink(missing_ok=True)
 
     def user_tracks_path(self, username: str) -> Path:
         """Return the JSON path for ``username``."""
@@ -129,19 +128,23 @@ class JsonTrackRepository:
     def wipe(self) -> None:
         """Delete all cached data files (credentials, track lists, caches).
 
-        Audio files in the downloads directory are intentionally kept.
-        Deletion errors are printed to stdout and silently skipped.
+        Audio files in the downloads directory are intentionally kept. Deletion errors
+        are logged and skipped, so one unreadable file cannot abort the cleanup.
+
+        The lock keeps a concurrent journal append from recreating a file this call has
+        already removed; callers that quit the application stop their workers first.
         """
 
-        targets: list[Path] = [self.credentials_path, self.cache_path, self.lookup_cache_path]
-        if self.tracks_dir.is_dir():
-            targets.extend(self.tracks_dir.iterdir())
-        for path in targets:
-            try:
-                if path.is_file():
-                    path.unlink()
-            except OSError as error:
-                LOGGER.warning("Could not delete %s during wipe: %s", path, error)
+        with self._lock:
+            targets: list[Path] = [self.credentials_path, self.cache_path, self.lookup_cache_path]
+            if self.tracks_dir.is_dir():
+                targets.extend(self.tracks_dir.iterdir())
+            for path in targets:
+                try:
+                    if path.is_file():
+                        path.unlink()
+                except OSError as error:
+                    LOGGER.warning("Could not delete %s during wipe: %s", path, error)
 
     def load_download_cache(self) -> dict[str, Track]:
         """Load cached downloaded tracks keyed by cache key."""

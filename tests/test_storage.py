@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -618,3 +620,45 @@ def test_atomic_write_json_wraps_replace_error_and_cleans_temp(
         _atomic_write_json(target, {"key": "value"})
 
     assert not list(tmp_path.glob(".data.json.*.tmp"))
+
+
+def test_wipe_serializes_against_concurrent_journal_appends(tmp_path) -> None:
+    repository = JsonTrackRepository(tmp_path)
+    repository.save_tracks("user", [Track(artist="Artist", title="Title")])
+    inside_wipe = threading.Event()
+    release = threading.Event()
+    original_iterdir = Path.iterdir
+    appended: list[str] = []
+
+    def blocking_iterdir(self):
+        if self == repository.tracks_dir:
+            inside_wipe.set()
+            release.wait(5)
+        return original_iterdir(self)
+
+    def append_update() -> None:
+        repository.append_track_update("user", Track(artist="Other", title="Song"))
+        appended.append("done")
+
+    with mock.patch.object(Path, "iterdir", blocking_iterdir):
+        wiper = threading.Thread(target=repository.wipe)
+        wiper.start()
+        assert inside_wipe.wait(5)
+        appender = threading.Thread(target=append_update)
+        appender.start()
+        appender.join(0.2)
+        assert not appended, "journal append must wait for the wipe to release the lock"
+        release.set()
+        appender.join(5)
+        wiper.join(5)
+
+    assert appended == ["done"]
+
+
+def test_delete_tracks_is_safe_when_nothing_was_stored(tmp_path) -> None:
+    repository = JsonTrackRepository(tmp_path)
+
+    repository.delete_tracks("unknown-user")
+
+    assert not repository.user_tracks_path("unknown-user").exists()
+    assert not repository.user_updates_path("unknown-user").exists()
