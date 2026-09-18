@@ -40,6 +40,9 @@ MAX_RETRIES = len(PLAYER_CLIENT_LADDER)
 BACKOFF_RANGE_SECONDS = (1.0, 5.0)
 DOWNLOAD_TIMEOUT_SECONDS = 600
 PROBE_TIMEOUT_SECONDS = 30
+# Lookup and download share one limiter, so their keys are namespaced to keep a
+# lookup key from ever colliding with a download key.
+DOWNLOAD_WORK_KEY_PREFIX = "download:"
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 Sleeper = Callable[[float], None]
@@ -267,7 +270,7 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
         if self.cookies_browser:
             command += ["--cookies-from-browser", self.cookies_browser]
         command += ["--output", output_template, track.youtube_url]
-        completed = self._run(command, stop_event, track.cache_key)
+        completed = self._run(command, stop_event, _download_work_key(track))
         if completed.returncode != 0:
             raise DownloadError(completed.stderr.strip() or "yt-dlp download failed")
 
@@ -310,6 +313,18 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
             ) from error
         except OSError as error:
             raise DownloadError(f"Could not run {self.executable}: {error}") from error
+
+
+def _download_work_key(track: Track) -> str:
+    """Return the limiter key that guards one audio output file.
+
+    The output template is built from ``audio_base_name``, which sanitizes and truncates
+    the artist/title pair, so two tracks with different identities can share one file
+    ("AC/DC" and "AC_DC", or two titles with the same 235-character prefix). Keying on
+    the identity would let those two download into the same target at once.
+    """
+
+    return f"{DOWNLOAD_WORK_KEY_PREFIX}{track.audio_base_name}"
 
 
 def _player_client_for_attempt(attempt: int) -> str:

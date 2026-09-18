@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from my_lastfm_player import download as download_module
+from my_lastfm_player import youtube as youtube_module
 from my_lastfm_player.download import (
     MAX_RETRIES,
     PLAYER_CLIENT_LADDER,
@@ -747,3 +748,27 @@ def test_probe_audio_file_returns_path_type_when_ffprobe_times_out(
 
     assert file_type == "MP3"
     assert bitrate is None
+
+
+def test_download_work_key_follows_the_audio_target_not_the_track_identity() -> None:
+    slashed = Track(artist="AC/DC", title="Hells Bells")
+    underscored = Track(artist="AC_DC", title="Hells Bells")
+
+    assert slashed.cache_key != underscored.cache_key
+    assert slashed.audio_base_name == underscored.audio_base_name
+    # Both resolve to one output file, so the limiter must refuse to run them together.
+    assert download_module._download_work_key(slashed) == download_module._download_work_key(
+        underscored
+    )
+
+
+def test_download_and_lookup_work_keys_cannot_collide() -> None:
+    track = Track(artist="Artist", title="Title")
+
+    assert download_module._download_work_key(track) != youtube_module._lookup_work_key(track)
+    assert download_module._download_work_key(track).startswith(
+        download_module.DOWNLOAD_WORK_KEY_PREFIX
+    )
+    assert youtube_module._lookup_work_key(track).startswith(
+        youtube_module.LOOKUP_WORK_KEY_PREFIX
+    )

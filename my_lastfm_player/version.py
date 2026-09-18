@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__version__ = "0.0.183"
+__version__ = "0.0.184"
 
 _COMMIT_HASH_LENGTH = 6
 

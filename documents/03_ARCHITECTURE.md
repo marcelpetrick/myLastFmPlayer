@@ -159,7 +159,9 @@ Lookup and download use one shared concurrency setting:
 - default: five;
 - the limit counts lookup and download subprocesses together;
 - changing it affects work that has not acquired a slot yet;
-- a per-track key prevents overlapping workflows from writing the same audio target.
+- a per-target key prevents two tracks whose names sanitize to one audio file from
+  downloading at once, while a per-track key serializes repeated searches for one track;
+  the two key spaces are namespaced so they cannot collide inside the shared limiter.
 
 Lookup checks the shared cache before invoking `yt-dlp`. On a miss it tries a bounded
 query ladder: exact artist/title, a cleaned artist/title form, and title alone. A hit

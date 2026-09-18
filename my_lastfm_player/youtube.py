@@ -32,6 +32,7 @@ DEFAULT_LOOKUP_CONCURRENCY = 5
 ARTIST_SUFFIX_SEPARATOR = " - "
 DECORATIVE_CHARS = re.compile(r"[^\w\s&\'()./-]", re.UNICODE)
 COLLAPSED_WHITESPACE = re.compile(r"\s+")
+LOOKUP_WORK_KEY_PREFIX = "lookup:"
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 ProgressCallback = Callable[[int, str], None]
@@ -81,7 +82,9 @@ class YouTubeResolver:
             if stop_event is not None and stop_event.is_set():
                 return replace(track, status=TrackStatus.FETCHED, error=None)
             try:
-                search_result = self.search_first_result(query, stop_event, track.cache_key)
+                search_result = self.search_first_result(
+                    query, stop_event, _lookup_work_key(track)
+                )
             except WorkCancelled:
                 return replace(track, status=TrackStatus.FETCHED, error=None)
             except YouTubeLookupError as error:
@@ -296,6 +299,12 @@ class YouTubeResolver:
             ) from error
         except OSError as error:
             raise YouTubeLookupError(f"Could not run {self.executable}: {error}") from error
+
+
+def _lookup_work_key(track: Track) -> str:
+    """Return the limiter key that serializes repeated searches for one track."""
+
+    return f"{LOOKUP_WORK_KEY_PREFIX}{track.cache_key}"
 
 
 def _needs_lookup(track: Track) -> bool:
