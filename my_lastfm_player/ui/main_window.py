@@ -1124,7 +1124,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             self.tr(
                 "This application fetches a user's public loved tracks from Last.fm, "
                 "keeps local metadata, resolves playable sources through yt-dlp, "
-                "downloads MP3 files, and plays them locally."
+                "downloads the best available audio, and plays it locally."
             ),
             self.tr(
                 "It is intended as a practical Linux desktop helper for rebuilding "

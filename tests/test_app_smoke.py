@@ -55,8 +55,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.180"
-    assert __display_version__ == "0.0.180"
+    assert __version__ == "0.0.181"
+    assert __display_version__ == "0.0.181"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -834,7 +834,7 @@ def test_main_window_about_text_contains_author_license_and_intent(qapp) -> None
     assert "Marcel Petrick" in about_text
     assert "GNU GPLv3 or later" in about_text
     assert "fetches a user's public loved tracks from Last.fm" in about_text
-    assert "downloads MP3 files" in about_text
+    assert "downloads the best available audio" in about_text
 
 
 def test_main_window_open_source_license_text_lists_runtime_tools(qapp) -> None:
