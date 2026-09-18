@@ -238,8 +238,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
     fetch_requested = pyqtSignal()
     fetch_pause_requested = pyqtSignal()
     fetch_stop_requested = pyqtSignal()
-    _youtube_resume_requested = pyqtSignal()
-    _youtube_stop_requested = pyqtSignal()
+    youtube_resume_requested = pyqtSignal()
+    youtube_stop_requested = pyqtSignal()
     retry_download_requested = pyqtSignal(str)
     play_requested = pyqtSignal()
     pause_requested = pyqtSignal()
@@ -811,9 +811,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
 
     def _handle_youtube_work_button(self) -> None:
         if self._youtube_work_active:
-            self._youtube_stop_requested.emit()
+            self.youtube_stop_requested.emit()
         elif self._youtube_work_stopped:
-            self._youtube_resume_requested.emit()
+            self.youtube_resume_requested.emit()
 
     def _update_youtube_work_button_text(self) -> None:
         if self._youtube_work_stopping:

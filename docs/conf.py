@@ -32,7 +32,8 @@ autodoc_default_options = {
         "fetch_stop_requested,fetch_stopped,finished,language_changed,mute_toggled,next_requested,pause_requested,"
         "play_requested,preferences_requested,progress,quit_requested,randomize_playback_changed,seek_requested,stop_requested,"
         "theme_requested,track_updated,tracks_downloaded,"
-        "tracks_loaded,tracks_resolved,tracks_updated,volume_changed"
+        "tracks_loaded,tracks_resolved,tracks_updated,volume_changed,"
+        "youtube_resume_requested,youtube_stop_requested"
     ),
 }
 autodoc_typehints = "description"

@@ -55,8 +55,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.186"
-    assert __display_version__ == "0.0.186"
+    assert __version__ == "0.0.187"
+    assert __display_version__ == "0.0.187"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -1010,8 +1010,8 @@ def test_fitted_dialog_height_prefers_content_and_respects_the_screen() -> None:
 def test_main_window_youtube_button_stops_and_resumes_work(qapp) -> None:
     window = MainWindow()
     events: list[str] = []
-    window._youtube_stop_requested.connect(lambda: events.append("stop"))
-    window._youtube_resume_requested.connect(lambda: events.append("resume"))
+    window.youtube_stop_requested.connect(lambda: events.append("stop"))
+    window.youtube_resume_requested.connect(lambda: events.append("resume"))
 
     assert not window.youtube_work_button.isEnabled()
     assert "automatically" in window.fetch_button.toolTip()
