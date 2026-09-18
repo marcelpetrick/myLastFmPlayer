@@ -55,8 +55,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.179"
-    assert __display_version__ == "0.0.179"
+    assert __version__ == "0.0.180"
+    assert __display_version__ == "0.0.180"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -934,7 +934,7 @@ def test_rich_text_dialog_supports_clickable_links(qapp, monkeypatch) -> None:
     )
 
     assert len(dialogs) == 1
-    assert dialogs[0].size().height() == 280
+    assert dialogs[0].width() == main_window_module.RICH_TEXT_DIALOG_WIDTH
     text_browser = dialogs[0].findChild(main_window_module.QTextBrowser)
     assert text_browser is not None
     assert text_browser.openExternalLinks()
@@ -951,10 +951,60 @@ def test_rich_text_dialog_uses_larger_scrollable_layout_for_long_text(qapp, monk
 
     main_window_module._show_rich_text_dialog(MainWindow(), "Licenses", "<p>Text</p>" * 140)
 
-    assert dialogs[0].size().height() == 520
+    assert dialogs[0].width() == main_window_module.RICH_TEXT_DIALOG_WIDE_WIDTH
     text_browser = dialogs[0].findChild(main_window_module.QTextBrowser)
     assert text_browser is not None
     assert text_browser.verticalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAsNeeded
+
+
+def _rich_text_dialog_chrome_height(dialog) -> int:
+    button_box = dialog.findChild(main_window_module.QDialogButtonBox)
+    return (
+        2 * main_window_module.RICH_TEXT_DIALOG_MARGIN
+        + main_window_module.RICH_TEXT_DIALOG_SPACING
+        + button_box.sizeHint().height()
+    )
+
+
+def test_rich_text_dialog_height_follows_measured_content(qapp, monkeypatch) -> None:
+    dialogs: list[main_window_module.QDialog] = []
+
+    def fake_exec(self) -> int:
+        dialogs.append(self)
+        return 0
+
+    monkeypatch.setattr(main_window_module.QDialog, "exec", fake_exec)
+    window = MainWindow()
+
+    main_window_module._show_rich_text_dialog(window, "About", window.about_dialog_text())
+    main_window_module._show_rich_text_dialog(window, "More", "<p>Text</p>" * 12)
+
+    short_dialog, tall_dialog = dialogs
+    assert tall_dialog.height() > short_dialog.height()
+    for dialog in dialogs:
+        text_browser = dialog.findChild(main_window_module.QTextBrowser)
+        wanted = (
+            text_browser.document().size().height() + _rich_text_dialog_chrome_height(dialog)
+        )
+        available = main_window_module._available_screen_height(dialog)
+        assert dialog.height() >= min(
+            wanted,
+            max(
+                main_window_module.RICH_TEXT_DIALOG_MINIMUM_HEIGHT,
+                int(available * main_window_module.RICH_TEXT_DIALOG_SCREEN_FRACTION),
+            ),
+        )
+
+
+def test_fitted_dialog_height_prefers_content_and_respects_the_screen() -> None:
+    assert main_window_module._fitted_dialog_height(400, 80, 1080) == 480
+    assert main_window_module._fitted_dialog_height(4000, 80, 1080) == int(
+        1080 * main_window_module.RICH_TEXT_DIALOG_SCREEN_FRACTION
+    )
+    assert (
+        main_window_module._fitted_dialog_height(4000, 80, 100)
+        == main_window_module.RICH_TEXT_DIALOG_MINIMUM_HEIGHT
+    )
 
 
 def test_main_window_youtube_button_stops_and_resumes_work(qapp) -> None:

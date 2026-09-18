@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from html import escape
+from math import ceil
 
 from PyQt6.QtCore import QEvent, QPoint, QSize, QSortFilterProxyModel, Qt, QTime, pyqtSignal
 from PyQt6.QtGui import (
@@ -71,6 +72,14 @@ ERROR_TEXT_COLOR = "#d64545"
 ERROR_INDICATOR_MAX_LENGTH = 80
 PLAYBACK_SEEK_STEP_MS = 5_000
 PLAYBACK_SEEK_PAGE_MS = 30_000
+RICH_TEXT_DIALOG_MARGIN = 16
+RICH_TEXT_DIALOG_SPACING = 10
+RICH_TEXT_DIALOG_WIDTH = 560
+RICH_TEXT_DIALOG_WIDE_WIDTH = 680
+RICH_TEXT_DIALOG_WIDE_THRESHOLD = 900
+RICH_TEXT_DIALOG_MINIMUM_HEIGHT = 320
+RICH_TEXT_DIALOG_SCREEN_FRACTION = 0.9
+RICH_TEXT_DIALOG_FALLBACK_SCREEN_HEIGHT = 768
 
 
 class TrackFilterProxyModel(QSortFilterProxyModel):
@@ -1467,11 +1476,15 @@ def _component_license(component: str, license_text: str) -> str:
 def _show_rich_text_dialog(parent: QWidget, title: str, text: str) -> None:
     dialog = QDialog(parent)
     dialog.setWindowTitle(title)
-    dialog.resize(*_rich_text_dialog_size(text))
 
     layout = QVBoxLayout(dialog)
-    layout.setContentsMargins(16, 16, 16, 16)
-    layout.setSpacing(10)
+    layout.setContentsMargins(
+        RICH_TEXT_DIALOG_MARGIN,
+        RICH_TEXT_DIALOG_MARGIN,
+        RICH_TEXT_DIALOG_MARGIN,
+        RICH_TEXT_DIALOG_MARGIN,
+    )
+    layout.setSpacing(RICH_TEXT_DIALOG_SPACING)
 
     text_browser = QTextBrowser()
     text_browser.setOpenExternalLinks(True)
@@ -1485,10 +1498,50 @@ def _show_rich_text_dialog(parent: QWidget, title: str, text: str) -> None:
     button_box.accepted.connect(dialog.accept)
     layout.addWidget(button_box)
 
+    width = _rich_text_dialog_width(text)
+    dialog.resize(
+        width,
+        _fitted_dialog_height(
+            _rich_text_content_height(text_browser, width),
+            2 * RICH_TEXT_DIALOG_MARGIN
+            + RICH_TEXT_DIALOG_SPACING
+            + button_box.sizeHint().height(),
+            _available_screen_height(dialog),
+        ),
+    )
     dialog.exec()
 
 
-def _rich_text_dialog_size(text: str) -> tuple[int, int]:
-    if len(text) > 900:
-        return (680, 520)
-    return (560, 280)
+def _rich_text_dialog_width(text: str) -> int:
+    """Return the dialog width; only long documents need the wider measure."""
+
+    if len(text) > RICH_TEXT_DIALOG_WIDE_THRESHOLD:
+        return RICH_TEXT_DIALOG_WIDE_WIDTH
+    return RICH_TEXT_DIALOG_WIDTH
+
+
+def _rich_text_content_height(text_browser: QTextBrowser, dialog_width: int) -> int:
+    """Return the laid-out document height for the viewport width the dialog will give it."""
+
+    document = text_browser.document()
+    document.setTextWidth(dialog_width - 2 * RICH_TEXT_DIALOG_MARGIN)
+    return ceil(document.size().height())
+
+
+def _fitted_dialog_height(
+    content_height: int, chrome_height: int, available_height: int
+) -> int:
+    """Return the height that shows the whole document, bounded by the usable screen."""
+
+    maximum_height = max(
+        RICH_TEXT_DIALOG_MINIMUM_HEIGHT,
+        int(available_height * RICH_TEXT_DIALOG_SCREEN_FRACTION),
+    )
+    return min(content_height + chrome_height, maximum_height)
+
+
+def _available_screen_height(widget: QWidget) -> int:
+    screen = widget.screen() or QApplication.primaryScreen()
+    if screen is None:  # pragma: no cover - Qt always reports a screen in practice.
+        return RICH_TEXT_DIALOG_FALLBACK_SCREEN_HEIGHT
+    return screen.availableGeometry().height()
