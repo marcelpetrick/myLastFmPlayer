@@ -7,7 +7,6 @@ import time
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
-from threading import Thread
 
 from PyQt6.QtCore import QObject, QProcess, QThread, QUrl
 from PyQt6.QtGui import QDesktopServices
@@ -1168,11 +1167,16 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         worker.failed.connect(self._handle_background_error)
         worker.finished.connect(self._forget_background_worker)
         self._active_background_workers.append(worker)
-        Thread(
-            target=worker.run,
-            name="myLastFmPlayer-service-call",
-            daemon=True,
-        ).start()
+
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(lambda: self._forget_thread(thread))
+        self._active_threads.append(thread)
+        thread.start()
 
     def _handle_background_result(self, worker: BackgroundCallWorker, result: object) -> None:
         callbacks = self._background_callbacks.get(worker)

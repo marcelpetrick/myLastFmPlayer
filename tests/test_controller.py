@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 from threading import Event
@@ -3296,18 +3297,20 @@ def test_controller_quit_stops_workers_and_joins_threads(qapp, monkeypatch, tmp_
     download_worker = FakeDownloadWorker()
     controller._run_worker(fetch_worker)  # type: ignore[arg-type]
     controller._run_worker(download_worker)  # type: ignore[arg-type]
-    background_worker = controller._submit_background_call(lambda: None)
+    # Registered directly: this test's QThread stand-in cannot host a real QObject.
+    background_worker = BackgroundCallWorker(lambda: None)
+    controller._active_background_workers.append(background_worker)
 
     controller._handle_quit()
 
     assert fetch_worker.stopped
     assert download_worker.stopped
     assert background_worker.is_cancelled
-    assert [thread.quit_called for thread in created_threads] == [True, True]
-    assert [thread.waited_ms for thread in created_threads] == [
-        controller_module.SHUTDOWN_WAIT_MS,
-        controller_module.SHUTDOWN_WAIT_MS,
-    ]
+    assert len(created_threads) == 2
+    assert all(thread.quit_called for thread in created_threads)
+    assert all(
+        thread.waited_ms == controller_module.SHUTDOWN_WAIT_MS for thread in created_threads
+    )
     assert not any(thread.terminated for thread in created_threads)
 
 
@@ -3346,3 +3349,21 @@ def test_controller_artist_images_are_enabled_unless_the_caller_opts_out(qapp) -
         window,
         playback_service=FakePlaybackService(),  # type: ignore[arg-type]
     )._artist_images_enabled
+
+
+def test_controller_runs_service_calls_on_a_tracked_qt_thread(qapp, tmp_path) -> None:
+    window = MainWindow()
+    controller = ApplicationController(window, repository=JsonTrackRepository(tmp_path))
+    results: list[object] = []
+
+    worker = controller._submit_background_call(lambda: "value", results.append)
+    deadline = time.monotonic() + 5
+    while not results and time.monotonic() < deadline:
+        qapp.processEvents()
+
+    assert results == ["value"]
+    assert worker not in controller._active_background_workers
+    # The service call owns a real QThread, so quitting can join it like any other.
+    while controller._active_threads and time.monotonic() < deadline:
+        qapp.processEvents()
+    assert controller._active_threads == []
