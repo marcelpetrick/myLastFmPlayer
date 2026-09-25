@@ -4,11 +4,15 @@ import sys
 import types
 from threading import Event, Thread
 
+import pytest
+
 from my_lastfm_player.scrobbling import (
     SCROBBLE_THRESHOLD,
+    LastFmWriteError,
     ScrobblingService,
     _pylast_network_factory,
     _pylast_sg_factory,
+    _pylast_track_factory,
 )
 
 
@@ -45,6 +49,33 @@ class FakeSG:
 
     def get_web_auth_session_key_username(self, url: str) -> tuple[str, str]:
         return "test_session_key_123", "testuser"
+
+
+class FakeTrack:
+    """pylast.Track stand-in keeping a shared loved-state and a write log."""
+
+    def __init__(self, state: dict, artist: str, title: str, network, username=None) -> None:
+        self.state = state
+        self.key = (artist, title)
+        self.network = network
+        self.username = username
+
+    def love(self) -> None:
+        if self.state.get("fail"):
+            raise OSError("boom")
+        self.state.setdefault("log", []).append(("love", *self.key, self.username))
+        self.state[self.key] = True
+
+    def unlove(self) -> None:
+        if self.state.get("fail"):
+            raise OSError("boom")
+        self.state.setdefault("log", []).append(("unlove", *self.key, self.username))
+        self.state[self.key] = False
+
+    def get_userloved(self) -> bool:
+        if self.state.get("fail"):
+            raise OSError("boom")
+        return self.state.get(self.key, False)
 
 
 def _make_service(**kwargs) -> tuple[ScrobblingService, list[FakeNetwork]]:
@@ -417,6 +448,95 @@ def test_credentials_dict_contains_required_keys() -> None:
     assert d["username"] == "user"
     assert "session_key" in d
     assert "scrobbling_enabled" in d
+
+
+# ── Love / unlove ─────────────────────────────────────────────────────────────
+
+def _love_service(state: dict, **kwargs) -> ScrobblingService:
+    svc, _ = _make_service(
+        session_key="sk",
+        username="testuser",
+        track_factory=lambda artist, title, network, **kw: FakeTrack(
+            state, artist, title, network, **kw
+        ),
+        **kwargs,
+    )
+    return svc
+
+
+def test_love_and_unlove_round_trip() -> None:
+    state: dict = {}
+    svc = _love_service(state)
+    assert svc.try_connect()
+
+    svc.love_track("Artist", "Title")
+    assert svc.is_track_loved("Artist", "Title")
+    svc.unlove_track("Artist", "Title")
+
+    assert not svc.is_track_loved("Artist", "Title")
+    assert state["log"] == [
+        ("love", "Artist", "Title", "testuser"),
+        ("unlove", "Artist", "Title", "testuser"),
+    ]
+
+
+def test_unlove_does_not_depend_on_scrobbling_toggle() -> None:
+    state: dict = {}
+    svc = _love_service(state, scrobbling_enabled=False)
+    svc.try_connect()
+
+    assert svc.can_write_loves
+    svc.unlove_track("Artist", "Title")
+    assert state["log"] == [("unlove", "Artist", "Title", "testuser")]
+
+
+def test_love_writes_raise_when_not_connected() -> None:
+    state: dict = {}
+    svc = _love_service(state)
+
+    assert not svc.can_write_loves
+    with pytest.raises(LastFmWriteError):
+        svc.unlove_track("Artist", "Title")
+    with pytest.raises(LastFmWriteError):
+        svc.love_track("Artist", "Title")
+    with pytest.raises(LastFmWriteError):
+        svc.is_track_loved("Artist", "Title")
+    assert "log" not in state
+
+
+def test_love_writes_raise_on_network_error() -> None:
+    state: dict = {"fail": True}
+    svc = _love_service(state)
+    svc.try_connect()
+
+    with pytest.raises(LastFmWriteError, match="unlove failed for Artist - Title"):
+        svc.unlove_track("Artist", "Title")
+    with pytest.raises(LastFmWriteError, match="love failed"):
+        svc.love_track("Artist", "Title")
+    with pytest.raises(LastFmWriteError, match="loved state"):
+        svc.is_track_loved("Artist", "Title")
+
+
+def test_unlove_raises_after_disconnect() -> None:
+    state: dict = {}
+    svc = _love_service(state)
+    svc.try_connect()
+    svc.disconnect()
+
+    with pytest.raises(LastFmWriteError):
+        svc.unlove_track("Artist", "Title")
+
+
+def test_pylast_track_factory_delegates_to_pylast(monkeypatch) -> None:
+    class FakePylastTrack:
+        def __init__(self, artist, title, network, **kwargs) -> None:
+            self.args = (artist, title, network, kwargs)
+
+    monkeypatch.setitem(sys.modules, "pylast", types.SimpleNamespace(Track=FakePylastTrack))
+
+    track = _pylast_track_factory("A", "T", "net", username="u")
+
+    assert track.args == ("A", "T", "net", {"username": "u"})
 
 
 def test_pylast_factories_delegate_to_pylast(monkeypatch) -> None:

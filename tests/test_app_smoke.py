@@ -62,8 +62,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.195"
-    assert __display_version__ == "0.0.195"
+    assert __version__ == "0.0.196"
+    assert __display_version__ == "0.0.196"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -1512,11 +1512,13 @@ def test_main_window_hides_retry_for_successful_track(qapp, monkeypatch) -> None
     window.set_tracks([track])
     window.select_track_row(0)
     menu_calls: list[bool] = []
-    monkeypatch.setattr(
-        main_window_module.QMenu,
-        "exec",
-        lambda *_args: menu_calls.append(True),
-    )
+    menu_texts: list[list[str]] = []
+
+    def fake_exec(menu, *_args):
+        menu_calls.append(True)
+        menu_texts.append([action.text() for action in menu.actions()])
+
+    monkeypatch.setattr(main_window_module.QMenu, "exec", fake_exec)
 
     window._show_track_context_menu(
         window.track_table.visualRect(window.track_sort_model.index(0, 0)).center()
@@ -1524,7 +1526,105 @@ def test_main_window_hides_retry_for_successful_track(qapp, monkeypatch) -> None
 
     assert not window.retry_selected_button.isEnabled()
     assert window.retry_selected_button.text() == "Retry"
-    assert menu_calls == []
+    assert menu_calls == [True]
+    assert menu_texts == [["Unlove on Last.fm…"]]
+
+
+def _open_unlove_menu(window, monkeypatch, *, confirm: bool) -> dict:
+    """Open the track context menu, pick "Unlove on Last.fm…", and record what happened."""
+
+    seen: dict = {"actions": [], "confirm_calls": []}
+
+    def fake_exec(menu, _global_pos):
+        actions = [action for action in menu.actions() if not action.isSeparator()]
+        seen["actions"] = [
+            (action.text(), action.isEnabled(), action.toolTip()) for action in actions
+        ]
+        return actions[-1]
+
+    def fake_confirm(track, account):
+        seen["confirm_calls"].append((track.title, account))
+        return confirm
+
+    monkeypatch.setattr(main_window_module.QMenu, "exec", fake_exec)
+    monkeypatch.setattr(window, "_confirm_unlove", fake_confirm)
+    window._show_track_context_menu(
+        window.track_table.visualRect(window.track_sort_model.index(0, 0)).center()
+    )
+    return seen
+
+
+def test_main_window_unlove_is_disabled_without_provider(qapp, monkeypatch) -> None:
+    window = MainWindow()
+    window.set_tracks([Track(artist="Artist", title="Title")])
+    requests: list[str] = []
+    window.unlove_requested.connect(requests.append)
+
+    seen = _open_unlove_menu(window, monkeypatch, confirm=True)
+
+    assert seen["actions"] == [
+        (
+            "Unlove on Last.fm…",
+            False,
+            "Connect to Last.fm in Preferences to unlove tracks",
+        )
+    ]
+    assert seen["confirm_calls"] == []
+    assert requests == []
+
+
+def test_main_window_unlove_emits_only_after_confirmation(qapp, monkeypatch) -> None:
+    window = MainWindow()
+    track = Track(artist="Artist", title="Title", status=TrackStatus.FAILED)
+    window.set_tracks([track])
+    window.set_unlove_availability_provider(
+        lambda: main_window_module.UnloveAvailability(enabled=True, account="me")
+    )
+    requests: list[str] = []
+    window.unlove_requested.connect(requests.append)
+
+    declined = _open_unlove_menu(window, monkeypatch, confirm=False)
+    assert requests == []
+    confirmed = _open_unlove_menu(window, monkeypatch, confirm=True)
+
+    assert [text for text, _enabled, _tip in declined["actions"]] == [
+        "Retry YouTube Check",
+        "Unlove on Last.fm…",
+    ]
+    assert declined["confirm_calls"] == [("Title", "me")]
+    assert confirmed["confirm_calls"] == [("Title", "me")]
+    assert requests == [track.cache_key]
+
+
+def test_main_window_unlove_dialog_names_account_and_defaults_to_cancel(
+    qapp, monkeypatch
+) -> None:
+    window = MainWindow()
+    track = Track(artist="Art<b>ist", title="Title", loved_at="2026-09-01")
+    seen: dict = {}
+
+    def fake_exec(dialog):
+        seen["text"] = dialog.text()
+        seen["informative"] = dialog.informativeText()
+        seen["format"] = dialog.textFormat()
+        seen["default"] = dialog.defaultButton().text()
+        seen["escape"] = dialog.escapeButton().text()
+        seen["buttons"] = sorted(button.text() for button in dialog.buttons())
+        return 0
+
+    monkeypatch.setattr(main_window_module.QMessageBox, "exec", fake_exec)
+
+    confirmed = window._confirm_unlove(track, "me")
+
+    assert confirmed is False
+    assert "WRITES TO YOUR LAST.FM ACCOUNT (me)" in seen["text"]
+    assert "Art<b>ist – Title" in seen["text"]
+    assert "2026-09-01" in seen["text"]
+    assert "last.fm" in seen["informative"]
+    assert seen["format"] == Qt.TextFormat.PlainText
+    assert seen["default"] == seen["escape"]
+    assert "Unlove on Last.fm" in seen["buttons"]
+    assert seen["default"] != "Unlove on Last.fm"
 
 
 def test_main_window_context_menu_ignores_clicks_outside_any_row(qapp, monkeypatch) -> None:

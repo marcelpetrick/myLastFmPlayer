@@ -29,7 +29,7 @@ from my_lastfm_player.playback import PlaybackError, PlaybackService
 from my_lastfm_player.scrobbling import SCROBBLE_THRESHOLD, ScrobblingService
 from my_lastfm_player.settings import AppSettings
 from my_lastfm_player.storage import JsonTrackRepository, merge_track_updates
-from my_lastfm_player.ui.main_window import MainWindow
+from my_lastfm_player.ui.main_window import MainWindow, UnloveAvailability
 from my_lastfm_player.worker_threads import WorkerThreadPool
 from my_lastfm_player.workers import (
     ArtistImageWorker,
@@ -62,7 +62,7 @@ BackgroundResultCallback = Callable[[object], None]
 BackgroundErrorCallback = Callable[[Exception], None]
 
 
-class ApplicationController(QObject):  # pylint: disable=too-many-instance-attributes  # god object
+class ApplicationController(QObject):  # pylint: disable=too-many-instance-attributes,too-many-public-methods  # god object
     """Coordinate UI events, background workers, persistence, and playback."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -132,6 +132,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._playback_start_time: int | None = None
         self._artist_image_cache: dict[str, ArtistImage | None] = {}
         self._random = random.SystemRandom()
+        self._unlove_in_flight: str | None = None
 
     @property
     def playback_service(self) -> PlaybackService:
@@ -156,6 +157,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self.window.youtube_resume_requested.connect(self._resume_youtube_work)
         self.window.youtube_stop_requested.connect(self.stop_youtube_work)
         self.window.retry_download_requested.connect(self.retry_track_download)
+        self.window.unlove_requested.connect(self.unlove_track)
+        self.window.set_unlove_availability_provider(self._unlove_availability)
         self.window.play_requested.connect(self.play_selected_track)
         self.window.pause_requested.connect(self.pause_playback)
         self.window.stop_requested.connect(self.stop_playback)
@@ -1666,6 +1669,138 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._start_priority_download(username, cache_key)
         else:
             self.resolve_youtube_urls(username, priority_cache_key=cache_key, max_tracks=1)
+
+    def _unlove_availability(self) -> UnloveAvailability:
+        """Decide whether the visible loved tracks may be unloved on Last.fm right now.
+
+        Unloving writes to the user's Last.fm account, so it is only offered for the
+        authenticated user's own list and never while background work for that list
+        runs: fetch, lookup, and download workers merge their full snapshots back into
+        storage when they finish and would bring an unloved track back.
+        """
+
+        service = self._scrobbling_service
+        if service is None or not service.can_write_loves:
+            return UnloveAvailability(
+                enabled=False,
+                reason=translate(
+                    "ApplicationController",
+                    "Connect to Last.fm in Preferences to unlove tracks.",
+                ),
+            )
+        account = service.username
+        username = self.window.username()
+        if (
+            not username
+            or username.casefold() != account.casefold()
+            or self._username_edit_active
+            or self._workflow_username != username
+        ):
+            return UnloveAvailability(
+                enabled=False,
+                reason=translate(
+                    "ApplicationController",
+                    "Only your own loved tracks can be unloved (connected as {account}).",
+                    account=account,
+                ),
+                account=account,
+            )
+        if self._unlove_in_flight is not None:
+            return UnloveAvailability(
+                enabled=False,
+                reason=translate(
+                    "ApplicationController",
+                    "Another unlove is still being sent to Last.fm.",
+                ),
+                account=account,
+            )
+        if self._has_any_worker_for_username(username):
+            return UnloveAvailability(
+                enabled=False,
+                reason=translate(
+                    "ApplicationController",
+                    "Wait until fetching and YouTube work have finished, or stop them.",
+                ),
+                account=account,
+            )
+        return UnloveAvailability(enabled=True, account=account)
+
+    def _has_any_worker_for_username(self, username: str) -> bool:
+        """Return whether any worker of any generation still works on ``username``."""
+
+        return (
+            (
+                self._active_fetch_preflight is not None
+                and self._fetch_preflight_username == username
+            )
+            or self._active_fetch_worker is not None
+            or any(
+                getattr(worker, "username", None) == username
+                for worker in self._active_workers
+            )
+        )
+
+    def unlove_track(self, cache_key: str) -> None:
+        """Unlove one confirmed track on Last.fm, then drop it from the local list."""
+
+        availability = self._unlove_availability()
+        if not availability.enabled:
+            self.window.append_error(availability.reason)
+            return
+        service = self._scrobbling_service
+        if service is None:
+            return
+        username = self.window.username()
+        track = next(
+            (t for t in self.repository.load_tracks(username) if t.cache_key == cache_key),
+            None,
+        )
+        if track is None:
+            return
+        self._unlove_in_flight = cache_key
+        self._report_user_action(
+            translate(
+                "ApplicationController",
+                "Unloving {artist} - {title} on Last.fm.",
+                artist=track.artist,
+                title=track.title,
+            )
+        )
+        self._submit_background_call(
+            lambda: service.unlove_track(track.artist, track.title),
+            lambda _result: self._handle_unlove_result(username, track),
+            lambda error: self._handle_unlove_error(track, error),
+        )
+
+    def _handle_unlove_result(self, username: str, track: Track) -> None:
+        self._unlove_in_flight = None
+        remaining = [
+            t for t in self.repository.load_tracks(username) if t.cache_key != track.cache_key
+        ]
+        self.repository.save_tracks(username, remaining)
+        if self._workflow_username == username and self.window.username() == username:
+            self.window.set_tracks(remaining)
+        self._report_user_action(
+            translate(
+                "ApplicationController",
+                "Unloved {artist} - {title} on Last.fm.",
+                artist=track.artist,
+                title=track.title,
+            )
+        )
+
+    def _handle_unlove_error(self, track: Track, error: Exception) -> None:
+        self._unlove_in_flight = None
+        LOGGER.warning("Unlove failed for %s - %s: %s", track.artist, track.title, error)
+        self.window.append_error(
+            translate(
+                "ApplicationController",
+                "Could not unlove {artist} - {title} on Last.fm: {error}",
+                artist=track.artist,
+                title=track.title,
+                error=error,
+            )
+        )
 
     def _start_automatic_download(self, username: str) -> None:
         message = translate(

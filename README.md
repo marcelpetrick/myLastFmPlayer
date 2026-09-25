@@ -21,7 +21,11 @@ plays them locally from one PyQt6 interface.
 
 ## Product Status
 
-Current version: `0.0.195` — fully functional and actively maintained
+Current version: `0.0.196` — fully functional and actively maintained
+
+**New in 0.0.196:** right-click a track and choose **Unlove on Last.fm…** to remove
+duplicate loves from your Last.fm account, after an explicit confirmation — see
+[Unloving Tracks on Last.fm](#unloving-tracks-on-lastfm).
 
 The complete intended workflow is implemented and used in practice. Its major features
 are covered by the automated test suite, packaging and installed-application checks,
@@ -54,6 +58,8 @@ For detailed technical information, see the
 - Explains per-track failures in tooltips and provides status-aware retry actions and filtering.
 - Stores per-user libraries and caches locally and retains them across restarts by default.
 - Supports optional authenticated Last.fm scrobbling.
+- Unloves a track on Last.fm from the table's context menu after an explicit
+  confirmation, which helps clean up duplicate loves.
 - Includes light, dark, lilac, and mint themes plus English, Croatian, German, Mandarin,
   and Ukrainian interfaces.
 - Supports keyboard-first operation with filter, playback, preferences, quit, seeking,
@@ -104,7 +110,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.195-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.196-py3-none-any.whl
 my-lastfm-player
 ```
 
@@ -242,6 +248,18 @@ YouTube changes its mind, so the player keeps re-checking them:
 - **On startup** the player automatically re-checks everything the previous run gave up
   on: tracks marked `Not found` are searched again, and `Failed` downloads are queued
   again. Nothing happens when no track is stuck.
+
+### Unloving Tracks on Last.fm
+
+Sorting the table by artist or title makes duplicate loves easy to spot — the same song
+loved twice under slightly different spellings. Right-click such a row and choose
+**Unlove on Last.fm…**. A confirmation dialog names your Last.fm account and warns that
+this writes to it; nothing is sent until you confirm, and Cancel is the default. After
+Last.fm accepts the change, the row disappears from the local list; if it fails, the row
+stays and the error appears in the feedback log.
+
+The action is only available when you are connected to Last.fm in Preferences, the table
+shows your own loved tracks, and no fetch or YouTube work is running for that list.
 
 ## Stored Files
 

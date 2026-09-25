@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from html import escape
 from math import ceil
 
@@ -35,6 +36,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMenu,
+    QMessageBox,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
@@ -84,6 +86,15 @@ RICH_TEXT_DIALOG_MINIMUM_HEIGHT = 320
 RICH_TEXT_DIALOG_CONTENT_PADDING = 4
 RICH_TEXT_DIALOG_SCREEN_FRACTION = 0.9
 RICH_TEXT_DIALOG_FALLBACK_SCREEN_HEIGHT = 768
+
+
+@dataclass(frozen=True)
+class UnloveAvailability:
+    """Whether the track context menu may offer "Unlove on Last.fm", and why not."""
+
+    enabled: bool
+    reason: str = ""
+    account: str = ""
 
 
 class TrackFilterProxyModel(QSortFilterProxyModel):
@@ -245,6 +256,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
     youtube_resume_requested = pyqtSignal()
     youtube_stop_requested = pyqtSignal()
     retry_download_requested = pyqtSignal(str)
+    unlove_requested = pyqtSignal(str)
     play_requested = pyqtSignal()
     pause_requested = pyqtSignal()
     stop_requested = pyqtSignal()
@@ -279,6 +291,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._track_count = 0
         self._now_playing_idle = True
         self._artist_title_name: str | None = None
+        self._unlove_availability_provider: Callable[[], UnloveAvailability] | None = None
         self.set_application_title(__display_version__)
         self.resize(1120, 720)
 
@@ -534,15 +547,87 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         if not isinstance(cache_key, str):
             return
         track = self.track_model.track_at(source_index.row())
-        retry_action_details = self._retry_action_details(track)
-        if retry_action_details is None:
-            return
         menu = QMenu(self)
-        retry_action = QAction(retry_action_details[0], menu)
-        retry_action.setToolTip(retry_action_details[1])
-        menu.addAction(retry_action)
-        if menu.exec(self.track_table.viewport().mapToGlobal(pos)) == retry_action:
+        menu.setToolTipsVisible(True)
+        retry_action: QAction | None = None
+        retry_action_details = self._retry_action_details(track)
+        if retry_action_details is not None:
+            retry_action = QAction(retry_action_details[0], menu)
+            retry_action.setToolTip(retry_action_details[1])
+            menu.addAction(retry_action)
+            menu.addSeparator()
+        availability = self._unlove_availability()
+        unlove_action = QAction(self.tr("Unlove on Last.fm…"), menu)
+        unlove_action.setEnabled(availability.enabled)
+        unlove_action.setToolTip(
+            self.tr("Remove this track from your loved tracks on Last.fm")
+            if availability.enabled
+            else availability.reason
+        )
+        menu.addAction(unlove_action)
+        chosen_action = menu.exec(self.track_table.viewport().mapToGlobal(pos))
+        if retry_action is not None and chosen_action == retry_action:
             self.retry_download_requested.emit(cache_key)
+        elif (
+            chosen_action == unlove_action
+            and availability.enabled
+            and self._confirm_unlove(track, availability.account)
+        ):
+            self.unlove_requested.emit(cache_key)
+
+    def set_unlove_availability_provider(
+        self, provider: Callable[[], UnloveAvailability] | None
+    ) -> None:
+        """Set the callback that decides whether a track may be unloved on Last.fm.
+
+        It is asked each time the track context menu opens, so the answer always
+        reflects the current connection and background-work state.
+        """
+
+        self._unlove_availability_provider = provider
+
+    def _unlove_availability(self) -> UnloveAvailability:
+        if self._unlove_availability_provider is None:
+            return UnloveAvailability(
+                enabled=False,
+                reason=self.tr("Connect to Last.fm in Preferences to unlove tracks"),
+            )
+        return self._unlove_availability_provider()
+
+    def _confirm_unlove(self, track: Track, account: str) -> bool:
+        """Ask the user to confirm a write to their Last.fm account."""
+
+        dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Icon.Warning)
+        dialog.setTextFormat(Qt.TextFormat.PlainText)
+        dialog.setWindowTitle(self.tr("Unlove on Last.fm?"))
+        loved_line = (
+            self.tr("Loved on: {loved_at}").format(loved_at=track.loved_at)
+            if track.loved_at
+            else ""
+        )
+        dialog.setText(
+            self.tr(
+                "This WRITES TO YOUR LAST.FM ACCOUNT ({account}).\n\n"
+                "\"{artist} – {title}\" will be removed from your loved tracks "
+                "on last.fm."
+            ).format(account=account, artist=track.artist, title=track.title)
+            + (f"\n{loved_line}" if loved_line else "")
+        )
+        dialog.setInformativeText(
+            self.tr(
+                "The change is sent to last.fm immediately. It cannot be undone in "
+                "myLastFmPlayer; you would have to love the track again on last.fm."
+            )
+        )
+        unlove_button = dialog.addButton(
+            self.tr("Unlove on Last.fm"), QMessageBox.ButtonRole.DestructiveRole
+        )
+        cancel_button = dialog.addButton(QMessageBox.StandardButton.Cancel)
+        dialog.setDefaultButton(cancel_button)
+        dialog.setEscapeButton(cancel_button)
+        dialog.exec()
+        return dialog.clickedButton() is unlove_button
 
     def _retry_selected_track(self) -> None:
         track = self.selected_track()

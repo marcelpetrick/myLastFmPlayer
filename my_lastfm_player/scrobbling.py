@@ -12,6 +12,10 @@ LOGGER = logging.getLogger(__name__)
 SCROBBLE_THRESHOLD = 0.33
 
 
+class LastFmWriteError(RuntimeError):
+    """Raised when a write to the user's Last.fm account (love/unlove) fails."""
+
+
 class ScrobblingService:  # pylint: disable=too-many-instance-attributes
     """Wraps pylast for Last.fm web-auth and track scrobbling.
 
@@ -29,6 +33,7 @@ class ScrobblingService:  # pylint: disable=too-many-instance-attributes
         scrobbling_enabled: bool = True,
         network_factory: Callable[..., Any] | None = None,
         sg_factory: Callable[[Any], Any] | None = None,
+        track_factory: Callable[..., Any] | None = None,
     ) -> None:
         self._api_key = api_key
         self._api_secret = api_secret
@@ -41,6 +46,7 @@ class ScrobblingService:  # pylint: disable=too-many-instance-attributes
         self._authenticated = False
         self._network_factory = network_factory or _pylast_network_factory
         self._sg_factory = sg_factory or _pylast_sg_factory
+        self._track_factory = track_factory or _pylast_track_factory
         self._auth_lock = Lock()
         self._auth_generation = 0
 
@@ -220,6 +226,56 @@ class ScrobblingService:  # pylint: disable=too-many-instance-attributes
         except Exception:  # noqa: BLE001
             LOGGER.warning("Now-playing update failed for %s - %s", artist, title)
 
+    @property
+    def can_write_loves(self) -> bool:
+        """Return ``True`` when loved-track changes can be written to Last.fm.
+
+        Unlike scrobbling this does not depend on ``scrobbling_enabled``: a
+        love or unlove is always an explicit, confirmed user action.
+        """
+        return self._authenticated and self._network is not None
+
+    def love_track(self, artist: str, title: str) -> None:
+        """Mark a track as loved on Last.fm.  Raises ``LastFmWriteError`` on failure."""
+        self._write_love(artist, title, love=True)
+
+    def unlove_track(self, artist: str, title: str) -> None:
+        """Remove a track from the loved tracks on Last.fm.  Raises ``LastFmWriteError``."""
+        self._write_love(artist, title, love=False)
+
+    def is_track_loved(self, artist: str, title: str) -> bool:
+        """Return whether the authenticated user has loved the track on Last.fm."""
+        network = self._require_love_network()
+        try:
+            track = self._track_factory(artist, title, network, username=self._username)
+            return bool(track.get_userloved())
+        except Exception as error:  # noqa: BLE001
+            raise LastFmWriteError(
+                f"Could not read the loved state of {artist} - {title}: {error}"
+            ) from error
+
+    def _write_love(self, artist: str, title: str, *, love: bool) -> None:
+        network = self._require_love_network()
+        action = "love" if love else "unlove"
+        try:
+            track = self._track_factory(artist, title, network, username=self._username)
+            if love:
+                track.love()
+            else:
+                track.unlove()
+        except Exception as error:  # noqa: BLE001
+            LOGGER.warning("Last.fm %s failed for %s - %s", action, artist, title)
+            raise LastFmWriteError(
+                f"Last.fm {action} failed for {artist} - {title}: {error}"
+            ) from error
+        LOGGER.info("Last.fm %s: %s - %s", action, artist, title)
+
+    def _require_love_network(self) -> Any:
+        network = self._network
+        if not self._authenticated or network is None:
+            raise LastFmWriteError("Not connected to Last.fm")
+        return network
+
     def credentials_dict(self) -> dict[str, object]:
         """Return serializable credentials.  The session key value is not logged."""
         return {
@@ -242,3 +298,9 @@ def _pylast_sg_factory(network: Any) -> Any:
     import pylast  # noqa: PLC0415
 
     return pylast.SessionKeyGenerator(network)
+
+
+def _pylast_track_factory(artist: str, title: str, network: Any, **kwargs: Any) -> Any:
+    import pylast  # noqa: PLC0415
+
+    return pylast.Track(artist, title, network, **kwargs)

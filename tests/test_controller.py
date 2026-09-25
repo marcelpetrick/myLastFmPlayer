@@ -3370,3 +3370,138 @@ def test_controller_runs_service_calls_on_a_tracked_qt_thread(qapp, tmp_path) ->
     while controller._threads._threads and time.monotonic() < deadline:
         qapp.processEvents()
     assert controller._threads._threads == []
+
+
+# ── Unlove on Last.fm ─────────────────────────────────────────────────────────
+
+
+class FakeLoveTrack:
+    """pylast.Track stand-in that records love/unlove writes."""
+
+    def __init__(self, calls: list[tuple], artist: str, title: str, fail: bool) -> None:
+        self.calls = calls
+        self.artist = artist
+        self.title = title
+        self.fail = fail
+
+    def unlove(self) -> None:
+        if self.fail:
+            raise OSError("network down")
+        self.calls.append(("unlove", self.artist, self.title))
+
+
+def _unlove_controller(
+    tmp_path, *, username: str = "user", fail: bool = False, connected: bool = True
+) -> tuple[ApplicationController, MainWindow, JsonTrackRepository, list[tuple], list[Track]]:
+    calls: list[tuple] = []
+    service = ScrobblingService(
+        api_key="k",
+        api_secret="s",
+        session_key="sess",
+        username="user",
+        scrobbling_enabled=False,
+        network_factory=lambda **_kwargs: FakeScrobbleNetwork([]),
+        track_factory=lambda artist, title, _network, **_kw: FakeLoveTrack(
+            calls, artist, title, fail
+        ),
+    )
+    if connected:
+        assert service.try_connect()
+    tracks = [
+        Track(artist="Artist", title="Keep", loved_at="2026-01-01"),
+        Track(artist="Artist", title="Drop", loved_at="2026-01-02"),
+    ]
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks(username, tracks)
+    window = MainWindow()
+    window.set_username(username)
+    controller = ApplicationController(
+        window,
+        repository=repository,
+        dependency_checker=lambda: DependencyCheckResult(installed=(), missing=()),
+        artist_images_enabled=False,
+    )
+    controller._scrobbling_service = service
+    controller._workflow_username = username
+    window.set_tracks(tracks)
+    run_background_workers_inline(controller)
+    return controller, window, repository, calls, tracks
+
+
+def test_unlove_track_writes_to_lastfm_and_removes_row(qapp, tmp_path) -> None:
+    controller, window, repository, calls, tracks = _unlove_controller(tmp_path)
+
+    assert controller._unlove_availability().enabled
+    controller.unlove_track(tracks[1].cache_key)
+
+    assert calls == [("unlove", "Artist", "Drop")]
+    assert [t.title for t in repository.load_tracks("user")] == ["Keep"]
+    assert [t.title for t in window.tracks()] == ["Keep"]
+    assert controller._unlove_in_flight is None
+    assert "Unloved Artist - Drop on Last.fm." in window.feedback_log.toPlainText()
+
+
+def test_unlove_track_keeps_row_and_reports_error_on_failure(qapp, tmp_path) -> None:
+    controller, window, repository, calls, tracks = _unlove_controller(tmp_path, fail=True)
+
+    controller.unlove_track(tracks[1].cache_key)
+
+    assert calls == []
+    assert [t.title for t in repository.load_tracks("user")] == ["Keep", "Drop"]
+    assert [t.title for t in window.tracks()] == ["Keep", "Drop"]
+    assert controller._unlove_in_flight is None
+    assert "Could not unlove Artist - Drop on Last.fm" in window.feedback_log.toPlainText()
+
+
+def test_unlove_is_blocked_when_not_connected(qapp, tmp_path) -> None:
+    controller, window, repository, calls, tracks = _unlove_controller(tmp_path, connected=False)
+
+    availability = controller._unlove_availability()
+    controller.unlove_track(tracks[1].cache_key)
+
+    assert not availability.enabled
+    assert "Preferences" in availability.reason
+    assert calls == []
+    assert len(repository.load_tracks("user")) == 2
+
+
+def test_unlove_is_blocked_for_another_users_list(qapp, tmp_path) -> None:
+    controller, window, repository, calls, tracks = _unlove_controller(tmp_path, username="first")
+
+    availability = controller._unlove_availability()
+    controller.unlove_track(tracks[1].cache_key)
+
+    assert not availability.enabled
+    assert availability.account == "user"
+    assert calls == []
+    assert len(repository.load_tracks("first")) == 2
+
+
+def test_unlove_is_blocked_while_background_work_runs(qapp, tmp_path) -> None:
+    controller, window, repository, calls, tracks = _unlove_controller(tmp_path)
+    controller._active_workers.append(SimpleNamespace(username="user"))  # type: ignore[arg-type]
+
+    availability = controller._unlove_availability()
+    controller.unlove_track(tracks[1].cache_key)
+
+    assert not availability.enabled
+    assert calls == []
+    assert len(repository.load_tracks("user")) == 2
+
+
+def test_unlove_is_blocked_while_another_unlove_is_in_flight(qapp, tmp_path) -> None:
+    controller, window, repository, calls, tracks = _unlove_controller(tmp_path)
+    controller._unlove_in_flight = tracks[0].cache_key
+
+    controller.unlove_track(tracks[1].cache_key)
+
+    assert calls == []
+
+
+def test_unlove_ignores_username_case(qapp, tmp_path) -> None:
+    controller, window, repository, calls, tracks = _unlove_controller(tmp_path, username="USER")
+
+    controller.unlove_track(tracks[1].cache_key)
+
+    assert calls == [("unlove", "Artist", "Drop")]
+    assert [t.title for t in repository.load_tracks("USER")] == ["Keep"]

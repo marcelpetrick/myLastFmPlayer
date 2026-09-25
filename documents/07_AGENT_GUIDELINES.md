@@ -17,6 +17,8 @@ through `.venv/bin/`.
 - Single test: `python -m pytest tests/test_controller.py::test_name -v`
 - Live Last.fm end-to-end test:
   `MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 python -m pytest tests/test_lastfm_e2e.py`
+- Live Last.fm love/unlove test (writes to the connected account):
+  `MY_LASTFM_PLAYER_RUN_LASTFM_WRITE_E2E=1 python -m pytest tests/test_lastfm_love_e2e.py`
 - Documentation gate: `python tools/check_docs.py`
 - Sphinx docs:
   `python -m sphinx -W --keep-going -b html docs docs/_build/html`
@@ -137,6 +139,13 @@ MY_LASTFM_PLAYER_RUN_YTDLP_E2E=1 ./localPipeline.sh --noRun
 ```
 
 The Last.fm test fetches every loved-track API page for the test user `first`.
+
+`MY_LASTFM_PLAYER_RUN_LASTFM_WRITE_E2E=1` enables the only test that writes to
+Last.fm. It uses the session the app stored after "Connect to Last.fm", loves the
+sentinel track "Kevin MacLeod – Monkeys Spinning Monkeys" and unloves it again — once
+through `ScrobblingService` directly and once through the track context menu and the
+controller. It skips instead of touching the sentinel when it is already loved, and
+always unloves it again in a `finally` block.
 The `yt-dlp` tests check the download retry ladder against the installed
 `yt-dlp`: every forced YouTube player client must still be one `yt-dlp`
 supports, the audio format selector must still resolve, and a real download must
