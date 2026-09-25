@@ -21,7 +21,7 @@ plays them locally from one PyQt6 interface.
 
 ## Product Status
 
-Current version: `0.0.194` — fully functional and actively maintained
+Current version: `0.0.195` — fully functional and actively maintained
 
 The complete intended workflow is implemented and used in practice. Its major features
 are covered by the automated test suite, packaging and installed-application checks,
@@ -104,7 +104,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.194-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.195-py3-none-any.whl
 my-lastfm-player
 ```
 
