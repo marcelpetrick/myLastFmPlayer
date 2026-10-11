@@ -13,7 +13,7 @@ authors = [
 ]
 dynamic = ["version"]
 dependencies = [
-    "pylast==7.1.0",
+    "pylast==7.2.0",
     "PyQt6==6.11.0",
     "requests==2.34.2",
 ]
