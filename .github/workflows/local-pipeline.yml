@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload package artifacts
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: python-packages
           path: dist/*
@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: coverage-html
           path: htmlcov
@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload Sphinx documentation
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: sphinx-html
           path: docs/_build/html
