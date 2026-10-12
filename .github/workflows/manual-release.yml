@@ -97,7 +97,7 @@ jobs:
           cp dist/*.whl dist/*.tar.gz release-artifacts/assets/*.zip release-artifacts/publish/
 
       - name: Upload complete release asset set
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: release-assets
           path: release-artifacts/publish/*
