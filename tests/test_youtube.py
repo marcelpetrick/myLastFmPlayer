@@ -17,6 +17,7 @@ from my_lastfm_player.youtube import (
     YouTubeResolver,
     _percent,
 )
+from my_lastfm_player.youtube_work import WorkCancelled
 
 
 class FakeRunner:
@@ -125,17 +126,18 @@ def test_search_first_result_falls_back_to_original_or_direct_url() -> None:
 
 def test_search_first_result_returns_none_for_empty_or_unusable_payloads() -> None:
     assert (
-        YouTubeResolver(command_runner=FakeRunner(stdout="")).search_first_result("query")
+        YouTubeResolver(command_runner=FakeRunner(stdout="")).search_first_result("query") is None
+    )
+    assert (
+        YouTubeResolver(
+            command_runner=FakeRunner(stdout=json.dumps({"entries": [None, "x"]}))
+        ).search_first_result("query")
         is None
     )
     assert (
-        YouTubeResolver(command_runner=FakeRunner(stdout=json.dumps({"entries": [None, "x"]})))
-        .search_first_result("query")
-        is None
-    )
-    assert (
-        YouTubeResolver(command_runner=FakeRunner(stdout=json.dumps({"title": "No URL"})))
-        .search_first_result("query")
+        YouTubeResolver(
+            command_runner=FakeRunner(stdout=json.dumps({"title": "No URL"}))
+        ).search_first_result("query")
         is None
     )
 
@@ -205,6 +207,27 @@ def test_resolve_track_honors_preexisting_stop_request() -> None:
     )
 
     assert resolved.status is TrackStatus.FETCHED
+    assert runner.commands == []
+
+
+def test_resolve_track_preserves_track_when_lookup_is_cancelled() -> None:
+    def cancelled_runner(_command, **_kwargs):
+        raise WorkCancelled("cancelled during lookup")
+
+    track = Track(artist="Artist", title="Title", status=TrackStatus.SEARCHING)
+    resolved = YouTubeResolver(command_runner=cancelled_runner).resolve_track(track)
+
+    assert resolved.status is TrackStatus.FETCHED
+    assert resolved.error is None
+    assert resolved.youtube_url is None
+
+
+@pytest.mark.parametrize("status", [TrackStatus.FAILED, TrackStatus.LOOKUP_FAILED])
+def test_resolve_tracks_does_not_retry_failed_tracks(status: TrackStatus) -> None:
+    runner = FakeRunner()
+    track = Track(artist="Artist", title="Title", status=status)
+
+    assert YouTubeResolver(command_runner=runner).resolve_tracks([track]) == [track]
     assert runner.commands == []
 
 
