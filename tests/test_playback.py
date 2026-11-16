@@ -4,6 +4,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from PyQt6.QtCore import QUrl
+from PyQt6.QtMultimedia import QMediaPlayer
 
 from my_lastfm_player import playback as playback_module
 from my_lastfm_player.models import Track, TrackStatus
@@ -353,7 +355,7 @@ def test_qt_playback_backend_wraps_player_and_normalizes_values(
     backend._notify_media_status_changed(playback_module._END_OF_MEDIA_STATUS)
 
     assert player.audio_output == "audio-output"
-    assert player.source is not None
+    assert player.source == QUrl.fromLocalFile(str(audio_path))
     assert player.play_called
     assert player.play_count == 2  # play() and resume() both start the player
     assert player.pause_called
@@ -395,3 +397,76 @@ def test_qt_backend_applies_volume_and_mute_to_the_audio_output(qapp) -> None:
 
     assert backend.audio_output.volume() == pytest.approx(linear_volume(50))
     assert backend.audio_output.isMuted()
+
+
+
+def test_qt_backend_ignores_media_status_changes_other_than_end_of_media(monkeypatch) -> None:
+    monkeypatch.setattr(playback_module, "QAudioOutput", lambda: "audio-output")
+    monkeypatch.setattr(playback_module, "QMediaPlayer", FakeQtMediaPlayer)
+    backend = QtPlaybackBackend()
+    finished: list[bool] = []
+    backend.on_finished(lambda: finished.append(True))
+
+    backend._notify_media_status_changed(QMediaPlayer.MediaStatus.LoadedMedia)
+
+    assert finished == []
+
+
+def test_paused_flag_is_exactly_false_outside_a_pause(tmp_path: Path) -> None:
+    audio = tmp_path / "track.opus"
+    audio.write_bytes(b"audio")
+    service = PlaybackService(backend=FakePlaybackBackend())
+    assert service.is_paused() is False
+
+    service.play(downloaded_track(audio))
+    assert service.is_paused() is False
+    service.pause()
+    assert service.is_paused() is True
+    service.resume()
+    assert service.is_paused() is False
+    service.pause()
+    service.stop()
+    assert service.is_paused() is False
+
+    service.play(downloaded_track(audio))
+    service.pause()
+    service.finish_current()
+    assert service.is_paused() is False
+
+
+def test_seek_to_the_start_is_passed_through_unchanged(tmp_path: Path) -> None:
+    audio = tmp_path / "track.opus"
+    audio.write_bytes(b"audio")
+    backend = FakePlaybackBackend()
+    service = PlaybackService(backend=backend)
+    service.play(downloaded_track(audio))
+    backend.position = 5000
+
+    service.seek(0)
+
+    assert backend.position == 0
+
+
+@pytest.mark.parametrize(
+    ("action", "message"),
+    [
+        ("pause", "No track is currently playing"),
+        ("resume", "No paused track to resume"),
+        ("seek", "No track is currently playing"),
+    ],
+)
+def test_idle_playback_errors_are_exact(action: str, message: str) -> None:
+    service = PlaybackService(backend=FakePlaybackBackend())
+    call = getattr(service, action)
+
+    with pytest.raises(PlaybackError, match=f"^{message}$"):
+        call(0) if action == "seek" else call()
+
+
+def test_track_validation_errors_are_exact(tmp_path: Path) -> None:
+    service = PlaybackService(backend=FakePlaybackBackend())
+
+    with pytest.raises(PlaybackError, match="^Selected track is not downloaded$"):
+        service.play(Track("Artist", "Title"))
+    with pytest.raises(PlaybackError, match="^Selected track has no local file path$"):
+        service.play(Track("Artist", "Title", status=TrackStatus.DOWNLOADED))
