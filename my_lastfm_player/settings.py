@@ -37,7 +37,8 @@ class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter p
     def theme_mode(self) -> ThemeMode:
         """Return the persisted theme, falling back to light when invalid or absent."""
 
-        value = self._settings.value(THEME_KEY, ThemeMode.LIGHT.value, str)
+        # Equivalent: a None default reads as "", which ThemeMode() rejects like any bad value.
+        value = self._settings.value(THEME_KEY, ThemeMode.LIGHT.value, str)  # pragma: no mutate
         try:
             return ThemeMode(value)
         except ValueError:
@@ -51,7 +52,8 @@ class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter p
     def language_code(self) -> str:
         """Return the persisted language code, falling back to English when invalid."""
 
-        value = self._settings.value(LANGUAGE_KEY, DEFAULT_LANGUAGE_CODE, str)
+        # Equivalent: every other default or type ends in the same English fallback.
+        value = self._settings.value(LANGUAGE_KEY, DEFAULT_LANGUAGE_CODE, str)  # pragma: no mutate
         try:
             return language_by_code(value).code
         except ValueError:
@@ -87,7 +89,10 @@ class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter p
     def download_concurrency(self) -> int:
         """Return the configured number of parallel download workers."""
 
-        value = self._settings.value(DOWNLOAD_CONCURRENCY_KEY, DEFAULT_DOWNLOAD_CONCURRENCY)
+        value = self._settings.value(
+            DOWNLOAD_CONCURRENCY_KEY,
+            DEFAULT_DOWNLOAD_CONCURRENCY,  # pragma: no mutate - int(None) gives this default too
+        )
         return _clamp_download_concurrency(value)
 
     def set_download_concurrency(self, concurrency: int) -> None:
@@ -111,7 +116,8 @@ class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter p
     def randomize_playback(self) -> bool:
         """Return True when playback should continue with a random track."""
 
-        return bool(self._settings.value(RANDOMIZE_PLAYBACK_KEY, False, bool))
+        # Equivalent: a None default converted to bool is False as well.
+        return bool(self._settings.value(RANDOMIZE_PLAYBACK_KEY, False, bool))  # pragma: no mutate
 
     def set_randomize_playback(self, enabled: bool) -> None:
         """Persist whether playback should continue with a random track."""
@@ -122,7 +128,11 @@ class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter p
     def volume_percent(self) -> int:
         """Return the persisted playback volume as a 0-100 percentage."""
 
-        return clamp_volume(_as_int(self._settings.value(VOLUME_KEY, DEFAULT_VOLUME_PERCENT)))
+        value = self._settings.value(
+            VOLUME_KEY,
+            DEFAULT_VOLUME_PERCENT,  # pragma: no mutate - _as_int(None) gives this default too
+        )
+        return clamp_volume(_as_int(value))
 
     def set_volume_percent(self, volume_percent: int) -> None:
         """Persist the playback volume percentage."""
@@ -132,7 +142,8 @@ class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter p
     def muted(self) -> bool:
         """Return True when playback should start muted."""
 
-        return bool(self._settings.value(MUTED_KEY, False, bool))
+        # Equivalent: a None default converted to bool is False as well.
+        return bool(self._settings.value(MUTED_KEY, False, bool))  # pragma: no mutate
 
     def set_muted(self, muted: bool) -> None:
         """Persist whether playback is muted."""
@@ -143,7 +154,7 @@ class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter p
     def last_username(self) -> str:
         """Return the Last.fm username used in the previous session."""
 
-        value = self._settings.value(LAST_USERNAME_KEY, "", str)
+        value = self._settings.value(LAST_USERNAME_KEY, "", str)  # pragma: no mutate - None -> ""
         return value.strip() if isinstance(value, str) else ""
 
     def set_last_username(self, username: str) -> None:

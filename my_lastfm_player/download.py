@@ -152,11 +152,11 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
 
         def submit_next(executor: ThreadPoolExecutor) -> bool:
             if stop_event is not None and stop_event.is_set():
-                return False
+                return False  # pragma: no mutate - callers ignore the return value
             try:
                 index, track = next(pending_candidates)
             except StopIteration:
-                return False
+                return False  # pragma: no mutate - callers ignore the return value
             downloading_track = replace(track, status=TrackStatus.DOWNLOADING, error=None)
             results[index] = downloading_track
             _report_track_update(track_update_callback, downloading_track)
@@ -167,10 +167,11 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
                 stop_event,
             )
             futures[future] = index
-            return True
+            return True  # pragma: no mutate - callers ignore the return value
 
         max_workers = min(concurrency, len(candidates))
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Mutation-equivalent: never more than max_workers jobs are submitted at once
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:  # pragma: no mutate
             for _unused in range(max_workers):
                 submit_next(executor)
             while futures:
@@ -250,7 +251,11 @@ class DownloadManager:  # pylint: disable=too-many-instance-attributes
             except WorkCancelled:
                 return replace(track, status=TrackStatus.QUEUED, error=None)
 
-        return replace(current_track, status=TrackStatus.FAILED, error=last_error)
+        return replace(
+            current_track,
+            status=TrackStatus.FAILED,
+            error=last_error,  # pragma: no mutate - current_track.error already equals it
+        )
 
     def _download_track(
         self,
@@ -398,7 +403,8 @@ def _probe_audio_file(
         return file_type, None
 
     try:
-        data = json.loads(completed.stdout or "{}")
+        # Mutation-equivalent: invalid JSON and "{}" both give (file_type, None)
+        data = json.loads(completed.stdout or "{}")  # pragma: no mutate
     except json.JSONDecodeError:
         return file_type, None
 

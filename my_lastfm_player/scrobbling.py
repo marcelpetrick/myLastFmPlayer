@@ -145,7 +145,8 @@ class ScrobblingService:  # pylint: disable=too-many-instance-attributes
     def complete_web_auth(self) -> bool:
         """Finish the OAuth flow after the user has authorized.  Returns ``True`` on success."""
         with self._auth_lock:
-            if self._sg is None or self._pending_auth_url is None:
+            # Mutation-equivalent: both are always set and cleared together
+            if self._sg is None or self._pending_auth_url is None:  # pragma: no mutate
                 return False
             generation = self._auth_generation
             session_generator = self._sg

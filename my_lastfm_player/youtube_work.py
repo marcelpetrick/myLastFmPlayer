@@ -103,9 +103,9 @@ def run_cancellable_command(
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        start_new_session=os.name != "nt",
+        text=True,  # pragma: no mutate - encoding= alone already selects text mode
+        encoding="utf-8",  # pragma: no mutate - "UTF-8" is the same codec
+        start_new_session=os.name != "nt",  # pragma: no mutate - other names are also not "nt"
     )
     started_at = time.monotonic()
     while True:
@@ -124,14 +124,14 @@ def run_cancellable_command(
 
 
 def _terminate_process(process: subprocess.Popen[str]) -> None:
-    if os.name == "nt":  # pragma: no cover - Windows process API
+    if os.name == "nt":  # pragma: no cover, no mutate - Windows-only branch
         process.terminate()
     else:
         os.killpg(process.pid, signal.SIGTERM)
     try:
         process.communicate(timeout=PROCESS_TERMINATE_SECONDS)
     except subprocess.TimeoutExpired:
-        if os.name == "nt":  # pragma: no cover - Windows process API
+        if os.name == "nt":  # pragma: no cover, no mutate - Windows-only branch
             process.kill()
         else:
             os.killpg(process.pid, signal.SIGKILL)

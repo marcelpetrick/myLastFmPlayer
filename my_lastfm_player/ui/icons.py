@@ -15,7 +15,7 @@ def preferences_icon() -> QIcon:
     p = _painter(pm)
     center = QPointF(12, 12)
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QColor("#73777F"))
+    p.setBrush(QColor("#73777F"))  # pragma: no mutate - hex colour names are case-insensitive
     for index in range(8):
         angle = math.radians(index * 45)
         p.save()
@@ -23,9 +23,9 @@ def preferences_icon() -> QIcon:
         p.rotate(math.degrees(angle))
         p.drawRoundedRect(QRectF(5.5, -1.8, 4.6, 3.6), 1.0, 1.0)
         p.restore()
-    p.setBrush(QColor("#8F949C"))
+    p.setBrush(QColor("#8F949C"))  # pragma: no mutate - hex colour names are case-insensitive
     p.drawEllipse(center, 7.2, 7.2)
-    p.setBrush(QColor("#F5F5F5"))
+    p.setBrush(QColor("#F5F5F5"))  # pragma: no mutate - hex colour names are case-insensitive
     p.drawEllipse(center, 3.1, 3.1)
     p.end()
     return QIcon(pm)
@@ -36,13 +36,13 @@ def folder_icon() -> QIcon:
 
     pm = _new_pixmap()
     p = _painter(pm)
-    p.setPen(QPen(QColor("#B89D65"), 1.1))
-    p.setBrush(QColor("#E8D6A8"))
+    p.setPen(QPen(QColor("#B89D65"), 1.1))  # pragma: no mutate - hex is case-insensitive
+    p.setBrush(QColor("#E8D6A8"))  # pragma: no mutate - hex colour names are case-insensitive
     p.drawRoundedRect(QRectF(3.0, 7.0, 18.0, 11.0), 2.0, 2.0)
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QColor("#F2E3BA"))
+    p.setBrush(QColor("#F2E3BA"))  # pragma: no mutate - hex colour names are case-insensitive
     p.drawRoundedRect(QRectF(4.0, 5.0, 8.0, 4.5), 1.6, 1.6)
-    p.setBrush(QColor("#F7EAC5"))
+    p.setBrush(QColor("#F7EAC5"))  # pragma: no mutate - hex colour names are case-insensitive
     p.drawRoundedRect(QRectF(4.0, 9.0, 16.0, 8.0), 1.6, 1.6)
     p.end()
     return QIcon(pm)
@@ -68,15 +68,15 @@ def palette_icon() -> QIcon:
     palette = QPainterPath()
     palette.addEllipse(QRectF(3.2, 4.0, 17.5, 15.5))
     palette.addEllipse(QRectF(13.8, 13.2, 5.0, 4.5))
-    p.setPen(QPen(QColor("#676C73"), 1.0))
-    p.setBrush(QColor("#F4F0E8"))
+    p.setPen(QPen(QColor("#676C73"), 1.0))  # pragma: no mutate - hex case; Qt6 width defaults to 1
+    p.setBrush(QColor("#F4F0E8"))  # pragma: no mutate - hex colour names are case-insensitive
     p.drawPath(palette.simplified())
     p.setPen(Qt.PenStyle.NoPen)
     for color, x, y in (
-        ("#E85D75", 8.0, 8.5),
-        ("#F7C948", 12.0, 7.4),
-        ("#4FA3D1", 15.0, 10.5),
-        ("#5FBF8F", 10.5, 12.3),
+        ("#E85D75", 8.0, 8.5),  # pragma: no mutate - hex colour names are case-insensitive
+        ("#F7C948", 12.0, 7.4),  # pragma: no mutate - hex colour names are case-insensitive
+        ("#4FA3D1", 15.0, 10.5),  # pragma: no mutate - hex colour names are case-insensitive
+        ("#5FBF8F", 10.5, 12.3),  # pragma: no mutate - hex colour names are case-insensitive
     ):
         p.setBrush(QColor(color))
         p.drawEllipse(QPointF(x, y), 1.7, 1.7)
@@ -84,7 +84,7 @@ def palette_icon() -> QIcon:
     return QIcon(pm)
 
 
-def theme_swatch_icon(fill: str, border: str = "#6F747B") -> QIcon:
+def theme_swatch_icon(fill: str, border: str = "#6F747B") -> QIcon:  # pragma: no mutate - hex case
     """Return a compact color swatch icon for a specific theme action."""
 
     pm = _new_pixmap()
@@ -104,5 +104,5 @@ def _new_pixmap() -> QPixmap:
 
 def _painter(pm: QPixmap) -> QPainter:
     p = QPainter(pm)
-    p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing, True)  # pragma: no mutate - on=True default
     return p

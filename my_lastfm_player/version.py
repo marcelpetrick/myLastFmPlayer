@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__version__ = "0.0.209"
+__version__ = "0.0.210"
 
 _COMMIT_HASH_LENGTH = 6
 
@@ -17,7 +17,8 @@ def build_commit() -> str:
     except ModuleNotFoundError:
         return ""
 
-    commit = getattr(build_info, "__commit__", "")
+    # Mutation-equivalent: a None default fails isinstance too
+    commit = getattr(build_info, "__commit__", "")  # pragma: no mutate
     if not isinstance(commit, str):
         return ""
 

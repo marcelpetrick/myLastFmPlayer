@@ -156,11 +156,12 @@ class ElidedLabel(QLabel):
         return QSize(0, super().minimumSizeHint().height())
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
-        super().resizeEvent(event)
+        super().resizeEvent(event)  # pragma: no mutate - QLabel inherits the no-op QWidget handler
         self._update_elided_text()
 
     def _update_elided_text(self) -> None:
-        available_width = max(0, self.contentsRect().width())
+        # No-mutate reason: 0 px and 1 px both elide to an empty text.
+        available_width = max(0, self.contentsRect().width())  # pragma: no mutate
         visible_text = self.fontMetrics().elidedText(
             self._full_text,
             Qt.TextElideMode.ElideRight,
@@ -215,7 +216,7 @@ class ArtistImageLabel(QLabel):
         self.show()
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
-        super().resizeEvent(event)
+        super().resizeEvent(event)  # pragma: no mutate - QLabel inherits the no-op QWidget handler
         self._update_scaled_pixmap()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
@@ -458,7 +459,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.fetch_pause_button.clicked.connect(self.fetch_pause_requested.emit)
         self.fetch_stop_button.clicked.connect(self.fetch_stop_requested.emit)
         self.youtube_work_button.clicked.connect(
-            lambda _checked=False: self._handle_youtube_work_button()
+            # No-mutate reason: the lambda never reads its argument.
+            lambda _checked=False: self._handle_youtube_work_button()  # pragma: no mutate
         )
         self.set_fetch_control_state(active=False, paused=False)
         self.set_youtube_work_state(active=False)
@@ -498,9 +500,11 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.track_filter_input.textChanged.connect(self._set_track_filter_text)
         self.track_filter_reset_button.clicked.connect(self.track_filter_input.clear)
         self.retry_selected_button.clicked.connect(
-            lambda _checked=False: self._retry_selected_track()
+            # No-mutate reason: the lambda never reads its argument.
+            lambda _checked=False: self._retry_selected_track()  # pragma: no mutate
         )
-        self.retry_selected_button.setEnabled(False)
+        # No-mutate reason: retranslate_ui() recomputes it at the end of __init__.
+        self.retry_selected_button.setEnabled(False)  # pragma: no mutate
         filter_layout.addWidget(self.track_filter_label)
         filter_layout.addWidget(self.track_filter_input, stretch=1)
         filter_layout.addWidget(self.track_filter_reset_button)
@@ -707,13 +711,15 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.playback_slider.sliderReleased.connect(self._emit_timeline_seek)
         self.playback_slider.actionTriggered.connect(self._emit_timeline_action_seek)
         self.playback_slider.valueChanged.connect(self._update_current_time_label)
-        self.current_time_label = QLabel(format_playback_time(0))
+        # No-mutate reason: 0 ms and 1 ms both format as 0:00.
+        self.current_time_label = QLabel(format_playback_time(0))  # pragma: no mutate
         self.current_time_label.setMinimumWidth(48)
         self.current_time_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
         self.time_separator_label = QLabel("/")
-        self.total_time_label = QLabel(format_playback_time(0))
+        # No-mutate reason: 0 ms and 1 ms both format as 0:00.
+        self.total_time_label = QLabel(format_playback_time(0))  # pragma: no mutate
         self.total_time_label.setMinimumWidth(48)
         playback_timeline_layout.addWidget(self.playback_slider, stretch=1)
         playback_timeline_layout.addWidget(self.current_time_label)
@@ -798,7 +804,10 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         }
 
         self.clear_feedback_button = QPushButton()
-        self.clear_feedback_button.clicked.connect(lambda _checked=False: self.clear_feedback_log())
+        self.clear_feedback_button.clicked.connect(
+            # No-mutate reason: the lambda never reads its argument.
+            lambda _checked=False: self.clear_feedback_log()  # pragma: no mutate
+        )
 
         self.feedback_log = QPlainTextEdit()
         self.feedback_log.setReadOnly(True)
@@ -939,7 +948,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.dependency_label.setText(message)
         property_value = "ok" if is_ok else "missing"
         self.dependency_label.setProperty("status", property_value)
-        self.dependency_label.style().unpolish(self.dependency_label)
+        # No-mutate reason: polish() alone re-applies the style.
+        self.dependency_label.style().unpolish(self.dependency_label)  # pragma: no mutate
         self.dependency_label.style().polish(self.dependency_label)
 
     def selected_track(self) -> Track | None:
@@ -970,7 +980,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             return None
 
         for proxy_row in range(visible_row_count):
-            proxy_index = self.track_sort_model.index(proxy_row, 0)
+            # No-mutate reason: only the row of the index is used.
+            proxy_index = self.track_sort_model.index(proxy_row, 0)  # pragma: no mutate
             source_index = self.track_sort_model.mapToSource(proxy_index)
             track = self.track_model.track_at(source_index.row())
             if track.cache_key != cache_key:
@@ -979,7 +990,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             if next_proxy_row >= visible_row_count:
                 next_proxy_row = 0
             next_source_index = self.track_sort_model.mapToSource(
-                self.track_sort_model.index(next_proxy_row, 0)
+                # No-mutate reason: only the row of the index is used.
+                self.track_sort_model.index(next_proxy_row, 0)  # pragma: no mutate
             )
             next_source_row = next_source_index.row()
             return next_source_row, self.track_model.track_at(next_source_row)
@@ -987,7 +999,10 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         if not self.track_sort_model.has_track_filter():
             return None
 
-        first_source_index = self.track_sort_model.mapToSource(self.track_sort_model.index(0, 0))
+        first_source_index = self.track_sort_model.mapToSource(
+            # No-mutate reason: only the row of the index is used.
+            self.track_sort_model.index(0, 0)  # pragma: no mutate
+        )
         first_source_row = first_source_index.row()
         return first_source_row, self.track_model.track_at(first_source_row)
 
@@ -1003,7 +1018,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             for proxy_row in range(self.track_sort_model.rowCount())
             if (
                 source_index := self.track_sort_model.mapToSource(
-                    self.track_sort_model.index(proxy_row, 0)
+                    # No-mutate reason: only the row of the index is used.
+                    self.track_sort_model.index(proxy_row, 0)  # pragma: no mutate
                 )
             ).isValid()
             and (track := self.track_model.track_at(source_index.row())).cache_key != cache_key
@@ -1020,10 +1036,11 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         candidates: list[tuple[int, Track]] = []
         for proxy_row in range(self.track_sort_model.rowCount()):
             source_index = self.track_sort_model.mapToSource(
-                self.track_sort_model.index(proxy_row, 0)
+                # No-mutate reason: only the row of the index is used.
+                self.track_sort_model.index(proxy_row, 0)  # pragma: no mutate
             )
             if not source_index.isValid():
-                continue
+                continue  # pragma: no mutate - every proxy row maps to a valid source index
             track = self.track_model.track_at(source_index.row())
             if track.status is TrackStatus.DOWNLOADED:
                 if choice is None:
@@ -1072,9 +1089,11 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
     def select_track_row(self, source_row: int) -> None:
         """Select ``source_row`` in the table while respecting the active sort order."""
 
-        if not 0 <= source_row < self.track_model.rowCount():
+        # No-mutate reason: an out-of-range row maps to an invalid proxy index.
+        if not 0 <= source_row < self.track_model.rowCount():  # pragma: no mutate
             return
-        source_index = self.track_model.index(source_row, 0)
+        # No-mutate reason: only the row of the index is used.
+        source_index = self.track_model.index(source_row, 0)  # pragma: no mutate
         proxy_index = self.track_sort_model.mapFromSource(source_index)
         if not proxy_index.isValid():
             return
@@ -1158,7 +1177,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             progress_bar.setValue(0)
             progress_bar.setFormat(format_progress_text(idle_label))
             self._stage_progress_labels[stage] = "Idle"
-        self._last_progress_label = "Idle"
+        self._last_progress_label = "Idle"  # pragma: no mutate - the attribute is never read
 
     def append_feedback(self, message: str) -> None:
         """Append ``message`` to the feedback log and status bar."""
@@ -1181,7 +1200,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         """Clear the feedback log, the error indicator, and reset the scroll bars."""
 
         self.error_indicator_label.clear()
-        self.error_indicator_label.setToolTip("")
+        # No-mutate reason: None and an empty string both clear the tooltip.
+        self.error_indicator_label.setToolTip("")  # pragma: no mutate
         self.error_indicator_label.hide()
         self.feedback_log.clear()
         self.feedback_log.verticalScrollBar().setValue(
@@ -1349,7 +1369,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
     def reset_playback_timeline(self) -> None:
         """Reset the playback timeline to an idle state."""
 
-        self.set_playback_timeline(0, 0)
+        # No-mutate reason: the position is clamped to the zero duration.
+        self.set_playback_timeline(0, 0)  # pragma: no mutate
 
     def set_playback_controls(self, *, active: bool, paused: bool = False) -> None:
         """Update idle, playing, and paused transport states."""
@@ -1407,7 +1428,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             self.seek_requested.emit(value)
             return True
         # PyQt6 stub bug: the watched parameter is typed as Self instead of QObject.
-        return super().eventFilter(watched, event)  # type: ignore[arg-type]
+        # No-mutate reason: QObject.eventFilter ignores both arguments.
+        return super().eventFilter(watched, event)  # type: ignore[arg-type]  # pragma: no mutate
 
     def _timeline_value_for_x_position(self, x_position: int) -> int:
         slider_width = max(1, self.playback_slider.width())
@@ -1531,7 +1553,8 @@ def application_title(version: str) -> str:
 def format_feedback_message(message: str, time: QTime | None = None) -> str:
     """Return ``message`` with a user-readable timestamp prefix."""
 
-    timestamp = (time or QTime.currentTime()).toString("HH:mm:ss")
+    # No-mutate reason: "hh" is 24-hour too without an AP marker.
+    timestamp = (time or QTime.currentTime()).toString("HH:mm:ss")  # pragma: no mutate
     return f"{timestamp}: {message}"
 
 
@@ -1553,7 +1576,8 @@ def shorten_error(message: str, max_length: int = ERROR_INDICATOR_MAX_LENGTH) ->
 def format_playback_time(milliseconds: int) -> str:
     """Format ``milliseconds`` as a compact human-readable playback time."""
 
-    total_seconds = max(0, milliseconds) // 1000
+    # No-mutate reason: max(1, x) // 1000 equals max(0, x) // 1000 for every int.
+    total_seconds = max(0, milliseconds) // 1000  # pragma: no mutate
     hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     if hours:

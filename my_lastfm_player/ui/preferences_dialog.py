@@ -67,7 +67,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         layout.addWidget(self.scroll_area, stretch=1)
 
         # ── Authentication group ────────────────────────────────────────
-        self.auth_group = QGroupBox(self)
+        self.auth_group = QGroupBox(self)  # pragma: no mutate - reparented, same tab order
         self.auth_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         auth_layout = QVBoxLayout(self.auth_group)
 
@@ -77,7 +77,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         btn_row = QHBoxLayout()
         self.authenticate_button = QPushButton(self)
         self.authorize_button = QPushButton(self)
-        self.disconnect_button = QPushButton(self)
+        self.disconnect_button = QPushButton(self)  # pragma: no mutate - reparented, same tab order
         btn_row.addWidget(self.authenticate_button)
         btn_row.addWidget(self.authorize_button)
         btn_row.addWidget(self.disconnect_button)
@@ -88,20 +88,20 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         content_layout.addWidget(self.auth_group)
 
         # ── Scrobbling group ────────────────────────────────────────────
-        self.scrobbling_group = QGroupBox(self)
+        self.scrobbling_group = QGroupBox(self)  # pragma: no mutate - reparented, same tab order
         self.scrobbling_group.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
         scrobbling_layout = QVBoxLayout(self.scrobbling_group)
         self.scrobbling_checkbox = QCheckBox(self)
-        self.scrobbling_hint = QLabel(self)
+        self.scrobbling_hint = QLabel(self)  # pragma: no mutate - reparented, same tab order
         self.scrobbling_hint.setWordWrap(True)
         scrobbling_layout.addWidget(self.scrobbling_checkbox)
         scrobbling_layout.addWidget(self.scrobbling_hint)
         content_layout.addWidget(self.scrobbling_group)
 
         # ── YouTube group ───────────────────────────────────────────────
-        self.youtube_group = QGroupBox(self)
+        self.youtube_group = QGroupBox(self)  # pragma: no mutate - reparented, same tab order
         self.youtube_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         youtube_layout = QVBoxLayout(self.youtube_group)
         browser_row = QHBoxLayout()
@@ -120,7 +120,7 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         concurrency_row.addWidget(self.concurrency_label)
         concurrency_row.addWidget(self.concurrency_input)
         concurrency_row.addStretch()
-        self.youtube_hint = QLabel(self)
+        self.youtube_hint = QLabel(self)  # pragma: no mutate - reparented, same tab order
         self.youtube_hint.setWordWrap(True)
         youtube_layout.addLayout(browser_row)
         youtube_layout.addLayout(concurrency_row)
@@ -128,11 +128,11 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         content_layout.addWidget(self.youtube_group)
 
         # ── Privacy group ───────────────────────────────────────────────
-        self.privacy_group = QGroupBox(self)
+        self.privacy_group = QGroupBox(self)  # pragma: no mutate - reparented, same tab order
         self.privacy_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         privacy_layout = QVBoxLayout(self.privacy_group)
         self.keep_data_checkbox = QCheckBox(self)
-        self.keep_data_hint = QLabel(self)
+        self.keep_data_hint = QLabel(self)  # pragma: no mutate - reparented, same tab order
         self.keep_data_hint.setWordWrap(True)
         privacy_layout.addWidget(self.keep_data_checkbox)
         privacy_layout.addWidget(self.keep_data_hint)
@@ -140,14 +140,18 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         content_layout.addStretch(1)
 
         # ── Close button ────────────────────────────────────────────────
+        # pragma: no mutate start - the layout below reparents the button box to self
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, self)
+        # pragma: no mutate end
         self.buttons.rejected.connect(self.reject)
         layout.addWidget(self.buttons)
 
         # Connections
+        # pragma: no mutate start - clicked(bool) always passes the ignored flag
         self.authenticate_button.clicked.connect(lambda _checked=False: self._on_authenticate())
         self.authorize_button.clicked.connect(lambda _checked=False: self._on_authorize())
         self.disconnect_button.clicked.connect(lambda _checked=False: self._on_disconnect())
+        # pragma: no mutate end
         self.scrobbling_checkbox.stateChanged.connect(self._on_scrobbling_toggled)
         self.browser_combo.currentIndexChanged.connect(self._on_browser_changed)
         self.concurrency_input.valueChanged.connect(self._on_concurrency_changed)
@@ -303,7 +307,9 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         self._run_auth_call(start_auth, self._handle_auth_started)
 
     def _handle_auth_started(self, result: object) -> None:
+        # pragma: no mutate start - without a tuple url is None, checked before browser_opened
         url, browser_opened = result if isinstance(result, tuple) else (None, False)
+        # pragma: no mutate end
         self._refresh()
         if not url:
             self.status_label.setText(

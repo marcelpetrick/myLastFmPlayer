@@ -25,7 +25,7 @@ def apply_theme(app: QApplication, mode: ThemeMode) -> None:
     uses the style's standard palette; named color themes use custom palettes.
     """
 
-    style = QStyleFactory.create("Fusion")
+    style = QStyleFactory.create("Fusion")  # pragma: no mutate - style keys are case-insensitive
     if style is None:
         return
     app.setStyle(style)

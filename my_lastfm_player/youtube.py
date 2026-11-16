@@ -144,11 +144,11 @@ class YouTubeResolver:
 
         def submit_next(executor: ThreadPoolExecutor) -> bool:
             if stop_event is not None and stop_event.is_set():
-                return False
+                return False  # pragma: no mutate - callers ignore the return value
             try:
                 index = next(pending_indexes)
             except StopIteration:
-                return False
+                return False  # pragma: no mutate - callers ignore the return value
             track = tracks[index]
             searching_track = replace(track, status=TrackStatus.SEARCHING, error=None)
             resolved_tracks[index] = searching_track
@@ -167,9 +167,12 @@ class YouTubeResolver:
             )
             future = executor.submit(self.resolve_track, searching_track, stop_event)
             futures[future] = index
-            return True
+            return True  # pragma: no mutate - callers ignore the return value
 
-        with ThreadPoolExecutor(max_workers=min(concurrency, total_to_resolve)) as executor:
+        with ThreadPoolExecutor(
+            # Mutation-equivalent: never more jobs than this are submitted at once.
+            max_workers=min(concurrency, total_to_resolve)  # pragma: no mutate
+        ) as executor:
             for _unused in range(min(concurrency, total_to_resolve)):
                 submit_next(executor)
             while futures:
@@ -318,7 +321,8 @@ def _needs_lookup(track: Track) -> bool:
 def _simplify_artist(artist: str) -> str:
     """Return ``artist`` without store suffixes and decorative symbols."""
 
-    simplified = artist.split(ARTIST_SUFFIX_SEPARATOR, 1)[0]
+    # Mutation-equivalent: only part [0] is used
+    simplified = artist.split(ARTIST_SUFFIX_SEPARATOR, 1)[0]  # pragma: no mutate
     simplified = DECORATIVE_CHARS.sub(" ", simplified)
     return COLLAPSED_WHITESPACE.sub(" ", simplified).strip()
 

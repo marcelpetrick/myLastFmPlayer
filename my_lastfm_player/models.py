@@ -95,7 +95,8 @@ class Track:  # pylint: disable=too-many-instance-attributes  # domain model
     @classmethod
     def merge_preserving(cls, old: Track, new: Track) -> Track:
         """Merge two snapshots: status never goes backwards; None in ``new`` preserves ``old``."""
-        advances = _STATUS_RANK[new.status] > _STATUS_RANK[old.status]
+        # Mutation-equivalent: equal ranks mean equal status
+        advances = _STATUS_RANK[new.status] > _STATUS_RANK[old.status]  # pragma: no mutate
         # NOT_FOUND outranks every pre-download status, so a later lookup that finally
         # produced a URL would otherwise be discarded and the track stay stuck.
         recovers = old.status is TrackStatus.NOT_FOUND and bool(new.youtube_url)
@@ -183,7 +184,7 @@ def build_audio_base_name(artist: str, title: str) -> str:
     base_name = sanitize_filename_part(f"{artist} - {title}")
     # Reserve 5 chars for the longest common audio extension (e.g. .webm, .opus).
     max_base = MAX_FILENAME_LENGTH - 5
-    if len(base_name) <= max_base:
+    if len(base_name) <= max_base:  # pragma: no mutate - slicing at the length is a no-op
         return base_name
     return base_name[:max_base].rstrip()
 

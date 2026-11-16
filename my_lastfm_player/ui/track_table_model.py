@@ -15,7 +15,7 @@ class ElidedTextDelegate(QStyledItemDelegate):
     def paint(self, painter, option: QStyleOptionViewItem, index) -> None:  # type: ignore[override]
         self.initStyleOption(option, index)
         text = option.text
-        option.text = ""
+        option.text = ""  # pragma: no mutate - PyQt stores None as an empty QString
         style = option.widget.style() if option.widget else QApplication.style()
         style.drawControl(QStyle.ControlElement.CE_ItemViewItem, option, painter, option.widget)
         text_rect = style.subElementRect(

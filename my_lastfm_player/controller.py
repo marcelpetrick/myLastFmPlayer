@@ -298,7 +298,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
     def _cancel_work_for_username(self, username: str) -> None:
         """Cooperatively cancel queued work belonging to ``username``."""
 
-        cancelled = False
+        cancelled = False  # pragma: no mutate - only read as a truth value; None acts the same
         if self._active_fetch_preflight is not None and self._fetch_preflight_username == username:
             self._active_fetch_preflight.cancel()
             self._active_fetch_preflight = None
@@ -522,7 +522,7 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
 
     def _handle_scrobbling_connect_error(self, error: Exception) -> None:
         LOGGER.warning("Stored Last.fm session verification failed: %s", error)
-        self._handle_scrobbling_connect_result(False)
+        self._handle_scrobbling_connect_result(False)  # pragma: no mutate - None is falsy too
 
     def _show_preferences(self) -> None:
         from my_lastfm_player.ui.preferences_dialog import PreferencesDialog  # noqa: PLC0415
@@ -1020,7 +1020,11 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         LOGGER.info("Preparing %s on background thread", worker_name)
         self._running_worker_count += 1
         self.window.set_workflow_enabled(False)
-        worker_username = getattr(worker, "username", self._workflow_username) or ""
+        # The fallback only applies while no workflow user is committed, and no committed
+        # username can equal it within the same generation.
+        worker_username = (
+            getattr(worker, "username", self._workflow_username) or ""  # pragma: no mutate
+        )
         worker_generation = self._workflow_generation
         progress_stage = self._worker_progress_stage(worker)
         self._worker_generations[worker] = worker_generation
