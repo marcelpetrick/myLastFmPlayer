@@ -16,6 +16,7 @@ project history and do not represent the active backlog.
 | [`06_SCROBBLING_TODO.md`](06_SCROBBLING_TODO.md) | Last.fm authentication and scrobbling setup; the historical filename is retained for stable links |
 | [`07_AGENT_GUIDELINES.md`](07_AGENT_GUIDELINES.md) | Contributor command reference; `../docs/agents.md` is authoritative |
 | [`09_GITHUB_ACTIONS.md`](09_GITHUB_ACTIONS.md) | CI and release workflow instructions |
+| [`16_MUTATION_TESTING.md`](16_MUTATION_TESTING.md) | Mutation-testing plan, gate, and results |
 | [`../UI_UX_review.md`](../UI_UX_review.md) | Current prioritized UI/UX audit and fix status |
 
 ## Historical Records

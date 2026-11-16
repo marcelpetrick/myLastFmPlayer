@@ -24,6 +24,7 @@ dev = [
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
     "pylint==4.1.4",
+    "mutmut==3.8.1",
     "ruff==0.17.5",
     "sphinx==9.2.0",
 ]
@@ -97,3 +98,21 @@ disable = [
 
 [tool.pylint.format]
 max-line-length = 100
+
+[tool.mutmut]
+source_paths = ["my_lastfm_player/"]
+pytest_add_cli_args = ["--no-cov", "-q"]
+pytest_add_cli_args_test_selection = ["tests/"]
+# Qt is not fork-safe: never fork workers from a process that already ran the GUI tests.
+process_isolation = "forkserver"
+also_copy = [
+    "README.md",
+    "LICENSE",
+    "setup.py",
+    "localPipeline.sh",
+    "docs/",
+    "documents/",
+    "tools/",
+    "media/",
+    ".github/",
+]

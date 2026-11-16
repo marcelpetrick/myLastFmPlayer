@@ -21,6 +21,8 @@ through `.venv/bin/`.
   `MY_LASTFM_PLAYER_RUN_LASTFM_E2E=1 python -m pytest tests/test_lastfm_e2e.py`
 - Live Last.fm love/unlove test (writes to the connected account):
   `MY_LASTFM_PLAYER_RUN_LASTFM_WRITE_E2E=1 python -m pytest tests/test_lastfm_love_e2e.py`
+- Mutation-testing gate (minutes, not part of the pipeline):
+  `tools/run_mutation_tests.sh`; see `16_MUTATION_TESTING.md`
 - Documentation gate: `python tools/check_docs.py`
 - Sphinx docs:
   `python -m sphinx -W --keep-going -b html docs docs/_build/html`
@@ -132,6 +134,18 @@ environment metadata, and final summary for release artifacts:
 
 After a run, the HTML reports are at `htmlcov/index.html` and
 `docs/_build/html/index.html`.
+
+### Mutation Testing
+
+`tools/run_mutation_tests.sh` runs mutmut over `my_lastfm_player/` and fails unless
+every mutant is detected. It is a separate gate because a full run takes minutes;
+run it when tests or tested logic change. Pass a mutant glob such as
+`"my_lastfm_player.storage*"` to re-check one module, and `--report-only` to
+re-print the last summary. Plan and results are in `16_MUTATION_TESTING.md`.
+
+Connect Qt signals that carry arguments (`clicked`, `triggered`, …) to slots that
+take none through `lambda _checked=False: self.slot()`. mutmut wraps every method
+in a `*args` trampoline, so PyQt can no longer drop the extra argument itself.
 
 ### Opt-in Network Tests
 

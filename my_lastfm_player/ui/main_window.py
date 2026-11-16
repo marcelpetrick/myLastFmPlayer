@@ -324,10 +324,12 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.file_cache_action.triggered.connect(self.file_cache_requested.emit)
 
         self.about_action = QAction(self)
-        self.about_action.triggered.connect(self.show_about_dialog)
+        self.about_action.triggered.connect(lambda _checked=False: self.show_about_dialog())
 
         self.open_source_licenses_action = QAction(self)
-        self.open_source_licenses_action.triggered.connect(self.show_open_source_licenses_dialog)
+        self.open_source_licenses_action.triggered.connect(
+            lambda _checked=False: self.show_open_source_licenses_dialog()
+        )
 
         self.quit_action = QAction(self)
         self.quit_action.setIcon(quit_icon())
@@ -454,7 +456,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.fetch_button.clicked.connect(self.fetch_requested.emit)
         self.fetch_pause_button.clicked.connect(self.fetch_pause_requested.emit)
         self.fetch_stop_button.clicked.connect(self.fetch_stop_requested.emit)
-        self.youtube_work_button.clicked.connect(self._handle_youtube_work_button)
+        self.youtube_work_button.clicked.connect(
+            lambda _checked=False: self._handle_youtube_work_button()
+        )
         self.set_fetch_control_state(active=False, paused=False)
         self.set_youtube_work_state(active=False)
 
@@ -492,7 +496,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.retry_selected_button = QPushButton()
         self.track_filter_input.textChanged.connect(self._set_track_filter_text)
         self.track_filter_reset_button.clicked.connect(self.track_filter_input.clear)
-        self.retry_selected_button.clicked.connect(self._retry_selected_track)
+        self.retry_selected_button.clicked.connect(
+            lambda _checked=False: self._retry_selected_track()
+        )
         self.retry_selected_button.setEnabled(False)
         filter_layout.addWidget(self.track_filter_label)
         filter_layout.addWidget(self.track_filter_input, stretch=1)
@@ -790,7 +796,7 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         }
 
         self.clear_feedback_button = QPushButton()
-        self.clear_feedback_button.clicked.connect(self.clear_feedback_log)
+        self.clear_feedback_button.clicked.connect(lambda _checked=False: self.clear_feedback_log())
 
         self.feedback_log = QPlainTextEdit()
         self.feedback_log.setReadOnly(True)

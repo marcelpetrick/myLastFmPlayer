@@ -145,9 +145,9 @@ class PreferencesDialog(QDialog):  # pylint: disable=too-many-instance-attribute
         layout.addWidget(self.buttons)
 
         # Connections
-        self.authenticate_button.clicked.connect(self._on_authenticate)
-        self.authorize_button.clicked.connect(self._on_authorize)
-        self.disconnect_button.clicked.connect(self._on_disconnect)
+        self.authenticate_button.clicked.connect(lambda _checked=False: self._on_authenticate())
+        self.authorize_button.clicked.connect(lambda _checked=False: self._on_authorize())
+        self.disconnect_button.clicked.connect(lambda _checked=False: self._on_disconnect())
         self.scrobbling_checkbox.stateChanged.connect(self._on_scrobbling_toggled)
         self.browser_combo.currentIndexChanged.connect(self._on_browser_changed)
         self.concurrency_input.valueChanged.connect(self._on_concurrency_changed)
