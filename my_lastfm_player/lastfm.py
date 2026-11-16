@@ -51,7 +51,7 @@ class HttpSession(Protocol):
         self,
         url: str,
         *,
-        params: dict[str, object] | None = None,
+        params: dict[str, str | int] | None = None,
         timeout: int,
     ) -> requests.Response:
         """Fetch ``url`` and return a ``requests``-compatible response."""
@@ -139,7 +139,7 @@ class LastFmLovedTracksApiClient:
         if page < 1:
             raise ValueError("page must be positive")
 
-        params: dict[str, object] = {
+        params: dict[str, str | int] = {
             "method": "user.getLovedTracks",
             "user": username,
             "api_key": self.api_key,
@@ -256,7 +256,7 @@ class LastFmArtistInfoClient:
         return artist_image.image_url
 
     def _fetch_artist_info_payload(self, artist: str) -> object:
-        params: dict[str, object] = {
+        params: dict[str, str | int] = {
             "method": "artist.getInfo",
             "artist": artist,
             "api_key": self.api_key,

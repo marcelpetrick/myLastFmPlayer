@@ -5,12 +5,13 @@ import time
 from collections.abc import Callable
 from threading import Event
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, pyqtSlot
 
 from my_lastfm_player.download import DEFAULT_CONCURRENCY, DownloadManager
 from my_lastfm_player.i18n import translate
 from my_lastfm_player.lastfm import FetchProgress, LastFmArtistInfoClient, LastFmLovedTracksScraper
 from my_lastfm_player.models import Track
+from my_lastfm_player.qt_signal import pyqtSignal
 from my_lastfm_player.storage import JsonTrackRepository
 from my_lastfm_player.youtube import DEFAULT_LOOKUP_CONCURRENCY, YouTubeResolver
 

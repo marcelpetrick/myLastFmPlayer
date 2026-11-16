@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from typing import Any
 
 from PyQt6.QtCore import QObject, QThread
 
@@ -44,9 +45,11 @@ class WorkerThreadPool:
 
         thread = QThread(self._parent)
         worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
+        # run/finished are part of the worker contract above, not of QObject itself.
+        runnable: Any = worker
+        thread.started.connect(runnable.run)
+        runnable.finished.connect(thread.quit)
+        runnable.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
         thread.finished.connect(lambda: self._forget(thread))
         if on_finished is not None:

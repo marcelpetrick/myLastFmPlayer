@@ -428,7 +428,7 @@ def _format_name_to_file_type(value: object) -> str | None:
 
 def _bit_rate_to_kbps(value: object) -> int | None:
     try:
-        bits_per_second = int(value)  # type: ignore[arg-type]
+        bits_per_second = int(value)  # type: ignore[call-overload]
     except (TypeError, ValueError):
         return None
     if bits_per_second <= 0:

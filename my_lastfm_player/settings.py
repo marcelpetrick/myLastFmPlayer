@@ -167,14 +167,14 @@ class AppSettings:  # pylint: disable=too-many-public-methods  # getter/setter p
 
 def _as_int(value: object) -> int:
     try:
-        return int(value)  # type: ignore[arg-type]
+        return int(value)  # type: ignore[call-overload]
     except (TypeError, ValueError):
         return DEFAULT_VOLUME_PERCENT
 
 
 def _clamp_download_concurrency(value: object) -> int:
     try:
-        concurrency = int(value)
+        concurrency = int(value)  # type: ignore[call-overload]
     except (TypeError, ValueError):
         return DEFAULT_DOWNLOAD_CONCURRENCY
     return max(MIN_DOWNLOAD_CONCURRENCY, min(MAX_DOWNLOAD_CONCURRENCY, concurrency))

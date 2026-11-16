@@ -304,9 +304,10 @@ def clamp_volume(volume_percent: int) -> int:
 def linear_volume(volume_percent: int) -> float:
     """Convert a 0-100 slider percentage into a linear audio amplitude."""
 
-    return QAudio.convertVolume(
-        clamp_volume(volume_percent) / MAX_VOLUME_PERCENT,
-        QAudio.VolumeScale.LogarithmicVolumeScale,
+    # PyQt6 stub bug: convertVolume is a static method but typed as an instance one.
+    return QAudio.convertVolume(  # type: ignore[call-arg]
+        clamp_volume(volume_percent) / MAX_VOLUME_PERCENT,  # type: ignore[arg-type]
+        QAudio.VolumeScale.LogarithmicVolumeScale,  # type: ignore[arg-type]
         QAudio.VolumeScale.LinearVolumeScale,
     )
 

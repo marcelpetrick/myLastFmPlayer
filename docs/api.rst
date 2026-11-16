@@ -87,6 +87,12 @@ Scrobbling
 .. automodule:: my_lastfm_player.scrobbling
    :members:
 
+Qt Signal Typing
+----------------
+
+.. automodule:: my_lastfm_player.qt_signal
+   :members:
+
 Settings
 --------
 

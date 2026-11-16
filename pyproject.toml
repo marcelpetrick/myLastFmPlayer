@@ -25,6 +25,7 @@ dev = [
     "pytest-cov==7.1.0",
     "pylint==4.1.4",
     "mutmut==3.8.1",
+    "mypy==2.4.1",
     "ruff==0.17.5",
     "sphinx==9.2.0",
 ]
@@ -99,12 +100,23 @@ disable = [
 [tool.pylint.format]
 max-line-length = 100
 
+[tool.mypy]
+python_version = "3.14"
+files = ["my_lastfm_player"]
+# The PyQt6 stubs mark nearly every Qt getter as Optional (statusBar(), header(), ...)
+# and every event-handler parameter as Optional, which turns idiomatic Qt code into
+# noise. A None that really slips through crashes at runtime and the tests catch it.
+disable_error_code = ["union-attr", "override"]
+
 [tool.mutmut]
 source_paths = ["my_lastfm_player/"]
 pytest_add_cli_args = ["--no-cov", "-q"]
 pytest_add_cli_args_test_selection = ["tests/"]
 # Qt is not fork-safe: never fork workers from a process that already ran the GUI tests.
 process_isolation = "forkserver"
+# mypy is a pipeline gate, so a mutant that breaks the declared types (e.g. a bool
+# flag set to None, a required argument dropped) is caught before any test runs.
+type_check_command = ["mypy", "--output", "json"]
 # Log calls are diagnostics, not behaviour (PIT skips logging calls by default too).
 # A pattern skips the whole call expression that starts on the matching line.
 do_not_mutate_patterns = [

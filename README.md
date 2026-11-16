@@ -5,7 +5,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/marcelpetrick/myLastFmPlayer?sort=semver)](https://github.com/marcelpetrick/myLastFmPlayer/releases/latest)
 [![License: GPL v3 or later](https://img.shields.io/badge/license-GPLv3%20or%20later-blue.svg)](LICENSE)
 [![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-3776ab.svg)](https://www.python.org/)
-[![PyQt 6.11.0](https://img.shields.io/badge/PyQt-6.11.0-41cd52.svg)](https://www.riverbankcomputing.com/software/pyqt/)
+[![PyQt 6.12.1](https://img.shields.io/badge/PyQt-6.12.1-41cd52.svg)](https://www.riverbankcomputing.com/software/pyqt/)
 [![Coverage: 99%](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)](pyproject.toml)
 
 `myLastFmPlayer` is a fully functional, actively maintained Linux desktop product that
@@ -19,9 +19,17 @@ plays them locally from one PyQt6 interface.
 
 **Note: project is generated with AI.**
 
+## Interface
+
+[![myLastFmPlayer video preview](media/myLastFmPlayer_v0.0.127_recording_preview.gif)](media/myLastFmPlayer_v0.0.127_recording.webm)
+
+Click the preview to open the full recording.
+
+![myLastFmPlayer main window](media/currentState.png)
+
 ## Product Status
 
-Current version: `0.0.207` — fully functional and actively maintained
+Current version: `0.0.208` — fully functional and actively maintained
 
 **New in 0.0.196:** right-click a track and choose **Unlove on Last.fm…** to remove
 duplicate loves from your Last.fm account, after an explicit confirmation — see
@@ -65,14 +73,6 @@ For detailed technical information, see the
 - Supports keyboard-first operation with filter, playback, preferences, quit, seeking,
   retry, and artist-link access plus explicit accessible control names and label buddies.
 
-## Interface
-
-[![myLastFmPlayer video preview](media/myLastFmPlayer_v0.0.127_recording_preview.gif)](media/myLastFmPlayer_v0.0.127_recording.webm)
-
-Click the preview to open the full recording.
-
-![myLastFmPlayer main window](media/currentState.png)
-
 ## Versioning
 
 The version is `MAJOR.MINOR.PATCH` without leading zero padding; the first release
@@ -110,7 +110,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.207-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.208-py3-none-any.whl
 my-lastfm-player
 ```
 

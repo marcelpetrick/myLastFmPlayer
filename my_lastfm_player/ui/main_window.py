@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from html import escape
 from math import ceil
 
-from PyQt6.QtCore import QEvent, QPoint, QSize, QSortFilterProxyModel, Qt, QTime, pyqtSignal
+from PyQt6.QtCore import QEvent, QPoint, QSize, QSortFilterProxyModel, Qt, QTime
 from PyQt6.QtGui import (
     QAction,
     QActionGroup,
@@ -54,6 +54,7 @@ from my_lastfm_player import __display_version__
 from my_lastfm_player.i18n import DEFAULT_LANGUAGE_CODE, SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.playback import MAX_VOLUME_PERCENT, MIN_VOLUME_PERCENT
+from my_lastfm_player.qt_signal import pyqtSignal
 from my_lastfm_player.ui.flags import flag_icon
 from my_lastfm_player.ui.icons import (
     folder_icon,
@@ -701,7 +702,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self.playback_slider.setPageStep(PLAYBACK_SEEK_PAGE_MS)
         self.playback_slider.setEnabled(False)
         self.playback_slider.setMinimumWidth(280)
-        self.playback_slider.installEventFilter(self)
+        # PyQt6 stub bug: the filter parameter is typed as Self instead of QObject.
+        self.playback_slider.installEventFilter(self)  # type: ignore[arg-type]
         self.playback_slider.sliderReleased.connect(self._emit_timeline_seek)
         self.playback_slider.actionTriggered.connect(self._emit_timeline_action_seek)
         self.playback_slider.valueChanged.connect(self._update_current_time_label)
@@ -1027,7 +1029,9 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
                 if choice is None:
                     return source_index.row(), track
                 candidates.append((source_index.row(), track))
-        return choice(candidates) if candidates else None
+        if choice is None or not candidates:
+            return None
+        return choice(candidates)
 
     def randomize_playback(self) -> bool:
         """Return whether automatic playback should continue with random tracks."""
@@ -1402,7 +1406,8 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             self.set_playback_timeline(value, self._playback_duration_ms)
             self.seek_requested.emit(value)
             return True
-        return super().eventFilter(watched, event)
+        # PyQt6 stub bug: the watched parameter is typed as Self instead of QObject.
+        return super().eventFilter(watched, event)  # type: ignore[arg-type]
 
     def _timeline_value_for_x_position(self, x_position: int) -> int:
         slider_width = max(1, self.playback_slider.width())

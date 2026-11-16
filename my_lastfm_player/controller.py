@@ -6,6 +6,7 @@ import random
 import time
 from collections.abc import Callable
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QProcess, QUrl
@@ -81,7 +82,8 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         artist_image_worker_factory: ArtistImageWorkerFactory = ArtistImageWorker,
         artist_images_enabled: bool = True,
     ) -> None:
-        super().__init__(window)
+        # PyQt6 stub bug: the parent parameter is typed as Self instead of QObject.
+        super().__init__(window)  # type: ignore[arg-type]
         self.window = window
         self.repository = repository or JsonTrackRepository()
         self.scraper = scraper or LastFmLovedTracksScraper()
@@ -1094,16 +1096,14 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
         self._active_workers.append(worker)
         if isinstance(worker, (LookupTracksWorker, DownloadTracksWorker)):
             self.window.set_youtube_work_state(active=True)
-        self._threads.start(worker, lambda worker=worker: self._forget_worker(worker))
+        self._threads.start(worker, partial(self._forget_worker, worker))
 
     def _run_artist_image_worker(self, worker: ArtistImageWorker) -> None:
         worker.artist_image_loaded.connect(self._handle_artist_image_loaded)
         worker.error.connect(self._handle_artist_image_error)
         self._active_artist_image_workers.append(worker)
         LOGGER.info("Starting artist image worker for %s", worker.artist)
-        self._threads.start(
-            worker, lambda worker=worker: self._forget_artist_image_worker(worker)
-        )
+        self._threads.start(worker, partial(self._forget_artist_image_worker, worker))
 
     def _submit_background_call(
         self,
@@ -2013,7 +2013,10 @@ class ApplicationController(QObject):  # pylint: disable=too-many-instance-attri
             self._fetch_paused = False
         if worker in self._active_workers:
             self._active_workers.remove(worker)
-        username = getattr(worker, "username", None)
+        username: str | None = getattr(worker, "username", None)
+        if username is None:
+            LOGGER.info("Worker released; active_workers=%d", len(self._active_workers))
+            return
         if (
             username == self._workflow_username
             and worker_generation == self._workflow_generation
