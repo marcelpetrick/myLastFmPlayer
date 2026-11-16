@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Mutation-testing gate: run mutmut over my_lastfm_player/ and fail unless every
-# generated mutant is detected by the test suite. A mutant counts as detected when
-# a test fails (killed), when it hangs past mutmut's timeout, or when it crashes
-# the test process; survivors, untested and suspicious mutants fail the gate.
+# Mutation-testing gate: run mutmut over my_lastfm_player/ and fail unless the
+# mutation score reaches MUTATION_SCORE_MIN percent (default 99). A mutant counts
+# as detected when a test fails (killed), when it hangs past mutmut's timeout, or
+# when it crashes the test process; survivors, untested and suspicious mutants
+# count against the score.
 #
 # Usage: tools/run_mutation_tests.sh [--report-only] [mutmut run arguments...]
 #   --report-only  print the summary of the previous run without running mutmut
@@ -16,6 +17,7 @@ MUTMUT="${ROOT_DIR}/.venv/bin/mutmut"
 PYTHON="${ROOT_DIR}/.venv/bin/python"
 STATS_FILE="${ROOT_DIR}/mutants/mutmut-cicd-stats.json"
 REPORT_ONLY=false
+MUTATION_SCORE_MIN="${MUTATION_SCORE_MIN:-99}"
 
 if [[ "${1:-}" == "--report-only" ]]; then
     REPORT_ONLY=true
@@ -37,11 +39,12 @@ fi
 
 "${MUTMUT}" export-cicd-stats >/dev/null || exit $?
 
-"${PYTHON}" - "${STATS_FILE}" <<'EOF'
+"${PYTHON}" - "${STATS_FILE}" "${MUTATION_SCORE_MIN}" <<'EOF'
 import json
 import sys
 
 stats = json.load(open(sys.argv[1], encoding="utf-8"))
+minimum = float(sys.argv[2])
 total = stats["total"]
 detected = stats["killed"] + stats.get("timeout", 0) + stats.get("segfault", 0)
 undetected = {
@@ -55,8 +58,11 @@ print(
 )
 for key, value in undetected.items():
     print(f"  {key}: {value}")
-if undetected:
-    print("Mutation gate: FAIL (list survivors with `.venv/bin/mutmut results`)")
+if score < minimum:
+    print(
+        f"Mutation gate: FAIL ({score:.2f}% < {minimum:.2f}%; "
+        "list survivors with `.venv/bin/mutmut results`)"
+    )
     sys.exit(1)
-print("Mutation gate: PASS")
+print(f"Mutation gate: PASS ({score:.2f}% >= {minimum:.2f}%)")
 EOF

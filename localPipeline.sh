@@ -8,6 +8,7 @@ PYTHON="${VENV_DIR}/bin/python"
 APP="${VENV_DIR}/bin/my-lastfm-player"
 RUN_APP=true
 OPEN_REPORTS=true
+RUN_MUTATION=false
 REPORT_DIR=""
 PIPELINE_LOG_DIR=""
 REMOVE_PIPELINE_LOG_DIR=true
@@ -42,7 +43,7 @@ TRANSLATION_DETAILS=""
 
 print_usage() {
     cat <<EOF
-Usage: ./localPipeline.sh [--noRun] [--noOpen] [--report-dir PATH]
+Usage: ./localPipeline.sh [--noRun] [--noOpen] [--mutation] [--report-dir PATH]
 
 Local project pipeline:
   1. Create or reuse .venv
@@ -61,7 +62,9 @@ Local project pipeline:
   14. Launch the installed application once by default
       Use --noRun to suppress application launch
       Use --noOpen to suppress opening the HTML reports (for automated runs)
-  15. Print a final stage-by-stage summary with useful stage details
+  15. With --mutation, run the mutation-testing gate (tools/run_mutation_tests.sh,
+      minimum score MUTATION_SCORE_MIN, default 99%); takes several minutes
+  16. Print a final stage-by-stage summary with useful stage details
 
 Generated HTML reports are opened with MY_LASTFM_PLAYER_REPORT_BROWSER when set,
 then firefox, then xdg-open, then open.
@@ -244,6 +247,10 @@ parse_arguments() {
                 ;;
             --noOpen)
                 OPEN_REPORTS=false
+                shift
+                ;;
+            --mutation)
+                RUN_MUTATION=true
                 shift
                 ;;
             --report-dir)
@@ -695,6 +702,21 @@ main() {
 
     if [[ "${VENV_OK}" -eq 1 && "${INSTALL_OK}" -eq 1 && "${LINT_OK}" -eq 1 && "${PYLINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 && "${CLEAN_OK}" -eq 1 && "${BUILD_OK}" -eq 1 && "${WHEEL_OK}" -eq 1 && "${PACKAGE_INSTALL_OK}" -eq 1 && "${IMPORT_OK}" -eq 1 ]]; then
         exit_code=0
+    fi
+
+    if [[ "${RUN_MUTATION}" == false ]]; then
+        mark_result "Mutation" "SKIP" "Opt-in: pass --mutation"
+    elif [[ "${TESTS_OK}" -ne 1 ]]; then
+        mark_result "Mutation" "SKIP" "Skipped because tests failed"
+    else
+        local mutation_log="${PIPELINE_LOG_DIR}/mutation.log"
+        log "Running the mutation-testing gate."
+        if run_with_log "${mutation_log}" "${ROOT_DIR}/tools/run_mutation_tests.sh"; then
+            mark_result "Mutation" "PASS" "$(grep -E '^Mutation score:' "${mutation_log}" | tail -n 1)"
+        else
+            mark_result "Mutation" "FAIL" "$(grep -E '^Mutation (score|gate):' "${mutation_log}" | tr '\n' ' ')"
+            exit_code=1
+        fi
     fi
 
     if [[ "${IMPORT_OK}" -eq 1 ]]; then

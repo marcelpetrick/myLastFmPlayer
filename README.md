@@ -21,7 +21,7 @@ plays them locally from one PyQt6 interface.
 
 ## Product Status
 
-Current version: `0.0.203` — fully functional and actively maintained
+Current version: `0.0.204` — fully functional and actively maintained
 
 **New in 0.0.196:** right-click a track and choose **Unlove on Last.fm…** to remove
 duplicate loves from your Last.fm account, after an explicit confirmation — see
@@ -110,7 +110,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.203-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.204-py3-none-any.whl
 my-lastfm-player
 ```
 
@@ -298,12 +298,14 @@ successful source and wheel builds, installation of the newly built wheel, and a
 import/version check. Omit `--noRun` to also launch the installed application once;
 add `--noOpen` to keep the Sphinx and coverage reports from opening in a browser.
 
-Mutation testing checks that the tests do more than execute the code: mutmut
-makes small faults in the source and expects a test to fail for every one. Run
-the separate gate with:
+Quality targets are **at least 99% line+branch coverage** and **at least 99%
+mutation score**. Mutation testing checks that the tests do more than execute the
+code: mutmut makes small faults in the source and expects a test to fail for each.
+Run the gate on its own or as an opt-in pipeline stage:
 
 ```sh
 tools/run_mutation_tests.sh
+./localPipeline.sh --noRun --noOpen --mutation
 ```
 
 See [`documents/16_MUTATION_TESTING.md`](documents/16_MUTATION_TESTING.md) for the

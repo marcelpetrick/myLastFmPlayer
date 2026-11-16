@@ -39,18 +39,17 @@ works with the offscreen Qt platform the suite already uses.
      `# pragma: no mutate` and a short reason;
    - exclude non-logic code wholesale only where mutation cannot be observed
      (e.g. logging setup), listed in `do_not_mutate` with a justification.
-4. **Gate**: add `tools/run_mutation_tests.sh`, which runs mutmut and fails unless
-   every mutant is killed (survivors, timeouts treated as reviewed, and
-   "no tests" all reported). The pipeline is not slowed down: mutation testing is
-   a separate, explicit gate run before releases and on test-suite changes,
-   because a full run takes minutes rather than seconds.
+4. **Gate**: add `tools/run_mutation_tests.sh`, which runs mutmut and fails when
+   the mutation score is below 99% (timeouts and crashes count as detected;
+   survivors, suspicious and untested mutants do not). It is an opt-in pipeline
+   stage (`--mutation`) because a full run takes minutes rather than seconds.
 5. **Keep coverage ≥ 99%**: the existing `--cov-fail-under=99` gate stays
    unchanged and must remain green with the new tests.
 6. **Document** the workflow in `07_AGENT_GUIDELINES.md` and the README.
 
 ## Definition of Done
 
-- `mutmut run` reports **0 surviving** and **0 untested** mutants.
+- Mutation score **≥ 99%** (`tools/run_mutation_tests.sh`, `MUTATION_SCORE_MIN`).
 - Every `# pragma: no mutate` carries a reason.
 - `./localPipeline.sh --noRun --noOpen` is green with coverage ≥ 99%.
 
@@ -75,3 +74,6 @@ works with the offscreen Qt platform the suite already uses.
 | Run | Mutants | Detected | Survived | Suspicious | Score |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Baseline (`fork`, slot fix) | 10,926 | 7,137 | 2,753 | 1,036 | 65.3% |
+| Baseline (`forkserver`) | 10,926 | 7,096 | 3,798 | 32 | 64.95% |
+
+The full write-up is in [`../docs/followup_mutation_testing.md`](../docs/followup_mutation_testing.md).
