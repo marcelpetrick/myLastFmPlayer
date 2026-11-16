@@ -29,3 +29,11 @@ def test_dependency_check_reports_success_message() -> None:
 
     assert result.is_ok
     assert result.user_message() == "🟢 Dependencies installed: ffmpeg"
+
+
+def test_user_messages_list_every_tool_separated_by_comma(qapp) -> None:
+    ok = DependencyCheckResult(installed=("yt-dlp", "ffmpeg"), missing=())
+    missing = DependencyCheckResult(installed=("yt-dlp",), missing=("ffmpeg", "ffprobe"))
+
+    assert ok.user_message() == "🟢 Dependencies installed: yt-dlp, ffmpeg"
+    assert missing.user_message() == "🔴 Missing dependencies: ffmpeg, ffprobe"

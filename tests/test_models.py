@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from my_lastfm_player.models import (
+    MAX_FILENAME_LENGTH,
     Track,
     TrackStatus,
     build_audio_base_name,
@@ -395,3 +396,85 @@ def test_new_attempt_counts_win_over_a_legacy_retry_count() -> None:
     )
 
     assert (track.lookup_attempts, track.download_attempts) == (1, 2)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"artist": ""}, "Track artist must not be empty"),
+        ({"title": ""}, "Track title must not be empty"),
+        ({"lookup_attempts": -1}, "Track lookup_attempts must not be negative"),
+        ({"download_attempts": -1}, "Track download_attempts must not be negative"),
+        ({"bitrate_kbps": -1}, "Track bitrate_kbps must not be negative"),
+    ],
+)
+def test_track_constructor_error_messages_are_exact(kwargs: dict, message: str) -> None:
+    values = {"artist": "Artist", "title": "Title", **kwargs}
+
+    with pytest.raises(ValueError, match=f"^{message}$"):
+        Track(**values)
+
+
+def test_track_accepts_a_zero_bitrate() -> None:
+    assert Track("Artist", "Title", bitrate_kbps=0).bitrate_kbps == 0
+
+
+@pytest.mark.parametrize("value", [5, True, ["Artist"]])
+def test_track_from_dict_rejects_truthy_non_string_artist(value: object) -> None:
+    with pytest.raises(ValueError, match="^Track field 'artist' must be a non-empty string$"):
+        Track.from_dict({"artist": value, "title": "Title"})
+
+
+def test_merge_preserving_takes_every_new_optional_value_when_set() -> None:
+    old = Track(
+        "Artist",
+        "Title",
+        lastfm_url="https://old",
+        error="old error",
+        file_type="webm",
+        bitrate_kbps=128,
+    )
+    new = Track(
+        "Artist",
+        "Title",
+        lastfm_url="https://new",
+        error="new error",
+        file_type="opus",
+        bitrate_kbps=160,
+    )
+
+    merged = Track.merge_preserving(old, new)
+
+    assert merged.lastfm_url == "https://new"
+    assert merged.error == "new error"
+    assert merged.file_type == "opus"
+    assert merged.bitrate_kbps == 160
+
+
+def test_merge_preserving_keeps_old_lastfm_url_when_new_has_none() -> None:
+    old = Track("Artist", "Title", lastfm_url="https://old")
+
+    assert Track.merge_preserving(old, Track("Artist", "Title")).lastfm_url == "https://old"
+
+
+def test_audio_base_name_keeps_exactly_the_maximum_length() -> None:
+    max_base = MAX_FILENAME_LENGTH - 5
+    artist = "A" * (max_base - len(" - T"))
+
+    assert build_audio_base_name(artist, "T") == f"{artist} - T"
+    assert len(build_audio_base_name(artist, "TT")) == max_base
+
+
+def test_audio_base_name_trims_trailing_space_left_by_truncation() -> None:
+    max_base = MAX_FILENAME_LENGTH - 5
+    artist = "A" * (max_base - 2)
+
+    # A cut right after " -" keeps the dash; a cut right after the artist leaves a
+    # trailing space, which must be stripped from the end (not the start).
+    assert build_audio_base_name(artist, "Title") == f"{artist} -"
+    assert build_audio_base_name("A" * (max_base - 1), "Title") == "A" * (max_base - 1)
+
+
+def test_filename_sanitizer_strips_only_spaces_and_dots_at_the_ends() -> None:
+    assert sanitize_filename_part(" .X-Ray. ") == "X-Ray"
+    assert sanitize_filename_part("XX") == "XX"

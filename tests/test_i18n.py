@@ -70,8 +70,11 @@ def test_translation_manager_installs_removes_and_handles_load_failure(monkeypat
 
 
 def test_translate_formats_named_values(qapp) -> None:
-    assert translate("Tests", "Hello {name}", name="World") == "Hello World"
-    assert translate("Tests", "Plain text") == "Plain text"
+    assert (
+        translate("ApplicationController", "Dependency check finished: {message}", message="ok")
+        == "Dependency check finished: ok"
+    )
+    assert translate("ApplicationController", "Failed") == "Failed"
 
 
 def test_translate_falls_back_to_source_on_bad_placeholder(monkeypatch, qapp) -> None:
@@ -110,3 +113,33 @@ def test_translation_catalogs_are_complete_and_keep_placeholders() -> None:
             assert set(placeholder_pattern.findall(translation_text)) == set(
                 placeholder_pattern.findall(source_text)
             ), f"{catalog.name} changes placeholders for: {source_text}"
+
+
+def test_catalog_checking_translator_flags_unknown_application_strings(qapp) -> None:
+    translator = qapp.catalog_translator
+    translator.violations.clear()
+
+    assert translate("ApplicationController", "Not in the catalog") == "Not in the catalog"
+    assert translate("NoSuchContext", "Failed") == "Failed"
+    assert translate("QPlatformTheme", "Anything from Qt itself") == "Anything from Qt itself"
+
+    assert translator.violations == [
+        ("ApplicationController", "Not in the catalog"),
+        ("NoSuchContext", "Failed"),
+    ]
+    translator.violations.clear()
+
+
+def test_translation_manager_with_a_real_app_owns_and_releases_its_translator(qapp) -> None:
+    manager = TranslationManager(qapp)
+
+    assert manager.set_language("de")
+    translator = manager._translator
+    assert translator is not None
+    assert translator.parent() is qapp
+
+    assert manager.set_language("en")
+    assert manager._translator is None
+    assert manager.set_language("de")
+    assert manager.set_language("en")
+    assert manager._translator is None

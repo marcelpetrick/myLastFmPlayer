@@ -105,6 +105,12 @@ pytest_add_cli_args = ["--no-cov", "-q"]
 pytest_add_cli_args_test_selection = ["tests/"]
 # Qt is not fork-safe: never fork workers from a process that already ran the GUI tests.
 process_isolation = "forkserver"
+# Log calls are diagnostics, not behaviour (PIT skips logging calls by default too).
+# A pattern skips the whole call expression that starts on the matching line.
+do_not_mutate_patterns = [
+    '\bLOGGER\.(debug|info|warning|error|exception|critical)\(',
+    '\b_log_(info|warning)\(',
+]
 also_copy = [
     "README.md",
     "LICENSE",

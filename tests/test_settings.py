@@ -208,3 +208,67 @@ def test_settings_ignore_empty_window_geometry(tmp_path: Path) -> None:
     settings.set_window_geometry(QByteArray())
 
     assert settings.window_geometry() is None
+
+
+def test_settings_defaults_on_an_empty_store(tmp_path: Path) -> None:
+    settings = AppSettings(_ini_settings(tmp_path / "settings.ini"))
+
+    assert settings.theme_mode() is ThemeMode.LIGHT
+    assert settings.language_code() == "en"
+    assert settings.scrobbling_enabled() is True
+    assert settings.scrobbling_enabled(default_enabled=False) is False
+    assert settings.ytdlp_cookies_browser() == ""
+    assert settings.download_concurrency() == DEFAULT_DOWNLOAD_CONCURRENCY
+    assert settings.keep_data_on_quit() is True
+    assert settings.randomize_playback() is False
+    assert settings.volume_percent() == DEFAULT_VOLUME_PERCENT
+    assert settings.muted() is False
+    assert settings.last_username() == ""
+    assert settings.window_geometry() is None
+
+
+def test_boolean_settings_round_trip_both_values_through_the_file(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    pairs = [
+        ("scrobbling_enabled", "set_scrobbling_enabled"),
+        ("keep_data_on_quit", "set_keep_data_on_quit"),
+        ("randomize_playback", "set_randomize_playback"),
+        ("muted", "set_muted"),
+    ]
+    for value in (False, True, False):
+        writer = AppSettings(_ini_settings(path))
+        for _getter, setter in pairs:
+            getattr(writer, setter)(value)
+        writer._settings.sync()
+
+        reloaded = AppSettings(_ini_settings(path))
+        for getter, _setter in pairs:
+            assert getattr(reloaded, getter)() is value, getter
+
+
+def test_string_settings_round_trip_through_the_file(tmp_path: Path) -> None:
+    path = tmp_path / "settings.ini"
+    writer = AppSettings(_ini_settings(path))
+    writer.set_theme_mode(ThemeMode.MINT)
+    writer.set_language_code("zh")
+    writer.set_ytdlp_cookies_browser("brave")
+    writer.set_last_username("  alice  ")
+    writer._settings.sync()
+
+    reloaded = AppSettings(_ini_settings(path))
+    assert reloaded.theme_mode() is ThemeMode.MINT
+    assert reloaded.language_code() == "zh"
+    assert reloaded.ytdlp_cookies_browser() == "brave"
+    assert reloaded.last_username() == "alice"
+
+
+def test_unknown_cookie_browser_is_stored_and_read_as_empty(tmp_path: Path) -> None:
+    raw = _ini_settings(tmp_path / "settings.ini")
+    settings = AppSettings(raw)
+
+    settings.set_ytdlp_cookies_browser("firefox")
+    settings.set_ytdlp_cookies_browser("netscape")
+    assert raw.value("download/cookiesbrowser") == ""
+
+    raw.setValue("download/cookiesbrowser", "netscape")
+    assert settings.ytdlp_cookies_browser() == ""

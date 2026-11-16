@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import QSizePolicy, QStyle, QStyleOptionSlider
 
 from my_lastfm_player import __display_version__, __version__
 from my_lastfm_player import main as main_module
+from my_lastfm_player import version as version_module
 from my_lastfm_player.i18n import SUPPORTED_LANGUAGES, TranslationManager
 from my_lastfm_player.models import Track, TrackStatus
 from my_lastfm_player.settings import AppSettings
@@ -62,8 +63,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.204"
-    assert __display_version__ == "0.0.204"
+    assert __version__ == "0.0.205"
+    assert __display_version__ == "0.0.205"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -1676,3 +1677,129 @@ def test_main_window_close_event_accepts_and_requests_quit(qapp) -> None:
 
     assert quits == [True]
     assert event.accepted
+
+
+def test_main_wires_application_identity_and_collaborators(monkeypatch) -> None:
+    """Pin what main() hands to each collaborator, not only that it calls them."""
+
+    calls: dict[str, list] = {
+        "app": [], "translation": [], "language": [], "theme": [], "window": [],
+        "controller": [], "saved_theme": [], "saved_language": [],
+    }
+
+    class Signal:
+        def __init__(self) -> None:
+            self.slots: list = []
+
+        def connect(self, slot) -> None:
+            self.slots.append(slot)
+
+        def emit(self, *args) -> None:
+            for slot in self.slots:
+                slot(*args)
+
+    class App:
+        def __init__(self, argv) -> None:
+            calls["app"].append(("argv", argv))
+
+        def setApplicationName(self, name) -> None:  # noqa: N802
+            calls["app"].append(("name", name))
+
+        def setOrganizationName(self, name) -> None:  # noqa: N802
+            calls["app"].append(("organization", name))
+
+        def exec(self) -> int:
+            return 3
+
+    class Translation:
+        def __init__(self, app) -> None:
+            calls["translation"].append(app)
+            self.current_language = "hr"
+
+        def set_language(self, code) -> bool:
+            calls["language"].append(code)
+            return True
+
+    class Window:
+        def __init__(self, **kwargs) -> None:
+            calls["window"].append(kwargs)
+            self.theme_requested = Signal()
+            self.language_changed = Signal()
+            self.quit_requested = Signal()
+
+        def __getattr__(self, _name):
+            return lambda *_args, **_kwargs: None
+
+    class Controller:
+        def __init__(self, window) -> None:
+            calls["controller"].append(window)
+
+        def start(self) -> None:
+            return None
+
+    class Settings:
+        def language_code(self) -> str:
+            return "uk"
+
+        def theme_mode(self) -> ThemeMode:
+            return ThemeMode.DARK
+
+        def set_theme_mode(self, mode) -> None:
+            calls["saved_theme"].append(mode)
+
+        def set_language_code(self, code) -> None:
+            calls["saved_language"].append(code)
+
+        def __getattr__(self, _name):
+            return lambda *_args, **_kwargs: None
+
+    windows: list[Window] = []
+    monkeypatch.setattr(main_module, "QApplication", App)
+    monkeypatch.setattr(main_module, "TranslationManager", Translation)
+    monkeypatch.setattr(
+        main_module, "MainWindow", lambda **kwargs: windows.append(Window(**kwargs)) or windows[-1]
+    )
+    monkeypatch.setattr(main_module, "ApplicationController", Controller)
+    monkeypatch.setattr(main_module, "AppSettings", Settings)
+    monkeypatch.setattr(
+        main_module, "apply_theme", lambda app, mode: calls["theme"].append((app, mode))
+    )
+    monkeypatch.setattr(main_module.sys, "argv", ["my-lastfm-player", "--flag"])
+
+    assert main_module.main() == 3
+
+    (window,) = windows
+    assert calls["app"] == [
+        ("argv", ["my-lastfm-player", "--flag"]),
+        ("name", "myLastFmPlayer"),
+        ("organization", "Marcel Petrick"),
+    ]
+    (app,) = calls["translation"]
+    assert isinstance(app, App)
+    assert calls["language"] == ["uk"]
+    assert calls["theme"] == [(app, ThemeMode.DARK)]
+    assert len(calls["window"]) == 1
+    assert isinstance(calls["window"][0]["translation_manager"], Translation)
+    assert calls["controller"] == [window]
+
+    window.theme_requested.emit("lilac")
+    window.language_changed.emit()
+
+    assert calls["theme"][-1] == (app, ThemeMode.LILAC)
+    assert calls["saved_theme"] == [ThemeMode.LILAC]
+    assert calls["saved_language"] == ["hr"]
+
+
+def test_build_commit_is_empty_without_build_info(monkeypatch) -> None:
+    def missing(_name: str):
+        raise ModuleNotFoundError("my_lastfm_player._build_info")
+
+    monkeypatch.setattr("my_lastfm_player.version.import_module", missing)
+
+    assert version_module.build_commit() == ""
+
+
+def test_build_commit_is_empty_when_build_info_has_no_commit(monkeypatch) -> None:
+    monkeypatch.setitem(sys.modules, "my_lastfm_player._build_info", types.SimpleNamespace())
+
+    assert version_module.build_commit() == ""

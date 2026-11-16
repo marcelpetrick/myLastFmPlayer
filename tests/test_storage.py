@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import threading
 from pathlib import Path
 from unittest import mock
@@ -667,3 +668,167 @@ def test_delete_tracks_is_safe_when_nothing_was_stored(tmp_path) -> None:
 
     assert not repository.user_tracks_path("unknown-user").exists()
     assert not repository.user_updates_path("unknown-user").exists()
+
+
+# --- Mutation-testing hardening: pin exact on-disk format and edge behaviour. ---
+
+
+def test_writes_create_missing_parent_directories(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path / "a" / "b" / "c")
+
+    repository.append_track_update("alice", Track("Artist", "Title"))
+    repository.save_credentials({"session_key": "k"})
+
+    assert repository.user_updates_path("alice").is_file()
+    assert repository.credentials_path.is_file()
+
+
+def test_json_files_keep_unicode_readable_and_are_indented(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+
+    repository.save_tracks("alice", [Track("Björk", "Jóga")])
+    repository.append_track_update("bob", Track("Sigur Rós", "Hoppípolla"))
+
+    saved = repository.user_tracks_path("alice").read_bytes().decode("utf-8")
+    assert saved.startswith('[\n  {\n    "artist": "Björk",\n')
+    assert saved.endswith("}\n]\n")
+    journal = repository.user_updates_path("bob").read_bytes().decode("utf-8")
+    assert journal.startswith('{"artist": "Sigur Rós", "title": "Hoppípolla"')
+    assert journal.endswith("}\n")
+
+
+def test_atomic_write_uses_a_hidden_temp_file_next_to_the_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[dict] = []
+    real_mkstemp = tempfile.mkstemp
+
+    def spy_mkstemp(**kwargs):
+        calls.append(kwargs)
+        return real_mkstemp(**kwargs)
+
+    monkeypatch.setattr("my_lastfm_player.storage.tempfile.mkstemp", spy_mkstemp)
+    target = tmp_path / "data.json"
+
+    _atomic_write_json(target, {"key": "value"})
+
+    assert calls == [{"prefix": ".data.json.", "suffix": ".tmp", "dir": tmp_path}]
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["data.json"]
+
+
+def test_invalid_journal_lines_are_skipped_and_logged_with_their_line_number(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.append_track_update("alice", Track("Artist", "Valid"))
+    with repository.user_updates_path("alice").open("a", encoding="utf-8") as handle:
+        handle.write("[1, 2]\n")
+
+    with caplog.at_level("WARNING", logger="my_lastfm_player.storage"):
+        tracks = repository.load_tracks("alice")
+
+    assert [track.title for track in tracks] == ["Valid"]
+    assert caplog.messages == [
+        f"Ignoring invalid track update {repository.user_updates_path('alice')}:2: "
+        "track update must be a JSON object"
+    ]
+
+
+def test_clear_not_found_lookups_rewrites_the_rest_sorted_by_cache_key(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    entries = [
+        Track("Zed", "Song", youtube_url="https://youtu.be/z"),
+        Track("Gone", "Song", status=TrackStatus.NOT_FOUND),
+        Track("Abba", "Song", youtube_url="https://youtu.be/a"),
+    ]
+    repository.lookup_cache_path.write_text(
+        json.dumps([track.to_dict() for track in entries]), encoding="utf-8"
+    )
+
+    assert repository.clear_not_found_lookups() == 1
+
+    stored = json.loads(repository.lookup_cache_path.read_text(encoding="utf-8"))
+    assert [item["artist"] for item in stored] == ["Abba", "Zed"]
+
+
+def test_mark_cached_lookups_handles_every_track_after_a_cache_miss(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_lookup_cache(
+        [
+            Track("Hit", "Song", youtube_url="https://youtu.be/hit"),
+            Track("Missing", "Song", status=TrackStatus.NOT_FOUND, lookup_attempts=3,
+                  error="no match"),
+        ]
+    )
+
+    marked = repository.mark_cached_lookups(
+        [
+            Track("Unknown", "Song"),
+            Track("Hit", "Song", error="old error"),
+            Track("Hit", "Song", status=TrackStatus.DOWNLOADED, local_path=None),
+            Track("Missing", "Song", youtube_url="https://stale", lookup_attempts=1),
+        ]
+    )
+
+    assert marked[0] == Track("Unknown", "Song")
+    assert marked[1].youtube_url == "https://youtu.be/hit"
+    assert marked[1].status is TrackStatus.QUEUED
+    assert marked[1].error is None
+    assert marked[2].status is TrackStatus.DOWNLOADED
+    assert marked[3].youtube_url is None
+    assert marked[3].status is TrackStatus.NOT_FOUND
+    assert marked[3].lookup_attempts == 3
+    assert marked[3].error == "no match"
+
+
+def test_mark_cached_downloads_clears_a_stale_error(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    audio = tmp_path / "song.opus"
+    audio.write_bytes(b"audio")
+    repository.save_download_cache(
+        [Track("Artist", "Song", local_path=str(audio), status=TrackStatus.DOWNLOADED)]
+    )
+
+    (marked,) = repository.mark_cached_downloads(
+        [Track("Artist", "Song", status=TrackStatus.FAILED, error="timeout")]
+    )
+
+    assert marked.status is TrackStatus.DOWNLOADED
+    assert marked.local_path == str(audio)
+    assert marked.error is None
+
+
+def test_downloaded_track_without_a_file_goes_back_to_the_right_state(tmp_path: Path) -> None:
+    repository = JsonTrackRepository(data_dir=tmp_path)
+    repository.save_tracks(
+        "alice",
+        [
+            Track("No", "Url", status=TrackStatus.DOWNLOADED, local_path=str(tmp_path / "x"),
+                  error="e", file_type="opus", bitrate_kbps=160),
+            Track("Has", "Url", status=TrackStatus.DOWNLOADED, youtube_url="https://y",
+                  local_path=str(tmp_path / "y"), error="e"),
+        ],
+    )
+
+    no_url, has_url = repository.load_tracks("alice")
+
+    assert (no_url.status, no_url.local_path, no_url.error) == (TrackStatus.FETCHED, None, None)
+    assert (no_url.file_type, no_url.bitrate_kbps) == (None, None)
+    assert (has_url.status, has_url.error) == (TrackStatus.QUEUED, None)
+
+
+def test_default_data_dir_without_xdg_uses_local_share(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    assert default_data_dir() == tmp_path / ".local" / "share" / "myLastFmPlayer"
+
+
+def test_sanitize_path_component_keeps_safe_characters_and_trims_edges() -> None:
+    assert sanitize_path_component("X.a-b_c.X") == "X.a-b_c.X"
+    assert sanitize_path_component("._Xavier_.") == "Xavier"
+    message = "^Path component must contain at least one safe character$"
+    with pytest.raises(ValueError, match=message):
+        sanitize_path_component("._/")

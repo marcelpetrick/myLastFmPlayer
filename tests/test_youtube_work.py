@@ -164,3 +164,59 @@ def test_slot_releases_the_lock_while_the_body_runs() -> None:
 
     assert observed == [1]
     assert limiter.active == 0
+
+
+def test_cancellable_command_returns_text_stdout_and_stderr_separately() -> None:
+    command = [
+        sys.executable,
+        "-c",
+        "import sys; sys.stdout.buffer.write('Björk\\n'.encode()); "
+        "sys.stderr.write('warn'); sys.exit(4)",
+    ]
+
+    completed = run_cancellable_command(command, stop_event=None, timeout=0.9)
+
+    assert completed.args == command
+    assert completed.returncode == 4
+    assert completed.stdout == "Björk\n"
+    assert completed.stderr == "warn"
+
+
+def test_cancellable_command_timeout_reports_command_and_budget() -> None:
+    command = [sys.executable, "-c", "import time; time.sleep(30)"]
+
+    with pytest.raises(subprocess.TimeoutExpired) as raised:
+        run_cancellable_command(command, stop_event=None, timeout=0.2)
+
+    assert raised.value.cmd == command
+    assert raised.value.timeout == 0.2
+
+
+def test_cancellable_command_cancellation_message() -> None:
+    stop_event = threading.Event()
+    stop_event.set()
+
+    with pytest.raises(WorkCancelled, match="^YouTube work cancelled$"):
+        run_cancellable_command(
+            [sys.executable, "-c", "import time; time.sleep(30)"],
+            stop_event=stop_event,
+            timeout=30,
+        )
+
+
+def test_sigkill_fallback_targets_the_process_group_of_the_child(monkeypatch) -> None:
+    calls: list[tuple[int, int]] = []
+
+    class FakeProcess:
+        pid = 4242
+
+        def communicate(self, timeout=None):
+            if timeout is not None:
+                raise subprocess.TimeoutExpired("command", timeout)
+            return "", ""
+
+    monkeypatch.setattr(youtube_work.os, "killpg", lambda pid, sig: calls.append((pid, sig)))
+
+    youtube_work._terminate_process(FakeProcess())  # type: ignore[arg-type]
+
+    assert calls == [(4242, youtube_work.signal.SIGTERM), (4242, youtube_work.signal.SIGKILL)]

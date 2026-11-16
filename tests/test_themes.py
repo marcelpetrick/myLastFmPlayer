@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
+
+import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPalette
 
@@ -81,3 +86,44 @@ def test_theme_mode_enum_values() -> None:
     assert ThemeMode("dark") is ThemeMode.DARK
     assert ThemeMode("lilac") is ThemeMode.LILAC
     assert ThemeMode("mint") is ThemeMode.MINT
+
+
+GOLDEN_PALETTES = Path(__file__).resolve().parent / "fixtures" / "golden" / "theme_palettes.json"
+PALETTE_GROUPS = (
+    QPalette.ColorGroup.Active,
+    QPalette.ColorGroup.Inactive,
+    QPalette.ColorGroup.Disabled,
+)
+PALETTE_ROLES = tuple(role for role in QPalette.ColorRole if role.name != "NColorRoles")
+
+
+def palette_snapshot(palette: QPalette) -> dict[str, str]:
+    return {
+        f"{group.name}.{role.name}": palette.color(group, role).name(QColor.NameFormat.HexArgb)
+        for group in PALETTE_GROUPS
+        for role in PALETTE_ROLES
+    }
+
+
+def test_every_theme_palette_matches_reviewed_snapshot(qapp) -> None:
+    """Pin every colour of every theme; regenerate with MY_LASTFM_PLAYER_UPDATE_GOLDEN=1."""
+
+    snapshots = {}
+    for mode in ThemeMode:
+        apply_theme(qapp, mode)
+        snapshots[mode.value] = palette_snapshot(qapp.palette())
+    apply_theme(qapp, ThemeMode.LIGHT)
+
+    if os.environ.get("MY_LASTFM_PLAYER_UPDATE_GOLDEN") == "1":
+        GOLDEN_PALETTES.write_text(json.dumps(snapshots, indent=2, sort_keys=True) + "\n")
+        pytest.skip("updated theme_palettes.json")
+
+    expected = json.loads(GOLDEN_PALETTES.read_text())
+    for mode, colors in expected.items():
+        mismatches = {
+            key: (snapshots[mode][key], value)
+            for key, value in colors.items()
+            if snapshots[mode][key] != value
+        }
+        assert not mismatches, f"{mode} palette changed (actual, expected): {mismatches}"
+    assert snapshots.keys() == expected.keys()

@@ -148,6 +148,18 @@ change, and before every release. Pass a mutant glob such as
 `"my_lastfm_player.storage*"` to re-check one module, and `--report-only` to
 re-print the last summary. Plan and results are in `16_MUTATION_TESTING.md`.
 
+Two suite-wide checks back the mutation score:
+
+- `tests/conftest.py` installs a catalog-checking `QTranslator`: every runtime
+  `tr()`/`translate()` lookup must exist in `my_lastfm_player_de.ts`, otherwise the
+  test that triggered it fails. After adding a UI string, run
+  `tools/update_translations.sh` as usual.
+- `tests/test_golden_images.py` and the palette snapshot in `tests/test_themes.py`
+  pin the hand-drawn icons, flags and theme colours. After an intentional visual
+  change, regenerate with `MY_LASTFM_PLAYER_UPDATE_GOLDEN=1 python -m pytest
+  tests/test_golden_images.py tests/test_themes.py` and review the files in
+  `tests/fixtures/golden/`.
+
 Connect Qt signals that carry arguments (`clicked`, `triggered`, …) to slots that
 take none through `lambda _checked=False: self.slot()`. mutmut wraps every method
 in a `*args` trampoline, so PyQt can no longer drop the extra argument itself.
