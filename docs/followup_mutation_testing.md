@@ -176,8 +176,8 @@ Per-module baseline:
 | Line + branch coverage | **≥ 99%** | `--cov-fail-under=99` on every `./localPipeline.sh` run |
 | Mutation score | **≥ 99%** | `tools/run_mutation_tests.sh` (`MUTATION_SCORE_MIN`, default 99); opt-in pipeline stage `--mutation` |
 
-Mutation score = (killed + timeout + crashed) / all mutants. Survivors, suspicious
-and untested mutants count against it.
+Mutation score = (killed + caught by mypy + timeout + crashed) / all mutants.
+Survivors, suspicious and untested mutants count against it.
 
 ## Tooling
 
@@ -186,8 +186,8 @@ flowchart LR
     Dev["developer / agent"] --> LP["./localPipeline.sh --noRun --noOpen"]
     Dev --> MT["tools/run_mutation_tests.sh [glob]"]
     LP -->|"--mutation"| MT
-    MT --> MR["mutmut run<br/>(forkserver, nproc workers)"]
-    MR --> ST["mutmut export-cicd-stats<br/>→ mutants/mutmut-cicd-stats.json"]
+    MT --> MR["mutmut run<br/>(forkserver, nproc workers,<br/>mypy pre-filter)"]
+    MR --> ST["tools/mutation_score.py<br/>reads mutants/**/*.meta<br/>→ mutants/mutation-score.json"]
     ST --> G{"score ≥ MUTATION_SCORE_MIN?"}
     G -->|yes| PASS["PASS"]
     G -->|no| FAIL["FAIL + mutmut results"]
@@ -207,6 +207,7 @@ flowchart LR
 | Baseline, `forkserver` | 10,926 | 7,096 | 3,798 | 32 | 64.95% |
 | Catalog check, golden images, log exclusion (v0.0.205) | 10,274 | 8,283 | 1,969 | 22 | 80.62% |
 | Contract tests for scrobbling, playback, download, YouTube, Last.fm (v0.0.206) | 10,274 | 8,653 | 1,599 | 22 | 84.22% |
+| mypy as pre-filter, controller wiring tests (v0.0.208) | 10,281 | 9,257 | 1,016 | 8 | 90.04% |
 
 The log exclusion removed 652 mutants of log-message text, so the total drops from
 10,926 to 10,274. Line + branch coverage rose from 99.01% to 99.28% along the way.
@@ -216,10 +217,10 @@ The log exclusion removed 652 mutants of log-message text, so the total drops fr
 ```mermaid
 xychart-beta
     title "Mutation score by step (%)"
-    x-axis ["fork", "forkserver", "v0.0.205", "v0.0.206"]
+    x-axis ["fork", "forkserver", "v0.0.205", "v0.0.206", "v0.0.208"]
     y-axis "score" 60 --> 100
-    bar [65.3, 64.95, 80.62, 84.22]
-    line [99, 99, 99, 99]
+    bar [65.3, 64.95, 80.62, 84.22, 90.04]
+    line [99, 99, 99, 99, 99]
 ```
 
 - **Translation-catalog check** (`tests/conftest.py`): a test-only `QTranslator`
@@ -237,5 +238,7 @@ xychart-beta
 The 99% target is not reached yet. Most remaining survivors sit in
 `controller.py`, `ui/main_window.py` and `ui/preferences_dialog.py`. A large share
 replace a `bool`/`str` with `None`, which runtime tests cannot observe but a static
-type checker would; mypy currently reports 110 errors, mostly PyQt6 stub noise, and
-would first have to become a clean pipeline gate.
+type checker would. mypy initially reported 110 errors, mostly PyQt6 stub noise. Since
+v0.0.208 it is a clean, mandatory pipeline stage and mutmut's `type_check_command`, so
+mutants that break the declared types now count as detected; that run is not yet in
+the results table above.

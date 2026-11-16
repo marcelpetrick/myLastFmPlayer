@@ -1,14 +1,19 @@
 # GitHub Actions and Releases
 
-The repository has two product workflows and CodeQL analysis:
+`.github/workflows/` contains two workflows:
 
-- **Local Pipeline** runs for pushes to `master`, `main`, and `mpe/**`, for pull
-  requests, and on manual dispatch. It executes the same `localPipeline.sh --noRun`
-  gate used before local commits and uploads packages, coverage, and Sphinx HTML.
-- **Manual Release** accepts an explicit version, rebuilds and verifies every artifact,
-  and can publish the matching tag and GitHub Release.
-- **CodeQL** performs GitHub's security-oriented Python analysis on its configured
-  events.
+- **Local Pipeline** (`local-pipeline.yml`) runs for pushes to `master`, `main`, and
+  `mpe/**`, for pull requests, and on manual dispatch. It runs the same gate used
+  before local commits as `./localPipeline.sh --noRun --noOpen` on Ubuntu with
+  Python 3.14 and the offscreen Qt platform, then uploads packages, coverage, and
+  Sphinx HTML.
+- **Manual Release** (`manual-release.yml`) accepts an explicit version, rebuilds and
+  verifies every artifact, and can publish the matching tag and GitHub Release.
+
+Neither workflow runs the opt-in mutation-testing gate; run
+`tools/run_mutation_tests.sh` locally before a release. The repository contains no
+CodeQL workflow file; any CodeQL code scanning comes from GitHub's repository-level
+default setup.
 
 ## Release Preconditions
 
@@ -17,7 +22,8 @@ Before dispatching a release:
 1. Update `my_lastfm_player/version.py`.
 2. Update the exact version checks in `tests/test_app_smoke.py`.
 3. Update the README current version.
-4. Run the complete local pipeline successfully.
+4. Run the complete local pipeline successfully, including the mutation gate
+   (`./localPipeline.sh --noRun --noOpen --mutation`).
 5. Commit with the matching `(vX.Y.Z)` suffix and push the commit.
 6. Confirm that tag `vX.Y.Z` does not already exist.
 
@@ -37,6 +43,7 @@ instead of replacing a release.
 
 The workflow defaults are intentionally conservative: publishing is off and a
 published release would be created as a draft unless the caller changes those inputs.
+This project publishes releases directly, so set `draft` to false.
 
 ## Run with the GitHub CLI
 

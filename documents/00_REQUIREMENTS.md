@@ -13,7 +13,7 @@ public loved-track history into a persistent, playable local library:
 2. resolve playable sources through YouTube;
 3. download audio locally;
 4. browse, filter, sort, and play the library;
-5. optionally report now-playing and scrobble playback to Last.fm.
+5. optionally report now-playing, scrobble playback, and unlove tracks on Last.fm.
 
 The supported runtime is Linux x86_64 with Python 3.14 or newer and PyQt6.
 `yt-dlp`, `ffmpeg`, and `ffprobe` are required external commands.
@@ -30,7 +30,9 @@ The supported runtime is Linux x86_64 with Python 3.14 or newer and PyQt6.
   complete library.
 - The UI shall expose fetch progress, Pause/Resume Fetch, and Stop Fetch.
 - Network and parsing failures shall produce visible, actionable feedback.
-- Per-user cached libraries shall be loadable and refreshable.
+- Per-user cached libraries shall be loadable and refreshable. A cached library whose
+  size matches the loved-track count Last.fm reports shall be reused without a new
+  paginated fetch, and a cached library shall stay usable when Last.fm is unreachable.
 
 ### 2.2 Independent Pipeline Processing
 
@@ -106,22 +108,29 @@ The supported runtime is Linux x86_64 with Python 3.14 or newer and PyQt6.
 - The artwork and playback controls shall remain compact and shall not reduce the
   track table's height when an image is loaded.
 - Clicking available artwork shall open the artist's Last.fm page in a private Firefox
-  window.
-- Ctrl+F shall focus and select the library filter, Space shall start or toggle playback
-  outside native text/button/slider input, Ctrl+, shall open Preferences, and Ctrl+Q
-  shall quit. Available artist artwork shall activate with Enter, Return, or Space.
+  window, falling back to the default browser when Firefox cannot be started.
+- F5 shall start a fetch, Ctrl+F shall focus and select the library filter, Space shall
+  start or toggle playback outside native text/button/slider input, Ctrl+, shall open
+  Preferences, and Ctrl+Q shall quit. Available artist artwork shall activate with Enter, Return, or Space.
 - Input labels shall be associated with their controls, and library, playback, progress,
   artist, and feedback controls shall expose explicit accessible names where visible
   text does not already supply one.
 
-### 2.7 Scrobbling
+### 2.7 Scrobbling and Unloving
 
-- Scrobbling shall be optional and disabled until the user chooses it.
+- Scrobbling shall be optional and inactive until the user connects a Last.fm account
+  in Preferences; a scrobbling checkbox shall allow turning it off while connected.
 - Desktop authentication shall open Last.fm in a browser and persist the resulting
   user session.
-- Playback shall send now-playing information and scrobble only after the configured
-  listening threshold is reached.
+- Playback shall send now-playing information and scrobble only after a third of the
+  track has been played.
 - Public library discovery shall continue to work without scrobbling authentication.
+- The track context menu shall offer "Unlove on Last.fm…" only when an account is
+  connected, the table shows that account's own loved tracks, and no fetch or YouTube
+  work runs for that list.
+- Unloving shall require an explicit confirmation that names the account and defaults
+  to Cancel. On success the row shall be removed from the local library; on failure it
+  shall remain and the error shall be reported.
 
 ### 2.8 Preferences and Localization
 
@@ -150,12 +159,16 @@ Each persistent track shall support:
   "youtube_url": "string|null",
   "local_path": "string|null",
   "status": "enum",
-  "retry_count": "integer",
+  "lookup_attempts": "integer",
+  "download_attempts": "integer",
   "error": "string|null",
   "file_type": "string|null",
   "bitrate_kbps": "integer|null"
 }
 ```
+
+Libraries written with the older single `retry_count` field shall load with that
+value as the download-attempt count.
 
 Durable statuses shall be `Fetched`, `Searching`, `Lookup failed`, `Queued`,
 `Downloading`, `Downloaded`, `Failed`, and `Not found`. Playback state is runtime
@@ -199,9 +212,12 @@ state and shall not destroy the durable downloaded state.
 
 - UI, controller, services, workers, immutable domain model, storage, and settings
   shall remain separately testable.
-- Every commit shall pass Ruff, Pylint at 10.00/10, complete translation checks,
-  warning-free Sphinx documentation, pytest at the configured 99% coverage threshold,
-  package construction, installed-package import, and application launch verification.
+- Every commit shall pass Ruff, Pylint at 10.00/10, a clean mypy type check, complete
+  translation checks, the documentation checks, warning-free Sphinx documentation,
+  pytest at the configured 99% line and branch coverage threshold, package
+  construction, wheel installation, and installed-package import.
+- The mutation score of the test suite shall be targeted at 99% or more, checked by
+  the opt-in mutation-testing gate.
 - Live Last.fm and `yt-dlp` integration checks shall remain available as opt-in tests.
 - Releases shall be reproducible through the manual GitHub Actions release workflow
   and include packages plus test, coverage, documentation, architecture, static

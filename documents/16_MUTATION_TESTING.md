@@ -2,8 +2,8 @@
 
 ## Question
 
-The suite (613 tests, 99% line+branch coverage) shows that nearly every line
-*runs* under test. It does not show that the tests would *notice* if a line were
+When this plan was written, the suite (613 tests, 99% line+branch coverage) showed
+that nearly every line *runs* under test. It did not show that the tests would *notice* if a line were
 wrong. Mutation testing answers that: it makes small faults in the source
 (`<` → `<=`, `True` → `False`, a string altered, a call argument dropped) and
 re-runs the tests. A mutant that no test kills shows behaviour the suite does
@@ -38,9 +38,10 @@ works with the offscreen Qt platform the suite already uses.
      message text or a default that is always overridden) with
      `# pragma: no mutate` and a short reason;
    - exclude non-logic code wholesale only where mutation cannot be observed
-     (e.g. logging setup), listed in `do_not_mutate` with a justification.
+     (e.g. log calls), listed in `do_not_mutate_patterns` with a justification.
 4. **Gate**: add `tools/run_mutation_tests.sh`, which runs mutmut and fails when
-   the mutation score is below 99% (timeouts and crashes count as detected;
+   the mutation score is below 99% (timeouts and crashes count as detected, and so
+   do mutants that mypy rejects since it became mutmut's type-check pre-filter;
    survivors, suspicious and untested mutants do not). It is an opt-in pipeline
    stage (`--mutation`) because a full run takes minutes rather than seconds.
 5. **Keep coverage ≥ 99%**: the existing `--cov-fail-under=99` gate stays
@@ -77,5 +78,6 @@ works with the offscreen Qt platform the suite already uses.
 | Baseline (`forkserver`) | 10,926 | 7,096 | 3,798 | 32 | 64.95% |
 | Catalog check, golden images, log exclusion (v0.0.205) | 10,274 | 8,283 | 1,969 | 22 | 80.62% |
 | Contract tests for scrobbling, playback, download, YouTube, Last.fm (v0.0.206) | 10,274 | 8,653 | 1,599 | 22 | 84.22% |
+| mypy as pre-filter, controller wiring tests (v0.0.208) | 10,281 | 9,257 | 1,016 | 8 | 90.04% |
 
 The full write-up is in [`../docs/followup_mutation_testing.md`](../docs/followup_mutation_testing.md).

@@ -3,8 +3,8 @@ Architecture
 
 myLastFmPlayer is a single-process Linux desktop application written in Python
 with a PyQt6 GUI. The controller coordinates the UI and operation lifecycle;
-short-lived workers bridge domain services and storage without giving those
-services knowledge of the Qt interface.
+short-lived workers on owned threads bridge domain services and storage without
+giving those services knowledge of the Qt interface.
 
 The diagrams below follow the **C4 model** (Simon Brown): each level zooms one
 step further in, from the system boundary down to individual components.
@@ -26,7 +26,7 @@ Who uses the system, and which external systems does it depend on?
              shape=box, style="rounded,filled",
              fillcolor="#08427b", fontcolor=white, color="#052e56"];
 
-       app [label="myLastFmPlayer\n[Software System]\n\nFetches a user's loved tracks, resolves\nthem to YouTube audio, downloads audio\nfiles, and plays them locally with\nLast.fm scrobbling.",
+       app [label="myLastFmPlayer\n[Software System]\n\nFetches a user's loved tracks, resolves\nthem to YouTube audio, downloads audio\nfiles, and plays them locally with\noptional Last.fm scrobbling.",
             shape=box, style="rounded,filled",
             fillcolor="#1168bd", fontcolor=white, color="#0b4884"];
 
@@ -34,7 +34,7 @@ Who uses the system, and which external systems does it depend on?
                    shape=box, style="rounded,filled",
                    fillcolor="#999999", fontcolor=white, color="#6b6b6b"];
 
-       lastfm_api [label="Last.fm API\n[External System]\n\nLoved-track and artist metadata\nplus authenticated now-playing\nand track scrobbling.",
+       lastfm_api [label="Last.fm API\n[External System]\n\nLoved-track and artist metadata\nplus authenticated now-playing,\nscrobbling, and unlove.",
                    shape=box, style="rounded,filled",
                    fillcolor="#999999", fontcolor=white, color="#6b6b6b"];
 
@@ -43,8 +43,8 @@ Who uses the system, and which external systems does it depend on?
                 fillcolor="#999999", fontcolor=white, color="#6b6b6b"];
 
        user -> app       [label="clicks, playback controls,\nusername input"];
-       app -> lastfm_api [label="requests API (loved tracks + artist info)\npylast API (now-playing + scrobble)"];
-       app -> lastfm_web [label="Firefox private window\nartist page links"];
+       app -> lastfm_api [label="requests API (loved tracks + artist info)\npylast API (auth, now-playing,\nscrobble, unlove)"];
+       app -> lastfm_web [label="artist pages in a Firefox private window\n(default browser as fallback)"];
        app -> youtube    [label="yt-dlp search + audio stream download"];
    }
 
@@ -81,7 +81,7 @@ What are the major deployable or runnable parts, and what technology do they use
                         shape=cylinder, style="filled",
                         fillcolor="#1168bd", fontcolor=white, color="#0b4884"];
 
-           qt_settings [label="Platform Settings\n[Container: QSettings]\n\nOS-native key-value store.\nTheme, language, scrobbling toggle,\nconcurrency, cookie browser.",
+           qt_settings [label="Platform Settings\n[Container: QSettings]\n\nOS-native key-value store.\nAppearance, playback, session,\nscrobbling, YouTube, and\nretention preferences.",
                         shape=cylinder, style="filled",
                         fillcolor="#1168bd", fontcolor=white, color="#0b4884"];
        }
@@ -110,8 +110,8 @@ What are the major deployable or runnable parts, and what technology do they use
        desktop  -> ffmpeg      [label="metadata probe\n(ffprobe)"];
        ytdlp    -> ffmpeg      [label="post-process\naudio"];
        ytdlp    -> audio_files [label="writes audio"];
-       desktop  -> lastfm_api  [label="requests API calls\n(loved tracks + artist info)\npylast API calls\n(scrobble)"];
-       desktop  -> lastfm_web  [label="Firefox --private-window\nartist page links"];
+       desktop  -> lastfm_api  [label="requests API calls\n(loved tracks + artist info)\npylast API calls\n(auth, scrobble, unlove)"];
+       desktop  -> lastfm_web  [label="artist page HTML (preview image);\nfirefox --private-window links"];
    }
 
 Level 3 — Component View
@@ -128,7 +128,7 @@ What are the principal building blocks inside the desktop process?
              fillcolor="#dae8fc", color="#6c8ebf", margin="0.2,0.1"];
        edge [fontname="Helvetica", fontsize=8, color="#555555"];
 
-       main [label="main.py\n[Component: Startup]\n\nBootstraps QApplication;\napplies theme + language;\nwires MainWindow to controller.",
+       main [label="main.py\n[Component: Startup]\n\nBootstraps QApplication;\napplies theme + language;\nrestores session; wires\nMainWindow to controller.",
              fillcolor="#e8f0fe", color="#5577cc"];
 
        subgraph cluster_ui {
@@ -136,37 +136,41 @@ What are the principal building blocks inside the desktop process?
            style=filled; fillcolor="#f0f0f8"; color="#aaaacc";
            fontname="Helvetica"; fontsize=10;
 
-           window      [label="MainWindow\n[PyQt6 QMainWindow]\n\nMenus, track table,\nplayback controls,\nprogress + status bar."];
+           window      [label="MainWindow\n[PyQt6 QMainWindow]\n\nMenus, filterable track table,\ncontext menu (retry, unlove),\nplayback controls, progress."];
            table_model [label="TrackTableModel\n[QAbstractTableModel]\n\nAdapter between the\ntrack list and the\nQTableView widget."];
-           prefs       [label="PreferencesDialog\n[QDialog]\n\nTheme, language, scrobbling,\nconcurrency, cookie browser,\ndata retention settings."];
+           prefs       [label="PreferencesDialog\n[QDialog]\n\nTheme, language, Last.fm auth,\nscrobbling, concurrency, cookie\nbrowser, data retention."];
+           painted     [label="icons.py + flags.py\n[QPainter]\n\nMenu icons and language\nflags drawn in code."];
        }
 
-       controller [label="ApplicationController\n[Component: Coordinator]\n\nThe single cross-layer hub.\nHandles UI signals, creates workers,\nmanages playback lifecycle, persists\nstate through the repository.",
+       controller [label="ApplicationController\n[Component: Coordinator]\n\nThe single cross-layer hub.\nHandles UI signals, starts workers,\nscopes results by username and\ngeneration, drives playback.",
                    fillcolor="#fff2cc", color="#d6b656", margin="0.3,0.15"];
-
-       subgraph cluster_services {
-           label="Domain / Service Layer";
-           style=filled; fillcolor="#f9f9f9"; color="#aaaaaa";
-           fontname="Helvetica"; fontsize=10;
-
-           scraper     [label="LastFmLovedTracksScraper\n[HTTP Client]\n\nFetches Last.fm Web API pages;\nretries with back-off;\nrate-limits between pages."];
-           artist_info [label="LastFmArtistInfoClient\n[HTTP Client]\n\nFetches artist.getInfo metadata;\nloads artist page preview images\nwith a stdlib HTML parser."];
-           resolver    [label="YouTubeResolver\n[yt-dlp wrapper]\n\nChecks lookup-cache first;\nruns concurrent yt-dlp searches over a\nquery ladder; updates cache on hit."];
-           download_mgr[label="DownloadManager\n[yt-dlp wrapper]\n\nConcurrent audio download pool with\nretry + jitter backoff; each retry forces\nanother YouTube player client."];
-           work_limiter[label="YouTubeWorkLimiter\n[Concurrency coordinator]\n\nShares 1–5 process slots across lookup\nand download; serializes the same track;\nsupports cooperative cancellation."];
-           playback    [label="PlaybackService\n[Qt Multimedia]\n\nWraps QMediaPlayer;\nseek, pause, stop;\ntracks scrobble threshold."];
-           scrobbling  [label="ScrobblingService\n[pylast]\n\nLast.fm web-auth flow;\nnow-playing + scrobble\nAPI calls via pylast."];
-           deps        [label="DependencyChecker\n[shutil.which]\n\nVerifies yt-dlp, ffmpeg,\nand ffprobe are present on PATH\nat application startup."];
-       }
 
        subgraph cluster_workers {
            label="Background Workers (QThread)";
            style=filled; fillcolor="#f5fff9"; color="#6b8f7a";
            fontname="Helvetica"; fontsize=10;
 
+           pool       [label="WorkerThreadPool\n[QThread owner]\n\nmoveToThread + start;\nretires threads on finished;\nbounded join on quit."];
            fetch_w    [label="FetchLovedTracksWorker\n[QObject on QThread]\n\nFetches Last.fm pages; emits\nprogress + track batches per page;\nsupports pause and stop."];
-           lookup_w   [label="LookupTracksWorker\n[QObject on QThread]\n\nResolves FETCHED tracks to\nYouTube URLs; uses internal\nthread pool for concurrency."];
-           download_w [label="DownloadTracksWorker\n[QObject on QThread]\n\nDownloads QUEUED tracks;\nreports per-file progress;\nrespects stop signal."];
+           lookup_w   [label="LookupTracksWorker\n[QObject on QThread]\n\nResolves tracks that need\na YouTube URL; cancellable."];
+           download_w [label="DownloadTracksWorker\n[QObject on QThread]\n\nDownloads tracks with a URL;\nreports per-track progress;\ncancellable."];
+           image_w    [label="ArtistImageWorker\n[QObject on QThread]\n\nLoads artist metadata\nand preview image."];
+           call_w     [label="BackgroundCallWorker\n[QObject on QThread]\n\nOne blocking call: count preflight,\nsession check, now-playing,\nscrobble, unlove."];
+       }
+
+       subgraph cluster_services {
+           label="Domain / Service Layer";
+           style=filled; fillcolor="#f9f9f9"; color="#aaaaaa";
+           fontname="Helvetica"; fontsize=10;
+
+           scraper     [label="LastFmLovedTracksScraper\n[HTTP Client]\n\nFetches Last.fm Web API pages;\nretries with a fixed delay;\nwaits between pages."];
+           artist_info [label="LastFmArtistInfoClient\n[HTTP Client]\n\nFetches artist.getInfo metadata;\nloads artist page preview images\nwith a stdlib HTML parser."];
+           resolver    [label="YouTubeResolver\n[yt-dlp wrapper]\n\nChecks lookup-cache first;\nruns concurrent yt-dlp searches over a\nquery ladder; updates cache."];
+           download_mgr[label="DownloadManager\n[yt-dlp wrapper]\n\nConcurrent audio downloads with\nretry + jitter backoff; each retry forces\nanother YouTube player client; ffprobe."];
+           work_limiter[label="YouTubeWorkLimiter\n[Concurrency coordinator]\n\nShares 1–5 process slots across lookup\nand download; serializes per work key;\ncooperative cancellation."];
+           playback    [label="PlaybackService\n[Qt Multimedia]\n\nWraps QMediaPlayer;\nplay, pause, seek, stop,\nvolume, mute."];
+           scrobbling  [label="ScrobblingService\n[pylast]\n\nLast.fm desktop auth;\nnow-playing, scrobble,\nlove and unlove."];
+           deps        [label="check_external_dependencies\n[shutil.which]\n\nVerifies yt-dlp, ffmpeg,\nand ffprobe are present on PATH\nat application startup."];
        }
 
        subgraph cluster_data {
@@ -174,9 +178,10 @@ What are the principal building blocks inside the desktop process?
            style=filled; fillcolor="#fff8f0"; color="#ccaa88";
            fontname="Helvetica"; fontsize=10;
 
-           repo     [label="JsonTrackRepository\n[File I/O]\n\nThread-safe JSON store backed\nby RLock; atomic writes via\ntemp-file rename."];
-           settings [label="AppSettings\n[QSettings wrapper]\n\nPersists theme, language,\nscrobbling toggle, concurrency,\ncookie browser, data retention."];
-           creds    [label="AppCredentials\n[Env / Bundled]\n\nLast.fm API key + secret;\nenv-var overrides bundled\ndefaults at startup."];
+           repo     [label="JsonTrackRepository\n[File I/O]\n\nThread-safe JSON store backed\nby RLock; atomic writes via\ntemp-file rename; fsynced journal."];
+           models   [label="Track / TrackStatus\n[Immutable dataclass]\n\nCache-key identity and\nmerge rules."];
+           settings [label="AppSettings\n[QSettings wrapper]\n\nTyped accessors and defaults\nfor every persisted preference."];
+           creds    [label="lastfm_api_credentials\n[Env / Bundled]\n\nLast.fm API key + secret;\nenv-var overrides bundled\ndefaults."];
        }
 
        subgraph cluster_cross {
@@ -185,43 +190,51 @@ What are the principal building blocks inside the desktop process?
            fontname="Helvetica"; fontsize=10;
 
            i18n    [label="TranslationManager\n[QTranslator wrapper]\n\nLoads .qm files at runtime;\nEnglish plus four translations."];
-           themes  [label="ThemeManager\n[QPalette builder]\n\nBuilds palettes for\nLight / Dark / Lilac / Mint."];
-           log_cfg [label="LoggingConfig\n[stdlib logging]\n\nConfigures process-wide\nlogging to stdout at INFO."];
+           themes  [label="apply_theme\n[QPalette builder]\n\nFusion style with\nLight / Dark / Lilac / Mint."];
+           log_cfg [label="configure_logging\n[stdlib logging]\n\nProcess-wide logging\nto stdout at INFO."];
+           qt_sig  [label="qt_signal.pyqtSignal\n[Typing shim]\n\nPyQt's pyqtSignal at runtime;\ncorrected signature for\nthe type checker."];
        }
 
        main -> settings;
        main -> i18n;
        main -> themes;
+       main -> log_cfg;
        main -> window;
        main -> controller;
 
        window -> table_model;
-       window -> prefs;
+       window -> painted;
        window -> controller   [label="Qt signals"];
+       controller -> prefs    [label="opens"];
+       prefs  -> scrobbling   [label="auth calls\n(daemon thread)"];
 
        controller -> repo      [label="load / save"];
-       controller -> scraper;
-       controller -> artist_info;
-       controller -> resolver;
-       controller -> download_mgr;
-       controller -> work_limiter;
        controller -> playback;
-       controller -> scrobbling;
        controller -> deps;
-       controller -> fetch_w   [label="create + start"];
-       controller -> lookup_w  [label="create + start"];
-       controller -> download_w[label="create + start"];
-       controller -> window    [label="update UI"];
+       controller -> settings;
        controller -> creds;
+       controller -> window    [label="update UI"];
+       controller -> pool      [label="start workers"];
+
+       pool -> fetch_w;
+       pool -> lookup_w;
+       pool -> download_w;
+       pool -> image_w;
+       pool -> call_w;
 
        fetch_w    -> scraper;
        fetch_w    -> repo;
+       image_w    -> artist_info;
+       call_w     -> scraper     [label="count preflight"];
+       call_w     -> scrobbling;
        lookup_w   -> resolver;
-       resolver   -> work_limiter;
-       lookup_w   -> repo;
        download_w -> download_mgr;
+       resolver   -> work_limiter;
        download_mgr -> work_limiter;
-       download_w -> repo;
+       resolver   -> repo;
+       download_mgr -> repo;
+       repo       -> models;
+       window     -> qt_sig     [style=dashed];
    }
 
 Track Lifecycle
@@ -255,18 +268,22 @@ progress survives a restart.
 
        FETCHED     -> SEARCHING   [label="lookup starts\n(no cache hit)"];
        FETCHED     -> QUEUED      [label="lookup-cache hit\n(URL already known)"];
+       FETCHED     -> DOWNLOADED  [label="download-cache hit\n(file already local)"];
        SEARCHING   -> QUEUED      [label="URL resolved\n(any query in the ladder)"];
        SEARCHING   -> LOOKUP_FAILED [label="lookup command failed"];
        SEARCHING   -> NOT_FOUND   [label="every query missed"];
-       LOOKUP_FAILED -> SEARCHING [label="later retry", style=dashed];
+       SEARCHING   -> FETCHED     [label="cancelled", style=dotted];
+       LOOKUP_FAILED -> FETCHED   [label="app start / user retries", style=dashed];
        QUEUED      -> DOWNLOADING [label="download starts"];
        DOWNLOADING -> DOWNLOADED  [label="audio written\n(any client in the ladder)"];
        DOWNLOADING -> FAILED      [label="every client failed"];
+       DOWNLOADING -> QUEUED      [label="cancelled", style=dotted];
        NOT_FOUND   -> SEARCHING   [label="re-checked while under\nthe attempt bound",
                                    style=dashed];
        NOT_FOUND   -> FETCHED     [label="app start / user retries", style=dashed];
-       FAILED      -> DOWNLOADING [label="app start / next download pass", style=dashed];
-       FAILED      -> FETCHED     [label="user retries", style=dashed];
+       FAILED      -> DOWNLOADING [label="next download pass", style=dashed];
+       FAILED      -> QUEUED      [label="app start / user retries\n(URL known; else FETCHED)",
+                                   style=dashed];
    }
 
 Recovering Stuck Tracks
@@ -291,38 +308,48 @@ counted as one bounded attempt rather than a permanent verdict, with the count k
 in ``lookup-cache.json`` so it survives a restart.
 
 On startup the controller sweeps whatever the previous run gave up on: ``NOT FOUND``
-tracks are cleared from the lookup cache and re-searched, and ``FAILED`` downloads go
-straight back to the download queue. ``Track.merge_preserving`` normally refuses to
+tracks are cleared from the lookup cache and re-searched, while ``FAILED`` and
+``LOOKUP FAILED`` tracks go back to the download queue when their URL is known and to
+lookup otherwise. ``Track.merge_preserving`` normally refuses to
 move a status backwards, which would discard such a recovery, so it makes one
 exception: a track may leave ``NOT FOUND`` once a lookup finally produces a URL.
 
 Worker Lifecycle
 ----------------
 
-Long-running workflows run on dedicated ``QThread`` instances. The controller owns
-both the thread and worker and uses Qt's ``moveToThread`` pattern. Short blocking
-service calls run through ``BackgroundCallWorker`` on daemon threads. Both paths send
-results to the main thread through queued Qt signals, keeping UI handlers responsive.
+Every background job of the controller runs on a ``QThread`` owned by
+``WorkerThreadPool``, which uses Qt's ``moveToThread`` pattern, quits and deletes the
+thread when the worker emits ``finished``, and on quit joins every remaining thread
+within a bounded wait before Qt destroys the window. Results reach the main thread
+through queued Qt signals, keeping UI handlers responsive.
 
-Cache-count verification, first-user preflight, stored-session verification,
-authentication, now-playing updates, and scrobble submission all use the service-call
-worker boundary. Paginated fetching, artwork retrieval, lookup, download, and probing
-use their dedicated workers. Late preflight results are discarded after cancellation
-or a username-generation change; authentication generations likewise prevent an old
-verification from reconnecting a deliberately disconnected session.
+Paginated fetching, lookup, download (including ``ffprobe`` probing), and artwork
+retrieval use their dedicated workers. Short blocking service calls — the loved-track
+count preflight, stored-session verification, now-playing updates, scrobble
+submission, and unlove — run through ``BackgroundCallWorker``, which suppresses
+delivery once cancelled. ``PreferencesDialog`` runs its authentication calls through
+the same worker class on short-lived daemon Python threads. Late preflight results are
+discarded after cancellation or a username-generation change; authentication
+generations likewise prevent an old verification from reconnecting a deliberately
+disconnected session.
+
+Inside the lookup and download workers, a ``ThreadPoolExecutor`` fans out per-track
+work; each ``yt-dlp`` or ``ffprobe`` subprocess first acquires a ``YouTubeWorkLimiter``
+slot.
 
 Last.fm pages feed YouTube lookup as they arrive, and resolved tracks feed downloading
 without waiting for the lookup batch to finish. One shared coordinator, restricted to
 one through five operations and defaulting to five, caps all lookup and download
-subprocesses together. Each completed track is first written to an append-only journal;
-the full JSON library and shared caches are compacted once at the end of a run.
+subprocesses together. Each completed track is first written to an append-only, ``fsync``-ed journal; the
+full JSON library and shared caches are compacted once at the end of a run.
 
 When the username changes, the controller cancels the old user's operation-owned stop
 events. Running ``yt-dlp``/``ffprobe`` process groups are terminated promptly, queued
-items return to retryable states, and completed journal entries remain available.
-Username-scoped signal filtering prevents late updates from replacing the new user's
-UI state, while a per-track coordinator key prevents two overlapping users from
-writing the same audio target concurrently.
+items return to retryable states (cancelled lookups to ``FETCHED``, cancelled
+downloads to ``QUEUED``), and completed journal entries remain available.
+Username- and generation-scoped signal filtering prevents late updates from replacing
+the new user's UI state, while a per-target coordinator key prevents two overlapping
+users from writing the same audio file concurrently.
 
 The visible **Stop YouTube** action cancels lookup and download work as one workflow.
 The button remains in a stopping state until every owned worker has completed cleanup,
@@ -341,22 +368,25 @@ pause and stop controls because Last.fm discovery is an independent operation.
 
        signal  [label="UI Signal\n(e.g. fetch clicked)"];
        ctrl    [label="ApplicationController"];
+       pool    [label="WorkerThreadPool"];
        thread  [label="QThread"];
-       worker  [label="Worker\n(Fetch / Lookup / Download)"];
+       worker  [label="Worker\n(Fetch / Lookup / Download /\nArtistImage / BackgroundCall)"];
        service [label="Service\n(Scraper / Resolver / DownloadManager)"];
        repo    [label="JsonTrackRepository"];
        ui      [label="MainWindow"];
 
        signal  -> ctrl;
-       ctrl    -> thread   [label="create + start"];
-       ctrl    -> worker   [label="create + moveToThread"];
+       ctrl    -> worker   [label="create + connect\nscoped signals"];
+       ctrl    -> pool     [label="start(worker)"];
+       pool    -> thread   [label="create, moveToThread,\nstart"];
+       thread  -> worker   [label="started -> run()"];
        worker  -> service  [label="calls service methods"];
-       service -> repo     [label="read / write tracks"];
-       worker  -> ctrl     [label="progress signal\n(queued connection)"];
-       worker  -> ctrl     [label="finished signal"];
+       service -> repo     [label="journal / save tracks"];
+       worker  -> ctrl     [label="progress + result signals\n(queued connection)"];
+       worker  -> thread   [label="finished -> quit"];
+       pool    -> thread   [label="delete on finished;\nbounded join on quit"];
        ctrl    -> repo     [label="persist state"];
        ctrl    -> ui       [label="refresh table\n+ status bar"];
-       ctrl    -> thread   [label="quit + delete on finished"];
    }
 
 Persisted Data
@@ -364,8 +394,9 @@ Persisted Data
 
 All mutable application data lives under ``$XDG_DATA_HOME/myLastFmPlayer/``
 (defaulting to ``~/.local/share/myLastFmPlayer/`` when ``XDG_DATA_HOME`` is
-not set). Writes are atomic: data is first written to a temp file in the same
-directory and then renamed, preventing corrupt reads on crash.
+not set). Snapshot, cache, and credential writes are atomic: data is first written
+to a temp file in the same directory and then renamed, preventing corrupt reads on
+crash. Journal appends are flushed and ``fsync``-ed.
 
 Appearance and behaviour preferences are stored separately in the
 platform-native ``QSettings`` store (``~/.config/`` on Linux).
@@ -386,25 +417,29 @@ platform-native ``QSettings`` store (``~/.config/`` on Linux).
      - Append-only per-track updates written during active work; replayed on load and
        compacted into the full track list after a completed run.
    * - ``lookup-cache.json``
-     - JSON object
-     - Maps ``artist\x1ftrack`` to a lookup snapshot containing the YouTube URL or
-       bounded miss state; consulted before invoking ``yt-dlp`` search.
+     - JSON array
+     - Track snapshots with a resolved YouTube URL or a bounded ``NOT FOUND``
+       state, keyed on load by ``Track.cache_key`` (artist and title joined by
+       ``\x1f``); consulted before invoking ``yt-dlp`` search.
    * - ``download-cache.json``
-     - JSON object
-     - Maps a download cache key to downloaded-track metadata including the local
-       path; avoids re-downloading when the audio file still exists on disk.
+     - JSON array
+     - Downloaded-track snapshots including the local path, keyed on load by
+       ``Track.cache_key``; avoids re-downloading when the audio file still exists.
    * - ``lastfm-credentials.json``
      - JSON object
-     - Per-user Last.fm session key obtained through the web-auth flow;
-       required for now-playing and scrobbling.
+     - Authorized Last.fm username, session key, and scrobbling choice obtained
+       through the desktop auth flow; required for now-playing, scrobbling, and
+       unlove.
    * - ``downloads/``
      - Directory
-     - Default output folder for downloaded audio files (overridable).
+     - Downloaded audio files named ``<Artist> - <Title>``.
    * - QSettings (OS store)
      - Platform-native
-     - Theme, UI language, scrobbling enabled, YouTube-work concurrency,
-       yt-dlp cookie browser, and keep-data-on-quit flag. Retention is enabled by
-       default; opting out removes metadata and credentials but not downloaded audio.
+     - Theme, UI language, volume, mute, randomized continuation, last username,
+       window geometry, scrobbling enabled, YouTube-work concurrency, yt-dlp cookie
+       browser, and keep-data-on-quit flag. Retention is enabled by default; opting
+       out removes track lists, journals, caches, and credentials on quit but not
+       downloaded audio.
 
 Key Design Decisions
 --------------------
@@ -412,9 +447,10 @@ Key Design Decisions
 **Single controller, no service-to-service calls.**
 ``ApplicationController`` is the only class that knows about all others.
 Services such as ``LastFmLovedTracksScraper``, ``YouTubeResolver``,
-``DownloadManager``, ``PlaybackService``, and ``ScrobblingService`` are unaware
-of each other and of the Qt event loop, making them individually testable
-without a running application.
+``DownloadManager``, ``PlaybackService``, and ``ScrobblingService`` do not call
+each other and do not touch widgets; ``YouTubeResolver`` and ``DownloadManager``
+only share the injected ``YouTubeWorkLimiter`` and persist through the
+repository. Each is individually testable without a running application.
 
 **Workers are stateless and short-lived.**
 A fresh worker object is created for every operation, given references to the
@@ -426,34 +462,97 @@ write back through it, but never own any persistent state themselves.
 ``yt-dlp``, ``ffmpeg``, and ``ffprobe`` are invoked via subprocesses rather than
 linked as Python libraries. This keeps the runtime dependency surface small and
 lets users upgrade CLI tools independently of the application version.
-``DependencyChecker`` verifies all three are on ``PATH`` at startup and
-surfaces a warning in the UI if any are missing.
+``check_external_dependencies`` verifies all three are on ``PATH`` at startup
+and surfaces a warning in the UI if any are missing.
 
-**Last.fm Web API for loved tracks, pylast for scrobbling.**
+**Last.fm Web API for loved tracks, pylast for account writes.**
 Loved-track fetching uses Last.fm's ``user.getLovedTracks`` JSON API through
 ``requests`` and the bundled or environment-provided application API key. Artist
 preview metadata uses ``artist.getInfo`` and, when needed, a small stdlib HTML
-parser for page image metadata. Authenticated now-playing and scrobble updates
-remain on ``pylast`` because they require the user's Last.fm session key.
+parser for page image metadata. Desktop authentication, now-playing, scrobble,
+and unlove calls remain on ``pylast`` because they require the user's Last.fm
+session key.
 
-**Private artist-page launches are browser-specific.**
+**Private artist-page launches prefer Firefox.**
 Clicking the artist preview opens the Last.fm artist page with
-``firefox --private-window <url>``. The application intentionally calls Firefox
-directly for this path because ``xdg-open`` and desktop portals do not provide a
-portable private-window option.
+``firefox --private-window <url>``. The application calls Firefox directly for
+this path because ``xdg-open`` and desktop portals do not provide a portable
+private-window option. When Firefox cannot be started, the page opens in the
+default browser through ``QDesktopServices`` instead of failing.
 
 **QThread + moveToThread, not QRunnable.**
-Background work uses ``QThread`` with worker objects moved to the thread rather
-than ``QRunnable`` or Python ``threading.Thread``. This makes progress and
-completion signals cross back to the Qt event loop naturally through Qt's
-queued-connection mechanism — no explicit locking or queue management needed in
-the controller.
+The controller's background work uses ``QThread`` with worker objects moved to
+the thread rather than ``QRunnable``. This makes progress and completion signals
+cross back to the Qt event loop naturally through Qt's queued-connection
+mechanism — no explicit locking or queue management needed in the controller.
+``WorkerThreadPool`` keeps the wiring in one place and gives shutdown a single
+list of threads to join. Per-track fan-out inside lookup and download uses a
+plain ``ThreadPoolExecutor``, and the Preferences authentication calls use
+short-lived daemon threads; both report back through Qt signals.
 
 **Atomic JSON writes with RLock.**
 ``JsonTrackRepository`` wraps all file access in a ``threading.RLock`` and
 writes via a temp-file rename so that concurrent reads from a worker thread
 never see a half-written file, and an application crash during a write does not
 corrupt the stored data.
+
+Quality Tooling
+---------------
+
+``localPipeline.sh`` is the canonical gate, run locally before every commit and
+replicated by the GitHub workflows with ``--noRun --noOpen``. ``--noRun`` skips
+the final application launch; ``--noOpen`` keeps the Sphinx and coverage HTML
+reports from opening in a browser. Every stage up to the import check is
+mandatory, including complete translations; the application launch only warns,
+and the mutation gate runs only with ``--mutation``.
+
+.. graphviz::
+   :caption: Local pipeline stages
+
+   digraph pipeline {
+       graph [rankdir=LR, pad=0.4, nodesep=0.4, ranksep=0.5];
+       node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=9,
+             fillcolor="#f5fff9", color="#6b8f7a"];
+       edge [color="#466354"];
+
+       venv   [label=".venv +\neditable dev install"];
+       ruff   [label="Ruff"];
+       pylint [label="Pylint\n10.00/10"];
+       mypy   [label="mypy\n0 errors"];
+       tr     [label="Translation\ncompleteness\n0 untranslated"];
+       docs   [label="tools/check_docs.py"];
+       sphinx [label="Sphinx\n-W --keep-going"];
+       tests  [label="pytest\n>= 99% line + branch"];
+       build  [label="sdist + wheel"];
+       inst   [label="wheel install\n+ import check"];
+       mut    [label="Mutation gate\n>= 99%\n(--mutation)",
+               fillcolor="#fff2cc", color="#d6b656"];
+       launch [label="Launch app\n(unless --noRun)"];
+
+       venv -> ruff -> pylint -> mypy -> tr -> docs -> sphinx -> tests
+            -> build -> inst -> mut -> launch;
+   }
+
+- **mypy** checks ``my_lastfm_player/`` with ``[tool.mypy]`` from
+  ``pyproject.toml``; ``union-attr`` and ``override`` are disabled because the
+  PyQt6 stubs mark nearly every Qt getter and event parameter as optional.
+  ``my_lastfm_player.qt_signal`` re-exports PyQt's ``pyqtSignal`` unchanged at
+  runtime and only gives mypy a signature with the default the stubs omit.
+- **Mutation testing**: ``tools/run_mutation_tests.sh`` runs mutmut over
+  ``my_lastfm_player/`` with ``forkserver`` isolation (Qt is not fork-safe) and
+  mypy as a type-check pre-filter, skipping log calls. Killed, mypy-rejected,
+  timed-out, and crashing mutants count as detected. ``tools/mutation_score.py``
+  prints the score, writes ``mutants/mutation-score.json``, and fails below
+  ``MUTATION_SCORE_MIN`` percent (default 99).
+- **Translation-catalog check**: ``tests/conftest.py`` installs a
+  ``QTranslator`` that records every runtime ``tr()``/``translate()`` lookup
+  missing from the German ``.ts`` catalog and fails the triggering test.
+- **Slot-exception hook**: a per-test ``sys.excepthook`` turns an exception
+  raised inside a Qt slot into a test failure instead of a process abort.
+- **Golden images**: ``tests/fixtures/golden/`` holds reviewed PNGs of the
+  painted icons and flags, compared with a small per-channel tolerance, and a
+  JSON snapshot of every theme palette. ``MY_LASTFM_PLAYER_UPDATE_GOLDEN=1``
+  regenerates them for review.
 
 Core Class Relationships
 ------------------------

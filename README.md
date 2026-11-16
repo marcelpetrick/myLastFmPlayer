@@ -29,11 +29,12 @@ Click the preview to open the full recording.
 
 ## Product Status
 
-Current version: `0.0.208` — fully functional and actively maintained
+Current version: `0.0.209` — fully functional and actively maintained
 
-**New in 0.0.196:** right-click a track and choose **Unlove on Last.fm…** to remove
-duplicate loves from your Last.fm account, after an explicit confirmation — see
-[Unloving Tracks on Last.fm](#unloving-tracks-on-lastfm).
+**Recent highlights:** right-click a track and choose **Unlove on Last.fm…** to remove
+duplicate loves from your Last.fm account after an explicit confirmation (see
+[Unloving Tracks on Last.fm](#unloving-tracks-on-lastfm)); the test suite is now
+checked by mutation testing and a mypy type check in addition to 99% coverage.
 
 The complete intended workflow is implemented and used in practice. Its major features
 are covered by the automated test suite, packaging and installed-application checks,
@@ -82,8 +83,8 @@ was `0.0.1`. `my_lastfm_player/version.py` is the single source of truth, and
 For this project, every future commit should increase the `PATCH` number unless the
 change intentionally requires a `MINOR` or `MAJOR` bump.
 
-Built packages append a build suffix - the first six digits of the git commit hash -
-to the version shown in the startup line and window title. Source-tree runs show only
+Built packages append a build suffix - the first six characters of the git commit hash,
+as in `+1a2b3c` - to the version shown in the startup line and window title. Source-tree runs show only
 the base version. Contributor rules live in [`docs/agents.md`](docs/agents.md).
 
 ## Installation and Requirements
@@ -110,7 +111,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.208-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.209-py3-none-any.whl
 my-lastfm-player
 ```
 
@@ -292,16 +293,18 @@ committed:
 ./localPipeline.sh --noRun
 ```
 
-The gate requires zero Ruff violations, a 10.00/10 Pylint score, complete
-translations, warning-free documentation, the configured coverage threshold,
-successful source and wheel builds, installation of the newly built wheel, and an
-import/version check. Omit `--noRun` to also launch the installed application once;
-add `--noOpen` to keep the Sphinx and coverage reports from opening in a browser.
+The gate requires zero Ruff violations, a 10.00/10 Pylint score, a clean mypy type
+check, passing documentation checks, a warning-free Sphinx build, all tests at the
+configured coverage threshold, successful source and wheel builds, installation of
+the newly built wheel, complete translations (zero untranslated strings in every
+catalog), and an import/version check.
+Omit `--noRun` to also launch the installed application once; add `--noOpen` to keep
+the Sphinx and coverage reports from opening in a browser.
 
 Quality targets are **at least 99% line+branch coverage** and **at least 99%
 mutation score**. Mutation testing checks that the tests do more than execute the
-code: mutmut makes small faults in the source and expects a test to fail for each.
-Run the gate on its own or as an opt-in pipeline stage:
+code: mutmut makes small faults in the source and expects a test (or mypy) to reject
+each. Run the gate on its own or as an opt-in pipeline stage:
 
 ```sh
 tools/run_mutation_tests.sh
@@ -313,7 +316,9 @@ plan and current results.
 
 Tests cover UI state, controller workflows, storage, parallel lookup/download
 behavior, cancellation, playback, scrobbling, localization, and release artifacts.
-Network-dependent tests are opt-in so the normal gate stays deterministic and needs
+Every UI string a test looks up must exist in the translation catalog, and the painted
+icons and flags and every theme palette are compared with reviewed golden snapshots
+in `tests/fixtures/golden/`. Network-dependent tests are opt-in so the normal gate stays deterministic and needs
 no internet access.
 
 English is the source language; Croatian, German, Mandarin, and Ukrainian catalogs

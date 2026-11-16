@@ -19,6 +19,8 @@ VENV_OK=0
 INSTALL_OK=0
 LINT_OK=0
 PYLINT_OK=0
+MYPY_OK=0
+TRANSLATIONS_OK=0
 DOCS_OK=0
 TESTS_OK=0
 SPHINX_OK=0
@@ -33,6 +35,7 @@ LAUNCH_OK=0
 OPEN_REPORT_COMMAND=""
 RUFF_DETAILS=""
 PYLINT_DETAILS=""
+MYPY_DETAILS=""
 DOCS_DETAILS=""
 SPHINX_DETAILS=""
 TESTS_DETAILS=""
@@ -49,7 +52,7 @@ Local project pipeline:
   1. Create or reuse .venv
   2. Install the project with development dependencies
   3. Run Ruff linting
-  4. Run Pylint static analysis
+  4. Run Pylint static analysis and the mypy type check
   5. Report translation completion for each Qt .ts catalog
   6. Check required documentation
   7. Build Sphinx documentation with warnings treated as errors
@@ -363,6 +366,20 @@ run_pylint() {
     return 1
 }
 
+run_mypy() {
+    log "Running mypy type check."
+    local log_path="${PIPELINE_LOG_DIR}/mypy.log"
+
+    if run_with_log "${log_path}" "${PYTHON}" -m mypy; then
+        MYPY_DETAILS="$(tail -n 1 "${log_path}")"
+        return 0
+    fi
+
+    MYPY_DETAILS="$(grep -E "^Found [0-9]+ error" "${log_path}" | tail -n 1 || true)"
+    MYPY_DETAILS="${MYPY_DETAILS:-see mypy output}"
+    return 1
+}
+
 check_translations() {
     log "Checking Qt translation completion."
     local log_path="${PIPELINE_LOG_DIR}/translations.log"
@@ -580,10 +597,18 @@ main() {
             mark_result "Pylint" "FAIL" "${PYLINT_DETAILS}"
         fi
 
+        if run_mypy; then
+            MYPY_OK=1
+            mark_result "Mypy" "PASS" "${MYPY_DETAILS}"
+        else
+            mark_result "Mypy" "FAIL" "${MYPY_DETAILS}"
+        fi
+
         if check_translations; then
+            TRANSLATIONS_OK=1
             mark_result "Translations" "PASS" "${TRANSLATION_DETAILS}"
         else
-            mark_result "Translations" "WARN" "${TRANSLATION_DETAILS}"
+            mark_result "Translations" "FAIL" "${TRANSLATION_DETAILS}"
         fi
 
         if run_documentation_check; then
@@ -609,6 +634,7 @@ main() {
     else
         mark_result "Ruff" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Pylint" "SKIP" "Skipped because dependencies are unavailable"
+        mark_result "Mypy" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Translations" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Docs" "SKIP" "Skipped because dependencies are unavailable"
         mark_result "Sphinx" "SKIP" "Skipped because dependencies are unavailable"
@@ -643,7 +669,7 @@ main() {
         mark_result "Open Coverage" "SKIP" "Skipped because coverage was not generated"
     fi
 
-    if [[ "${LINT_OK}" -eq 1 && "${PYLINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 ]]; then
+    if [[ "${LINT_OK}" -eq 1 && "${PYLINT_OK}" -eq 1 && "${MYPY_OK}" -eq 1 && "${TRANSLATIONS_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 ]]; then
         if clean_package_artifacts; then
             CLEAN_OK=1
             mark_result "Clean Build" "PASS" "Stale package artifacts removed"
@@ -700,7 +726,7 @@ main() {
         mark_result "Import Check" "SKIP" "Skipped because wheel install failed"
     fi
 
-    if [[ "${VENV_OK}" -eq 1 && "${INSTALL_OK}" -eq 1 && "${LINT_OK}" -eq 1 && "${PYLINT_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 && "${CLEAN_OK}" -eq 1 && "${BUILD_OK}" -eq 1 && "${WHEEL_OK}" -eq 1 && "${PACKAGE_INSTALL_OK}" -eq 1 && "${IMPORT_OK}" -eq 1 ]]; then
+    if [[ "${VENV_OK}" -eq 1 && "${INSTALL_OK}" -eq 1 && "${LINT_OK}" -eq 1 && "${PYLINT_OK}" -eq 1 && "${MYPY_OK}" -eq 1 && "${TRANSLATIONS_OK}" -eq 1 && "${DOCS_OK}" -eq 1 && "${SPHINX_OK}" -eq 1 && "${TESTS_OK}" -eq 1 && "${CLEAN_OK}" -eq 1 && "${BUILD_OK}" -eq 1 && "${WHEEL_OK}" -eq 1 && "${PACKAGE_INSTALL_OK}" -eq 1 && "${IMPORT_OK}" -eq 1 ]]; then
         exit_code=0
     fi
 

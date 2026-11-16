@@ -15,6 +15,8 @@ through `.venv/bin/`.
   `./localPipeline.sh --noRun --noOpen`
 - Run the app from source: `my-lastfm-player` or `python -m my_lastfm_player`
 - Lint: `python -m ruff check .`
+- Static analysis: `python -m pylint my_lastfm_player`
+- Type check: `python -m mypy` (configuration in `[tool.mypy]` of `pyproject.toml`)
 - Tests with coverage: `python -m pytest`
 - Single test: `python -m pytest tests/test_controller.py::test_name -v`
 - Live Last.fm end-to-end test:
@@ -60,20 +62,23 @@ Bump `my_lastfm_player/version.py` with every commit:
 - `MINOR` for new features
 - `MAJOR` for breaking changes
 
-Update `README.md` (`Current version: `x.y.z``) and the exact package/display
-version assertions in `tests/test_app_smoke.py` in the same commit.
+Update `README.md` (``Current version: `x.y.z` `` and the release-wheel file name)
+and the exact package/display version assertions in `tests/test_app_smoke.py` in the
+same commit.
 
-Built packages can include a generated `_build_info.py` commit suffix. Source
-tree runs intentionally show only the base version when that generated file is
-absent.
+`setup.py` writes a generated `my_lastfm_player/_build_info.py` into built packages,
+so they display `x.y.z+<six-character commit>`. Source-tree runs intentionally show
+only the base version when that generated file is absent.
 
 ## Pipeline
 
 Run `./localPipeline.sh --noRun` before every commit and ensure all mandatory
 stages pass. A red pipeline means no commit.
 
-Stages that must be green: Ruff lint, Pylint, translation completeness, docs
-check, Sphinx, tests, and coverage. The configured coverage gate in
+Stages that must be green: Ruff lint, Pylint, mypy, docs check, Sphinx, tests and
+coverage, package build, wheel install, and the import check. Translation
+completeness is reported as `WARN` rather than `FAIL` by the script, but untranslated
+strings are still not allowed in a commit. The configured coverage gate in
 `pyproject.toml` is the source of truth for the required minimum.
 
 `localPipeline.sh` is the canonical build workflow. It records each stage as
@@ -92,7 +97,8 @@ flowchart TD
     G --> H
     H --> I["Ruff lint check"]
     I --> J["Pylint static analysis"]
-    J --> K["Check Qt translation completeness"]
+    J --> J2["mypy type check"]
+    J2 --> K["Check Qt translation completeness"]
     K --> L["Documentation check"]
     L --> M["Build Sphinx docs with warnings as errors"]
     M --> N["Pytest with coverage and HTML report"]
@@ -102,7 +108,10 @@ flowchart TD
     Q --> R["Find built wheel in dist/"]
     R --> S["Force reinstall built wheel without dependencies"]
     S --> T["Import package and print version"]
-    T --> U{"RUN_APP=true?"}
+    T --> T2{"--mutation provided?"}
+    T2 -->|yes| T3["Run tools/run_mutation_tests.sh"]
+    T2 -->|no| U{"RUN_APP=true?"}
+    T3 --> U
     U -->|yes| V["Start installed my-lastfm-player once"]
     U -->|no| W["Skip GUI startup"]
     V --> X["Print stage summary and exit"]
@@ -111,25 +120,29 @@ flowchart TD
 
 The workflow phases are:
 
-1. Argument handling accepts `--noRun`, `--noOpen` and `--report-dir PATH`.
+1. Argument handling accepts `--noRun`, `--noOpen`, `--mutation`, and
+   `--report-dir PATH`.
 2. Environment preparation creates `.venv` when needed and otherwise reuses it.
 3. Dependency installation runs `python -m pip install -e ".[dev]"`.
-4. Quality gates run Ruff, Pylint, translation and documentation checks, Sphinx
-   with warnings as errors, and pytest with the configured coverage threshold.
+4. Quality gates run Ruff, Pylint, mypy, translation and documentation checks,
+   Sphinx with warnings as errors, and pytest with the configured coverage threshold.
 5. Report opening prints the Sphinx and coverage HTML paths and attempts to open
    them unless `--noOpen` was supplied; an unavailable browser is a warning
    rather than a build failure.
 6. Package build removes stale output before building source and wheel
    distributions.
 7. Install verification installs the new wheel and imports `my_lastfm_player`.
-8. Runtime launch starts `my-lastfm-player` unless `--noRun` was supplied.
-9. The final summary reports every stage as `PASS`, `FAIL`, `SKIP`, or `WARN`.
+8. With `--mutation`, and only when the tests passed, the mutation-testing gate runs;
+   a failing gate fails the pipeline.
+9. Runtime launch starts `my-lastfm-player` unless `--noRun` was supplied; a failed
+   launch is a warning only.
+10. The final summary reports every stage as `PASS`, `FAIL`, `SKIP`, or `WARN`.
 
 To preserve the machine-readable test and coverage results, stage logs,
 environment metadata, and final summary for release artifacts:
 
 ```sh
-./localPipeline.sh --noRun --report-dir release-artifacts/raw
+./localPipeline.sh --noRun --noOpen --report-dir release-artifacts/raw
 ```
 
 After a run, the HTML reports are at `htmlcov/index.html` and
@@ -142,11 +155,15 @@ Quality targets: line+branch coverage **at least 99%** (enforced by
 (enforced by `tools/run_mutation_tests.sh`, threshold `MUTATION_SCORE_MIN`).
 
 `tools/run_mutation_tests.sh` runs mutmut over `my_lastfm_player/` and fails when
-the mutation score is below the threshold. It is opt-in in the pipeline
-(`--mutation`) because a full run takes minutes; run it when tests or tested logic
-change, and before every release. Pass a mutant glob such as
+the mutation score is below the threshold. mutmut runs mypy as its
+`type_check_command`, so a mutant mypy rejects counts as detected, like killed,
+timed-out, and crashing mutants. `tools/mutation_score.py` computes the score from
+`mutants/**/*.meta`, prints it, and writes `mutants/mutation-score.json`. The gate is
+opt-in in the pipeline (`--mutation`) because a full run takes minutes; run it when
+tests or tested logic change, and before every release. Pass a mutant glob such as
 `"my_lastfm_player.storage*"` to re-check one module, and `--report-only` to
-re-print the last summary. Plan and results are in `16_MUTATION_TESTING.md`.
+re-print the last summary. `.venv/bin/mutmut results` lists survivors. Plan and
+results are in [`16_MUTATION_TESTING.md`](16_MUTATION_TESTING.md).
 
 Two suite-wide checks back the mutation score:
 
@@ -182,6 +199,7 @@ sentinel track "Kevin MacLeod – Monkeys Spinning Monkeys" and unloves it again
 through `ScrobblingService` directly and once through the track context menu and the
 controller. It skips instead of touching the sentinel when it is already loved, and
 always unloves it again in a `finally` block.
+
 The `yt-dlp` tests check the download retry ladder against the installed
 `yt-dlp`: every forced YouTube player client must still be one `yt-dlp`
 supports, the audio format selector must still resolve, and a real download must
@@ -196,14 +214,17 @@ them to YouTube via `yt-dlp`, downloads audio, and plays it locally. The codebas
 uses a controller-mediated worker pipeline whose fetch, lookup, and download phases
 can overlap while each track remains independent.
 
-- `main.py`: wires `QApplication`, `TranslationManager`, `MainWindow`, and
-  `ApplicationController`.
-- `controller.py`: central orchestrator. Owns worker `QThread` lifecycle,
-  connects `MainWindow` signals, and chains fetch, lookup, download, and
-  playback workflows.
-- `workers.py`: `FetchLovedTracksWorker`, `LookupTracksWorker`, and
-  `DownloadTracksWorker`. Worker `run()` methods catch exceptions at the thread
-  boundary, emit `error`, and always emit `finished`.
+- `main.py`: wires `QApplication`, `AppSettings`, `TranslationManager`, the theme,
+  `MainWindow`, and `ApplicationController`, and restores the saved session.
+- `controller.py`: central orchestrator. Connects `MainWindow` signals, starts
+  workers, scopes their results by username and generation, and chains fetch,
+  lookup, download, playback, scrobbling, retry, and unlove workflows.
+- `worker_threads.py`: `WorkerThreadPool` moves each worker to an owned `QThread`,
+  retires it on `finished`, and joins all threads within a bounded time on quit.
+- `workers.py`: `FetchLovedTracksWorker`, `LookupTracksWorker`,
+  `DownloadTracksWorker`, `ArtistImageWorker`, and `BackgroundCallWorker` (one
+  blocking service call). Worker `run()` methods catch exceptions at the thread
+  boundary, emit `error` (or `failed`), and always emit `finished`.
 - `lastfm.py`: `LastFmLovedTracksScraper` orchestrates Last.fm Web API
   pagination. `LastFmLovedTracksApiClient` fetches `user.getLovedTracks` JSON,
   and `LastFmArtistInfoClient` fetches artist preview metadata and images.
@@ -214,6 +235,8 @@ can overlap while each track remains independent.
 - `download.py`: selects the best available audio with concurrent retry/backoff,
   priority support, cancellation, and optional per-run limits; `ffprobe` records media
   type and bitrate.
+- `scrobbling.py`: `ScrobblingService` wraps `pylast` for desktop authentication,
+  now-playing, scrobbles, and love/unlove.
 - `playback.py`: wraps `QMediaPlayer`. The Qt backend is lazy-instantiated
   through `ApplicationController.playback_service` so headless tests do not need
   multimedia objects until playback is requested.
@@ -221,11 +244,15 @@ can overlap while each track remains independent.
   Last.fm credentials. New persisted JSON should use `_atomic_write_json`.
 - `models.py`: `Track.cache_key` is the project-wide identity for tracks across
   UI rows, persistence, and caches.
-- `ui/main_window.py` and `ui/track_table_model.py`: UI shell and table model.
-  The window emits semantic signals; the controller performs the work.
+- `settings.py`: `AppSettings`, typed `QSettings` accessors and defaults.
+- `ui/main_window.py`, `ui/track_table_model.py`, `ui/preferences_dialog.py`: UI
+  shell, table model, and Preferences. The window emits semantic signals; the
+  controller performs the work. `ui/icons.py` and `ui/flags.py` paint icons in code.
+- `qt_signal.py`: typing-only shim. At runtime it is PyQt's own `pyqtSignal`; for
+  mypy it adds the default the PyQt6 stubs omit for the `arguments` parameter.
 - `dependencies.py`: checks external `yt-dlp`, `ffmpeg`, and `ffprobe` availability.
 - `i18n.py`: `TranslationManager` and `translate(...)` helpers for live language
-  switching.
+  switching; `themes.py`: Fusion-based Light, Dark, Lilac, and Mint palettes.
 
 ## Conventions
 
@@ -241,6 +268,9 @@ can overlap while each track remains independent.
   and include updated `.ts`/`.qm` files.
 - Qt tests: use the `qapp` fixture for Qt-touching tests so the suite remains
   headless.
+- Qt signals: import `pyqtSignal` from `my_lastfm_player.qt_signal`, not from
+  `PyQt6.QtCore`, and add every new signal name to `exclude-members` in
+  `docs/conf.py` (or to the module's `:exclude-members:` in `docs/api.rst`).
 - New modules: add public modules to `docs/api.rst`.
 - Historical improvement records in `documents/05_IMPROVEMENTS.md` are not the active
   backlog; use the issue tracker and current review documents for new work.
@@ -249,11 +279,14 @@ can overlap while each track remains independent.
 
 `tools/check_docs.py` enforces required documentation files and Markdown hygiene.
 Every Markdown file must have a top-level `# ` heading, avoid trailing
-whitespace, and end with a newline.
+whitespace, and end with a newline. `README.md` must keep its author, license,
+current-version, and versioning/installation snippets, and
+`documents/00_REQUIREMENTS.md` and `documents/03_ARCHITECTURE.md` must not contain
+any release number, because they describe the current code.
 
 ## Quality Checklist
 
-1. `./localPipeline.sh --noRun` passes.
+1. `./localPipeline.sh --noRun --noOpen` passes.
 2. New modules are added to `docs/api.rst`.
 3. Version is bumped in `version.py`, `README.md`, and smoke tests when required.
 4. Translations are regenerated and compiled when user-visible strings changed.
