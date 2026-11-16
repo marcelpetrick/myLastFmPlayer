@@ -7,6 +7,7 @@ VENV_DIR="${ROOT_DIR}/.venv"
 PYTHON="${VENV_DIR}/bin/python"
 APP="${VENV_DIR}/bin/my-lastfm-player"
 RUN_APP=true
+OPEN_REPORTS=true
 REPORT_DIR=""
 PIPELINE_LOG_DIR=""
 REMOVE_PIPELINE_LOG_DIR=true
@@ -41,7 +42,7 @@ TRANSLATION_DETAILS=""
 
 print_usage() {
     cat <<EOF
-Usage: ./localPipeline.sh [--noRun] [--report-dir PATH]
+Usage: ./localPipeline.sh [--noRun] [--noOpen] [--report-dir PATH]
 
 Local project pipeline:
   1. Create or reuse .venv
@@ -59,6 +60,7 @@ Local project pipeline:
   13. Verify that the installed package imports and exposes its version
   14. Launch the installed application once by default
       Use --noRun to suppress application launch
+      Use --noOpen to suppress opening the HTML reports (for automated runs)
   15. Print a final stage-by-stage summary with useful stage details
 
 Generated HTML reports are opened with MY_LASTFM_PLAYER_REPORT_BROWSER when set,
@@ -238,6 +240,10 @@ parse_arguments() {
         case "$1" in
             --noRun)
                 RUN_APP=false
+                shift
+                ;;
+            --noOpen)
+                OPEN_REPORTS=false
                 shift
                 ;;
             --report-dir)
@@ -602,7 +608,9 @@ main() {
         mark_result "Tests+Coverage" "SKIP" "Skipped because dependencies are unavailable"
     fi
 
-    if [[ "${SPHINX_OK}" -eq 1 ]]; then
+    if [[ "${OPEN_REPORTS}" == false ]]; then
+        mark_result "Open Docs" "SKIP" "Suppressed by --noOpen"
+    elif [[ "${SPHINX_OK}" -eq 1 ]]; then
         OPEN_REPORT_COMMAND=""
         if open_sphinx_documentation; then
             OPEN_DOCS_OK=1
@@ -614,7 +622,9 @@ main() {
         mark_result "Open Docs" "SKIP" "Skipped because Sphinx documentation was not generated"
     fi
 
-    if [[ -f "${ROOT_DIR}/htmlcov/index.html" ]]; then
+    if [[ "${OPEN_REPORTS}" == false ]]; then
+        mark_result "Open Coverage" "SKIP" "Suppressed by --noOpen"
+    elif [[ -f "${ROOT_DIR}/htmlcov/index.html" ]]; then
         OPEN_REPORT_COMMAND=""
         if open_coverage_report; then
             OPEN_COVERAGE_OK=1

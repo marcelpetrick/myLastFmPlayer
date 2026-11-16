@@ -79,7 +79,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p release-artifacts/raw
-          ./localPipeline.sh --noRun --report-dir release-artifacts/raw \
+          ./localPipeline.sh --noRun --noOpen --report-dir release-artifacts/raw \
             2>&1 | tee release-artifacts/raw/pipeline-console.log
 
       - name: Build zipped release artifacts

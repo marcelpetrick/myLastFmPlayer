@@ -11,6 +11,8 @@ through `.venv/bin/`.
 
 - Full local pipeline: `./localPipeline.sh`
 - Pre-commit pipeline without launching the GUI: `./localPipeline.sh --noRun`
+- Automated (agent) pipeline run, no GUI and no browser tabs:
+  `./localPipeline.sh --noRun --noOpen`
 - Run the app from source: `my-lastfm-player` or `python -m my_lastfm_player`
 - Lint: `python -m ruff check .`
 - Tests with coverage: `python -m pytest`
@@ -27,7 +29,9 @@ through `.venv/bin/`.
 - Compile Qt translation files after regeneration:
   `tools/compile_translations.sh`
 
-`./localPipeline.sh --noRun` is the canonical check before every commit.
+`./localPipeline.sh --noRun` is the canonical check before every commit. Automated
+assistants must add `--noOpen` so the run does not open HTML reports in the
+maintainer's browser.
 
 ## Commit Messages
 
@@ -90,7 +94,7 @@ flowchart TD
     K --> L["Documentation check"]
     L --> M["Build Sphinx docs with warnings as errors"]
     M --> N["Pytest with coverage and HTML report"]
-    N --> O["Open generated HTML reports when possible"]
+    N --> O["Open generated HTML reports unless --noOpen"]
     O --> P["Remove old build artifacts"]
     P --> Q["Build source/wheel distributions"]
     Q --> R["Find built wheel in dist/"]
@@ -105,13 +109,14 @@ flowchart TD
 
 The workflow phases are:
 
-1. Argument handling accepts `--noRun` and `--report-dir PATH`.
+1. Argument handling accepts `--noRun`, `--noOpen` and `--report-dir PATH`.
 2. Environment preparation creates `.venv` when needed and otherwise reuses it.
 3. Dependency installation runs `python -m pip install -e ".[dev]"`.
 4. Quality gates run Ruff, Pylint, translation and documentation checks, Sphinx
    with warnings as errors, and pytest with the configured coverage threshold.
 5. Report opening prints the Sphinx and coverage HTML paths and attempts to open
-   them; an unavailable browser is a warning rather than a build failure.
+   them unless `--noOpen` was supplied; an unavailable browser is a warning
+   rather than a build failure.
 6. Package build removes stale output before building source and wheel
    distributions.
 7. Install verification installs the new wheel and imports `my_lastfm_player`.
