@@ -205,3 +205,37 @@ flowchart LR
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Baseline, `fork` (misleading) | 10,926 | 7,137 | 2,753 | 1,036 | 65.3% |
 | Baseline, `forkserver` | 10,926 | 7,096 | 3,798 | 32 | 64.95% |
+| Catalog check, golden images, log exclusion (v0.0.205) | 10,274 | 8,283 | 1,969 | 22 | 80.62% |
+| Contract tests for scrobbling, playback, download, YouTube, Last.fm (v0.0.206) | 10,274 | 8,653 | 1,599 | 22 | 84.22% |
+
+The log exclusion removed 652 mutants of log-message text, so the total drops from
+10,926 to 10,274. Line + branch coverage rose from 99.01% to 99.28% along the way.
+
+### What moved the score
+
+```mermaid
+xychart-beta
+    title "Mutation score by step (%)"
+    x-axis ["fork", "forkserver", "v0.0.205", "v0.0.206"]
+    y-axis "score" 60 --> 100
+    bar [65.3, 64.95, 80.62, 84.22]
+    line [99, 99, 99, 99]
+```
+
+- **Translation-catalog check** (`tests/conftest.py`): a test-only `QTranslator`
+  records every runtime `tr()`/`translate()` lookup and fails the test when the
+  context or string is missing from the catalog. It kills every mutated UI string on
+  an executed path, and it guards against strings that would never be translated.
+- **Golden images** for the hand-drawn icons and flags (±3 per channel), and a JSON
+  snapshot of every theme palette colour.
+- **Contract tests** that assert exact arguments, messages and state transitions:
+  subprocess options, ffprobe command line, retry and backoff, auth-generation
+  races, progress messages, and controller signal wiring.
+
+### Still open
+
+The 99% target is not reached yet. Most remaining survivors sit in
+`controller.py`, `ui/main_window.py` and `ui/preferences_dialog.py`. A large share
+replace a `bool`/`str` with `None`, which runtime tests cannot observe but a static
+type checker would; mypy currently reports 110 errors, mostly PyQt6 stub noise, and
+would first have to become a clean pipeline gate.

@@ -75,5 +75,7 @@ works with the offscreen Qt platform the suite already uses.
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Baseline (`fork`, slot fix) | 10,926 | 7,137 | 2,753 | 1,036 | 65.3% |
 | Baseline (`forkserver`) | 10,926 | 7,096 | 3,798 | 32 | 64.95% |
+| Catalog check, golden images, log exclusion (v0.0.205) | 10,274 | 8,283 | 1,969 | 22 | 80.62% |
+| Contract tests for scrobbling, playback, download, YouTube, Last.fm (v0.0.206) | 10,274 | 8,653 | 1,599 | 22 | 84.22% |
 
 The full write-up is in [`../docs/followup_mutation_testing.md`](../docs/followup_mutation_testing.md).
