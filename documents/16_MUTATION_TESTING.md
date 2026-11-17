@@ -79,5 +79,6 @@ works with the offscreen Qt platform the suite already uses.
 | Catalog check, golden images, log exclusion (v0.0.205) | 10,274 | 8,283 | 1,969 | 22 | 80.62% |
 | Contract tests for scrobbling, playback, download, YouTube, Last.fm (v0.0.206) | 10,274 | 8,653 | 1,599 | 22 | 84.22% |
 | mypy as pre-filter, controller wiring tests (v0.0.208) | 10,281 | 9,257 | 1,016 | 8 | 90.04% |
+| Per-module mutation tests, equivalents marked (v0.0.210) | 9,633 | 9,615 | 6 | 12 | **99.81%** |
 
 The full write-up is in [`../docs/followup_mutation_testing.md`](../docs/followup_mutation_testing.md).

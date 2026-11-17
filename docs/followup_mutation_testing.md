@@ -208,6 +208,7 @@ flowchart LR
 | Catalog check, golden images, log exclusion (v0.0.205) | 10,274 | 8,283 | 1,969 | 22 | 80.62% |
 | Contract tests for scrobbling, playback, download, YouTube, Last.fm (v0.0.206) | 10,274 | 8,653 | 1,599 | 22 | 84.22% |
 | mypy as pre-filter, controller wiring tests (v0.0.208) | 10,281 | 9,257 | 1,016 | 8 | 90.04% |
+| Per-module mutation tests, equivalents marked (v0.0.210) | 9,633 | 9,615 | 6 | 12 | **99.81%** |
 
 The log exclusion removed 652 mutants of log-message text, so the total drops from
 10,926 to 10,274. Line + branch coverage rose from 99.01% to 99.28% along the way.
@@ -217,10 +218,10 @@ The log exclusion removed 652 mutants of log-message text, so the total drops fr
 ```mermaid
 xychart-beta
     title "Mutation score by step (%)"
-    x-axis ["fork", "forkserver", "v0.0.205", "v0.0.206", "v0.0.208"]
+    x-axis ["fork", "forkserver", "v0.0.205", "v0.0.206", "v0.0.208", "v0.0.210"]
     y-axis "score" 60 --> 100
-    bar [65.3, 64.95, 80.62, 84.22, 90.04]
-    line [99, 99, 99, 99, 99]
+    bar [65.3, 64.95, 80.62, 84.22, 90.04, 99.81]
+    line [99, 99, 99, 99, 99, 99]
 ```
 
 - **Translation-catalog check** (`tests/conftest.py`): a test-only `QTranslator`
@@ -233,12 +234,28 @@ xychart-beta
   subprocess options, ffprobe command line, retry and backoff, auth-generation
   races, progress messages, and controller signal wiring.
 
-### Still open
+### Reaching the target
 
-The 99% target is not reached yet. Most remaining survivors sit in
-`controller.py`, `ui/main_window.py` and `ui/preferences_dialog.py`. A large share
-replace a `bool`/`str` with `None`, which runtime tests cannot observe but a static
-type checker would. mypy initially reported 110 errors, mostly PyQt6 stub noise. Since
-v0.0.208 it is a clean, mandatory pipeline stage and mutmut's `type_check_command`, so
-mutants that break the declared types now count as detected; that run is not yet in
-the results table above.
+The last 899 survivors were split by module across four parallel review passes.
+Each pass wrote tests in its own `tests/test_<module>_mutation.py` file and proved
+every kill by running that file against the single mutant
+(`MUTANT_UNDER_TEST=<name>` inside `mutants/`): the test must fail for the mutant
+and pass for the original. Result: 744 mutants killed by new tests, 155 marked as
+provably equivalent.
+
+Equivalent mutants carry `# pragma: no mutate` with a stated reason (116 lines in
+`my_lastfm_player/`). Typical reasons: a default that the next step replaces anyway
+(`int(None)` falls back to the same value), case-insensitive names (`QColor`
+hex colours, `"UTF-8"`), arguments that equal the default, return values nobody
+reads, and Windows-only branches on the Linux test run.
+
+**Caveat.** mutmut excludes every mutation on a pragma'd line, including ones the
+tests already killed, so those lines leave the denominator: the total falls from
+10,281 to 9,633. Where a pragma would also hide a non-equivalent mutant, a separate
+guard test keeps the behaviour pinned — `tests/test_encoding_contract.py` checks that
+every file and subprocess pipe uses an explicit UTF-8 encoding, because
+`encoding=None` would corrupt artist names on a non-UTF-8 locale.
+
+The remaining 6 survivors and 12 suspicious mutants (0.19%) stay within the 1%
+budget of the 99% target. A crash of the test process (72 mutants) counts as
+detected: those mutants make Qt abort, which no user would miss either.

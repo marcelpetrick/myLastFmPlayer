@@ -281,7 +281,6 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         self._youtube_work_active = False
         self._youtube_work_stopped = False
         self._youtube_work_stopping = False
-        self._last_progress_label = "Idle"
         self._stage_progress_labels = {
             "discovery": "Idle",
             "lookup": "Idle",
@@ -1166,7 +1165,6 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
         progress_bar.setValue(bounded_value)
         progress_bar.setFormat(format_progress_text(label))
         self._stage_progress_labels[stage] = label
-        self._last_progress_label = label
         self.show_status(label)
 
     def reset_workflow_progress(self) -> None:
@@ -1177,7 +1175,6 @@ class MainWindow(QMainWindow):  # pylint: disable=too-many-public-methods,too-ma
             progress_bar.setValue(0)
             progress_bar.setFormat(format_progress_text(idle_label))
             self._stage_progress_labels[stage] = "Idle"
-        self._last_progress_label = "Idle"  # pragma: no mutate - the attribute is never read
 
     def append_feedback(self, message: str) -> None:
         """Append ``message`` to the feedback log and status bar."""

@@ -63,8 +63,8 @@ def png_bytes() -> bytes:
 
 
 def test_package_version_is_defined() -> None:
-    assert __version__ == "0.0.210"
-    assert __display_version__ == "0.0.210"
+    assert __version__ == "0.0.211"
+    assert __display_version__ == "0.0.211"
 
 
 def test_display_version_adds_build_commit_suffix() -> None:
@@ -1426,7 +1426,6 @@ def test_main_window_retranslate_refreshes_empty_state_and_idle_labels(qapp) -> 
     TranslationManager(qapp).set_language("en")
     window = MainWindow()
     window.dependency_label.clear()
-    window._last_progress_label = "Idle"
     window._last_status_message = "Ready"
 
     window.retranslate_ui()

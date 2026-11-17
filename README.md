@@ -7,6 +7,8 @@
 [![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-3776ab.svg)](https://www.python.org/)
 [![PyQt 6.12.1](https://img.shields.io/badge/PyQt-6.12.1-41cd52.svg)](https://www.riverbankcomputing.com/software/pyqt/)
 [![Coverage: 99%](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)](pyproject.toml)
+[![Mutation score: 99.8%](https://img.shields.io/badge/mutation%20score-99.8%25-brightgreen.svg)](docs/followup_mutation_testing.md)
+[![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-2a6db2.svg)](pyproject.toml)
 
 `myLastFmPlayer` is a fully functional, actively maintained Linux desktop product that
 turns a Last.fm loved-track history into a local, playable music library. It discovers
@@ -29,7 +31,7 @@ Click the preview to open the full recording.
 
 ## Product Status
 
-Current version: `0.0.210` — fully functional and actively maintained
+Current version: `0.0.211` — fully functional and actively maintained
 
 **Recent highlights:** right-click a track and choose **Unlove on Last.fm…** to remove
 duplicate loves from your Last.fm account after an explicit confirmation (see
@@ -111,7 +113,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.210-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.211-py3-none-any.whl
 my-lastfm-player
 ```
 
