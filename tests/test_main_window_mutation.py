@@ -146,11 +146,17 @@ def test_rich_text_content_height_measures_at_the_reserved_text_width(qapp) -> N
     text_width = dialog_width - 2 * mw.RICH_TEXT_DIALOG_MARGIN - scrollbar_extent
     # A paragraph whose line count changes when the width shrinks by one margin.
     text = next(
-        candidate
-        for candidate in (f"<p>{'word ' * count}</p>" for count in range(1, 400))
-        if _reference_height(font, candidate, text_width)
-        != _reference_height(font, candidate, text_width - mw.RICH_TEXT_DIALOG_MARGIN)
+        (
+            candidate
+            for candidate in (f"<p>{'word ' * count}</p>" for count in range(1, 400))
+            if _reference_height(font, candidate, text_width)
+            != _reference_height(font, candidate, text_width - mw.RICH_TEXT_DIALOG_MARGIN)
+        ),
+        None,
     )
+    if text is None:
+        # Headless runners without real fonts measure every paragraph alike.
+        pytest.skip("platform font metrics cannot distinguish the two text widths")
 
     assert mw._rich_text_content_height(
         browser, text, dialog_width, scrollbar_extent

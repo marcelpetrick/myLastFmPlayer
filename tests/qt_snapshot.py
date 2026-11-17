@@ -49,6 +49,7 @@ VOLATILE_PROPERTIES = {
     "minimumHeight",
     "minimumSize",
     "minimumSizeHint",
+    "minimumSectionSize",
     "minimumWidth",
     "normalGeometry",
     "palette",
