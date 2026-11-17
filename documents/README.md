@@ -17,6 +17,7 @@ project history and do not represent the active backlog.
 | [`07_AGENT_GUIDELINES.md`](07_AGENT_GUIDELINES.md) | Contributor command reference; `../docs/agents.md` is authoritative |
 | [`09_GITHUB_ACTIONS.md`](09_GITHUB_ACTIONS.md) | CI and release workflow instructions |
 | [`16_MUTATION_TESTING.md`](16_MUTATION_TESTING.md) | Mutation-testing plan, gate, and results |
+| [`17_QUALITY_PLAYBOOK.md`](17_QUALITY_PLAYBOOK.md) | Reusable playbook: code review, testing, coverage, mutation testing, docs and release workflow |
 | [`../docs/followup_mutation_testing.md`](../docs/followup_mutation_testing.md) | Mutation-testing write-up: findings, targets, tooling, and score history |
 | [`../docs/agents.md`](../docs/agents.md) | Authoritative contribution rules for automated agents |
 | [`../UI_UX_review.md`](../UI_UX_review.md) | Current prioritized UI/UX audit and fix status |
