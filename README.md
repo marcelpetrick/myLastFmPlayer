@@ -31,7 +31,7 @@ Click the preview to open the full recording.
 
 ## Product Status
 
-Current version: `0.0.213` — fully functional and actively maintained
+Current version: `0.0.214` — fully functional and actively maintained
 
 **Recent highlights:** right-click a track and choose **Unlove on Last.fm…** to remove
 duplicate loves from your Last.fm account after an explicit confirmation (see
@@ -113,7 +113,7 @@ Create an isolated environment and install the downloaded wheel:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/my_lastfm_player-0.0.213-py3-none-any.whl
+python -m pip install /path/to/my_lastfm_player-0.0.214-py3-none-any.whl
 my-lastfm-player
 ```
 
